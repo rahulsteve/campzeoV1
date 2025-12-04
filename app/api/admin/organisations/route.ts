@@ -77,9 +77,9 @@ export async function GET(req: Request) {
             prisma.organisation.count({ where: whereClause }),
         ]);
 
-        const list = organisations.map(org => ({
+        const list = organisations.map((org: any) => ({
             ...org,
-            platforms: org.organisationPlatforms.map(op => op.platform.toLowerCase())
+            platforms: org.organisationPlatforms.map((op: any) => op.platform.toLowerCase())
         }));
 
         return NextResponse.json({
