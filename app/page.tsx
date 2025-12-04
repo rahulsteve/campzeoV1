@@ -302,12 +302,60 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t">
-        <div className="max-w-7xl mx-auto text-center text-muted-foreground text-sm">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Zap className="size-6 text-primary" />
-            <span className="font-semibold text-foreground">SaaSify</span>
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-8 mb-8">
+            {/* Brand Section */}
+            <div className="text-center md:text-left">
+              <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
+                <Zap className="size-6 text-primary" />
+                <span className="font-semibold text-foreground">Campzeo</span>
+              </div>
+              <p className="text-muted-foreground text-sm">
+                Streamline your social media management with powerful tools and insights.
+              </p>
+            </div>
+
+            {/* Quick Links */}
+            <div className="text-center">
+              <h3 className="font-semibold text-foreground mb-3">Quick Links</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>
+                  <a href="#features" className="hover:text-foreground transition-colors">
+                    Features
+                  </a>
+                </li>
+                <li>
+                  <a href="#pricing" className="hover:text-foreground transition-colors">
+                    Pricing
+                  </a>
+                </li>
+                <li>
+                  <Link href="/privacy-policy" className="hover:text-foreground transition-colors">
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/terms-of-service" className="hover:text-foreground transition-colors">
+                    Terms of Service
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Contact */}
+            <div className="text-center md:text-right">
+              <h3 className="font-semibold text-foreground mb-3">Contact</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>support@campzeo.com</li>
+                <li>privacy@campzeo.com</li>
+              </ul>
+            </div>
           </div>
-          <p>© 2025 SaaSify. All rights reserved.</p>
+
+          {/* Bottom Bar */}
+          <div className="pt-8 border-t text-center text-muted-foreground text-sm">
+            <p>© 2025 Campzeo. All rights reserved.</p>
+          </div>
         </div>
       </footer>
 
