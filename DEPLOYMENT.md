@@ -22,6 +22,7 @@ The project has been successfully configured and tested for Vercel deployment:
 - Fixed implicit `any` type in `app/api/admin/organisations/route.ts` (map callback and transaction)
 - Fixed implicit `any` type in `app/api/contacts/export/route.ts` (map callback)
 - Fixed implicit `any` type in `app/api/contacts/import/route.ts` (map callback)
+- Added `postinstall` script to `package.json` to generate Prisma client on Vercel
 - Audited other API routes for similar issues
 
 ### 3. Missing Type Declarations
