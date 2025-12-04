@@ -1,0 +1,217 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { currentUser } from '@clerk/nextjs/server';
+
+// GET - Fetch a single post
+export async function GET(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string; postId: string }> }
+) {
+    try {
+        const user = await currentUser();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        // Get user from database to check organisation
+        const dbUser = await prisma.user.findUnique({
+            where: { clerkId: user.id },
+            select: { organisationId: true }
+        });
+
+        if (!dbUser?.organisationId) {
+            return NextResponse.json({ error: 'Organisation not found' }, { status: 404 });
+        }
+
+        const { id, postId } = await params;
+        const campaignId = parseInt(id);
+        const postIdNum = parseInt(postId);
+
+        // Verify campaign belongs to organisation
+        const campaign = await prisma.campaign.findFirst({
+            where: {
+                id: campaignId,
+                organisationId: dbUser.organisationId,
+                isDeleted: false,
+            },
+        });
+
+        if (!campaign) {
+            return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
+        }
+
+        // Fetch post
+        const post = await prisma.campaignPost.findFirst({
+            where: {
+                id: postIdNum,
+                campaignId,
+            },
+        });
+
+        if (!post) {
+            return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+        }
+
+        return NextResponse.json({ post });
+    } catch (error) {
+        console.error('Error fetching post:', error);
+        return NextResponse.json({ error: 'Failed to fetch post' }, { status: 500 });
+    }
+}
+
+// PUT - Update a post
+export async function PUT(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string; postId: string }> }
+) {
+    try {
+        const user = await currentUser();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        // Get user from database to check organisation
+        const dbUser = await prisma.user.findUnique({
+            where: { clerkId: user.id },
+            select: { organisationId: true }
+        });
+
+        if (!dbUser?.organisationId) {
+            return NextResponse.json({ error: 'Organisation not found' }, { status: 404 });
+        }
+
+        const { id, postId } = await params;
+        const campaignId = parseInt(id);
+        const postIdNum = parseInt(postId);
+
+        // Verify campaign belongs to organisation
+        const campaign = await prisma.campaign.findFirst({
+            where: {
+                id: campaignId,
+                organisationId: dbUser.organisationId,
+                isDeleted: false,
+            },
+        });
+
+        if (!campaign) {
+            return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
+        }
+
+        // Check if post exists
+        const existingPost = await prisma.campaignPost.findFirst({
+            where: {
+                id: postIdNum,
+                campaignId,
+            },
+        });
+
+        if (!existingPost) {
+            return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+        }
+
+        // Don't allow editing sent posts
+        if (existingPost.isPostSent) {
+            return NextResponse.json({ error: 'Cannot edit a sent post' }, { status: 400 });
+        }
+
+        const body = await request.json();
+        const { subject, message, type, scheduledPostTime, senderEmail, videoUrl, pinterestBoardId, pinterestLink } = body;
+
+        // Construct metadata
+        let metadata: any = existingPost.metadata || {};
+
+        if (type === 'PINTEREST') {
+            metadata = {
+                ...metadata,
+                boardId: pinterestBoardId,
+                link: pinterestLink
+            };
+        }
+
+        // Update post
+        const post = await prisma.campaignPost.update({
+            where: { id: postIdNum },
+            data: {
+                subject,
+                message,
+                type,
+                senderEmail,
+                scheduledPostTime: scheduledPostTime ? new Date(scheduledPostTime) : null,
+                videoUrl: videoUrl || null,
+                metadata: metadata,
+            },
+        });
+
+        return NextResponse.json({ post });
+    } catch (error) {
+        console.error('Error updating post:', error);
+        return NextResponse.json({ error: 'Failed to update post' }, { status: 500 });
+    }
+}
+
+// DELETE - Delete a post
+export async function DELETE(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string; postId: string }> }
+) {
+    try {
+        const user = await currentUser();
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        // Get user from database to check organisation
+        const dbUser = await prisma.user.findUnique({
+            where: { clerkId: user.id },
+            select: { organisationId: true }
+        });
+
+        if (!dbUser?.organisationId) {
+            return NextResponse.json({ error: 'Organisation not found' }, { status: 404 });
+        }
+
+        const { id, postId } = await params;
+        const campaignId = parseInt(id);
+        const postIdNum = parseInt(postId);
+
+        // Verify campaign belongs to organisation
+        const campaign = await prisma.campaign.findFirst({
+            where: {
+                id: campaignId,
+                organisationId: dbUser.organisationId,
+                isDeleted: false,
+            },
+        });
+
+        if (!campaign) {
+            return NextResponse.json({ error: 'Campaign not found' }, { status: 404 });
+        }
+
+        // Check if post exists
+        const existingPost = await prisma.campaignPost.findFirst({
+            where: {
+                id: postIdNum,
+                campaignId,
+            },
+        });
+
+        if (!existingPost) {
+            return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+        }
+
+        // Don't allow deleting sent posts
+        if (existingPost.isPostSent) {
+            return NextResponse.json({ error: 'Cannot delete a sent post' }, { status: 400 });
+        }
+
+        // Delete post
+        await prisma.campaignPost.delete({
+            where: { id: postIdNum },
+        });
+
+        return NextResponse.json({ message: 'Post deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting post:', error);
+        return NextResponse.json({ error: 'Failed to delete post' }, { status: 500 });
+    }
+}

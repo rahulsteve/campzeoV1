@@ -1,0 +1,1415 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Users,
+  Settings,
+  Shield,
+  MessageSquare,
+  MoreVertical,
+  CheckCircle,
+  Plus,
+  ArrowLeft,
+  Search,
+  Printer,
+  Mail,
+  Smartphone,
+  Facebook,
+  Instagram,
+  Linkedin,
+  Youtube,
+  ChevronLeft,
+  Eye,
+  EyeOff,
+  ChevronRight,
+  Download
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SecretInput } from "@/components/ui/secret-input";
+import { useState, useEffect, useMemo } from "react";
+import { useUser , UserButton } from "@clerk/nextjs";
+import { toast } from "sonner";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { constants } from "buffer";
+
+export default function AdminDashboard() {
+  const [activeTab, setActiveTab] = useState("organisations");
+  const { user } = useUser();
+  // Data State
+  const [organisations, setOrganisations] = useState<any[]>([]);
+  const [enquiries, setEnquiries] = useState<any[]>([]);
+  const [platformConfigs, setPlatformConfigs] = useState<any[]>([]);
+  const [jobSettings, setJobSettings] = useState<any[]>([]);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Pagination & Filter State
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
+  const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all"); // 'all', 'active', 'suspended'
+
+  // Enquiry Filter State
+  const [enquirySearch, setEnquirySearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  // Add/Edit Org Form State
+  const [isAddingOrg, setIsAddingOrg] = useState(false);
+  const [isCreatingOrg, setIsCreatingOrg] = useState(false);
+  const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    id: "",
+    name: "",
+    ownerName: "",
+    phone: "",
+    email: "",
+    taxNumber: "",
+    address: "",
+    postalCode: "",
+    city: "",
+    state: "",
+    country: "",
+    platforms: [] as string[],
+    isFreeTrial: false
+  });
+
+  // Approval Modal State
+  const [approvalModalOpen, setApprovalModalOpen] = useState(false);
+  const [approvalData, setApprovalData] = useState({
+    orgId: "",
+    firstName: "",
+    lastName: "",
+    username: "",
+    email: "",
+    password: ""
+  });
+
+  // Fetch Data
+  const fetchOrganisations = async () => {
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        pageNumber: pageNumber.toString(),
+        pageSize: pageSize.toString(),
+        searchText: searchText,
+      });
+
+      // Only add isDeleted filter if not 'all'
+      if (statusFilter === 'suspended') {
+        params.append('isDeleted', 'true');
+      } else if (statusFilter === 'active') {
+        params.append('isDeleted', 'false');
+      }
+      // For 'all', don't add isDeleted parameter to show both
+
+      const res = await fetch(`/api/admin/organisations?${params}`);
+      const data = await res.json();
+
+      if (data.isSuccess) {
+        setOrganisations(data.data.list);
+        setTotalCount(data.data.totalCount);
+      }
+    } catch (error) {
+      toast.error("Failed to fetch organisations");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchOtherData = async () => {
+    try {
+      const [enqRes, confRes, jobsRes, logsRes] = await Promise.all([
+        fetch('/api/admin/enquiries'),
+        fetch('/api/admin/platform-config'),
+        fetch('/api/admin/job-settings'),
+        fetch('/api/admin/logs')
+      ]);
+
+      if (enqRes.ok) {
+        const data = await enqRes.json();
+        setEnquiries(data.data || []);
+      } else {
+        const errorData = await enqRes.json();
+        toast.error(`Failed to fetch enquiries: ${errorData.message || 'Access denied'}`);
+      }
+
+      if (confRes.ok) setPlatformConfigs((await confRes.json()).data || []);
+      if (jobsRes.ok) setJobSettings((await jobsRes.json()).data || []);
+      if (logsRes.ok) setLogs((await logsRes.json()).data || []);
+    } catch (error) {
+      console.error("Failed to fetch other data", error);
+      toast.error("Failed to load admin data");
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'organisations') {
+      fetchOrganisations();
+    } else {
+      fetchOtherData();
+    }
+  }, [activeTab, pageNumber, pageSize, statusFilter]); // Search text handled separately with debounce ideally, or on enter
+
+  // Handle Search Enter
+  const handleSearch = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      setPageNumber(1);
+      fetchOrganisations();
+    }
+  };
+
+  // Filter enquiries based on search and date range
+  const filteredEnquiries = useMemo(() => {
+    return enquiries.filter(enq => {
+      // Search filter (name, email, organisation)
+      const searchLower = enquirySearch.toLowerCase();
+      const matchesSearch = !enquirySearch ||
+        (enq.name && enq.name.toLowerCase().includes(searchLower)) ||
+        (enq.organisationName && enq.organisationName.toLowerCase().includes(searchLower)) ||
+        (enq.email && enq.email.toLowerCase().includes(searchLower));
+
+      // Date range filter
+      const createdDate = new Date(enq.createdAt);
+      const fromDate = dateFrom ? new Date(dateFrom) : null;
+      const toDate = dateTo ? new Date(dateTo) : null;
+
+      // Set time to start/end of day for accurate comparison
+      if (fromDate) fromDate.setHours(0, 0, 0, 0);
+      if (toDate) toDate.setHours(23, 59, 59, 999);
+
+      const matchesDateFrom = !fromDate || createdDate >= fromDate;
+      const matchesDateTo = !toDate || createdDate <= toDate;
+
+      return matchesSearch && matchesDateFrom && matchesDateTo;
+    });
+  }, [enquiries, enquirySearch, dateFrom, dateTo]);
+
+  // Organisation Actions
+  const handleCreateOrg = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreatingOrg(true);
+    // Validation
+    if (!formData.name || !formData.ownerName || !formData.phone || !formData.email || !formData.taxNumber || !formData.address || !formData.postalCode || !formData.city || !formData.state || !formData.country) {
+      toast.error("Please fill in all required fields");
+      setIsCreatingOrg(false);
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast.error("Please enter a valid email address");
+      setIsCreatingOrg(false);
+      return;
+    }
+
+    // Phone validation (simple check for now)
+    if (formData.phone.length < 10) {
+      toast.error("Please enter a valid phone number");
+      setIsCreatingOrg(false);
+      return;
+    }
+
+    try {
+      const payload = {
+        ...formData,
+        organisationPlatform: formData.platforms, // Send as string array directly
+      };
+
+      const res = await fetch("/api/admin/organisations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.isSuccess) {
+        toast.success(formData.id ? "Organisation updated" : "Organisation created successfully");
+        setFormData({
+          id: "",
+          name: "",
+          ownerName: "",
+          phone: "",
+          email: "",
+          taxNumber: "",
+          address: "",
+          postalCode: "",
+          city: "",
+          state: "",
+          country: "",
+          platforms: [],
+          isFreeTrial: false
+        });
+        setIsAddingOrg(false);
+        fetchOrganisations();
+      } else {
+        throw new Error(data.message || "Failed to save organisation");
+      }
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setIsCreatingOrg(false);
+    }
+  };
+
+  const handleEditOrg = (org: any) => {
+    let parsedPlatforms = [];
+    try {
+      if (org.platforms && typeof org.platforms === 'string') {
+        parsedPlatforms = JSON.parse(org.platforms);
+      } else if (Array.isArray(org.platforms)) {
+        parsedPlatforms = org.platforms;
+      }
+    } catch (e) {
+      console.error('Error parsing platforms:', e);
+      parsedPlatforms = [];
+    }
+
+    setFormData({
+      id: org.id,
+      name: org.name,
+      ownerName: org.ownerName || "",
+      phone: org.phone || "",
+      email: org.email || "",
+      taxNumber: org.taxNumber || "",
+      address: org.address || "",
+      postalCode: org.postalCode || "",
+      city: org.city || "",
+      state: org.state || "",
+      country: org.country || "",
+      platforms: parsedPlatforms,
+      isFreeTrial: org.plan === 'FREE_TRIAL'
+    });
+    setIsAddingOrg(true);
+  };
+
+  const handleApproveClick = (org: any) => {
+    // Check if user exists (in DB)
+    // The list API includes 'users', so we can check that array.
+    const hasUser = org.users && org.users.length > 0;
+
+    if (hasUser) {
+        // User exists, just approve directly
+        handleApproveOrg(org.id);
+        return;
+    }
+
+    // No user exists, show modal to create one
+    const nameParts = (org.ownerName || "").split(" ");
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts.slice(1).join(" ") || "";
+    const email = org.email || "";
+    // Generate a simple username from email or name
+    const username = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, "") || firstName.toLowerCase();
+
+    setApprovalData({
+      orgId: org.id,
+      firstName,
+      lastName,
+      username,
+      email,
+      password: "" 
+    });
+    setApprovalModalOpen(true);
+  };
+
+  const submitApproval = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!approvalData.firstName || !approvalData.email || !approvalData.password) {
+        toast.error("Please fill in all required fields");
+        return;
+    }
+
+    try {
+      toast.loading("Approving organisation and creating user...");
+      const res = await fetch(`/api/admin/organisations/${approvalData.orgId}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            firstName: approvalData.firstName,
+            lastName: approvalData.lastName,
+            username: approvalData.username,
+            email: approvalData.email,
+            password: approvalData.password
+        })
+      });
+      const data = await res.json();
+      
+      toast.dismiss(); // Dismiss loading toast
+
+      if (res.ok && data.isSuccess) {
+        toast.success("Organisation approved and user created successfully");
+        setApprovalModalOpen(false);
+        fetchOrganisations();
+      } else {
+        throw new Error(data.message);
+      }
+    } catch (e: any) {
+      toast.dismiss();
+      toast.error(e.message || "Failed to approve organisation");
+    }
+  };
+
+  const handleApproveOrg = async (id: string) => {
+    try {
+      const res = await fetch(`/api/admin/organisations/${id}/approve`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (res.ok && data.isSuccess) {
+        toast.success("Organisation approved");
+        fetchOrganisations();
+      } else throw new Error(data.message);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to approve organisation");
+    }
+  };
+
+  const handleSuspendOrg = async (id: string) => {
+    try {
+      const res = await fetch(`/api/admin/organisations/${id}/suspend`, {
+        method: 'POST',
+      });
+      const data = await res.json();
+      if (res.ok && data.isSuccess) {
+        toast.success(data.message);
+        fetchOrganisations();
+      } else throw new Error(data.message);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to update organisation status");
+    }
+  };
+
+  const handleImpersonate = async (orgId: string) => {
+    if (!orgId) {
+      toast.error("Invalid organisation ID");
+      return;
+    }
+
+    try {
+      toast.loading("Generating access token...");
+
+      const res = await fetch(`/api/admin/organisations/${orgId}/impersonate`, {
+        method: 'POST',
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.isSuccess) {
+        toast.success("Opening organisation dashboard...");
+        // Set a cookie to track impersonation state
+        document.cookie = "admin_impersonation=true; path=/; max-age=3600";
+        // Open the sign-in URL in the same tab
+        window.location.href = data.data.signInUrl;
+      } else {
+        throw new Error(data.message || "Failed to generate access token");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Failed to impersonate user");
+    }
+  };
+
+  // ... (Other handlers: Enquiry, Config, Jobs, Notifications - kept same or simplified)
+  const handleApproveEnquiry = async (id: string) => { /* ... */ };
+  const handleUpdateConfig = async (key: string, value: string, platform: string) => {
+    try {
+      const res = await fetch('/api/admin/platform-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value, platform })
+      });
+      const data = await res.json();
+      if (res.ok && data.isSuccess) {
+        toast.success("Configuration updated");
+        setPlatformConfigs(prev => {
+            const existing = prev.find(p => p.key === key);
+            if (existing) {
+                return prev.map(p => p.key === key ? { ...p, value } : p);
+            } else {
+                return [...prev, { key, value, platform }]; // Optimistic update might need more fields but this is fine for now
+            }
+        });
+      } else {
+        throw new Error(data.message);
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update configuration");
+    }
+  };
+  const handleUpdateJob = async (jobName: string, frequency: string, isEnabled: boolean) => { /* ... */ };
+  const handleSendNotification = async (message: string) => { /* ... */ };
+
+  const togglePlatform = (platform: string) => {
+    setFormData(prev => {
+      const platforms = prev.platforms.includes(platform)
+        ? prev.platforms.filter(p => p !== platform)
+        : [...prev.platforms, platform];
+      return { ...prev, platforms };
+    });
+  };
+
+  const PlatformIcon = ({ name, icon: Icon, label }: { name: string, icon: any, label: string }) => (
+    <div
+      className={`flex flex-col items-center justify-center p-4 border rounded-lg cursor-pointer transition-all ${formData.platforms.includes(name) ? 'border-primary bg-primary/5' : 'hover:bg-muted'}`}
+      onClick={() => togglePlatform(name)}
+    >
+      <Icon className={`size-6 mb-2 ${formData.platforms.includes(name) ? 'text-primary' : 'text-muted-foreground'}`} />
+      <span className="text-xs">{label}</span>
+      <div className={`w-4 h-4 rounded-full border mt-2 flex items-center justify-center ${formData.platforms.includes(name) ? 'border-primary' : 'border-muted-foreground'}`}>
+        {formData.platforms.includes(name) && <div className="w-2 h-2 rounded-full bg-primary" />}
+      </div>
+    </div>
+  );
+
+  async function handleConvertToOrg(enq: any): Promise<void> {
+    try {
+      toast.loading("Creating organisation and user account...");
+
+      // Call the server-side API to handle all Clerk and database operations
+      const res = await fetch("/api/admin/convert-enquiry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enquiryId: enq.id }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.isSuccess) {
+        throw new Error(data.error || data.details || "Failed to convert enquiry");
+      }
+
+      // Update local state
+      setEnquiries(prev => prev.map(e =>
+        e.id === enq.id ? { ...e, isConverted: true } : e
+      ));
+
+      toast.success("Organisation created and user invited successfully!");
+      fetchOrganisations(); // Refresh organisations list
+    } catch (error: any) {
+      console.error("Error converting enquiry to organisation:", error);
+      toast.error(error.message || "Failed to create organisation");
+    }
+  }
+
+  const exportEnquiriesToCSV = () => {
+    if (enquiries.length === 0) {
+      toast.error("No enquiries to export");
+      return;
+    }
+
+    // Define CSV headers
+    const headers = [
+      "ID",
+      "Business Name",
+      "Name",
+      "Email",
+      "Phone",
+      "Mobile",
+      "Address",
+      "City",
+      "State",
+      "Country",
+      "Postal Code",
+      "Tax Number",
+      "Enquiry Text",
+      "Created Date"
+    ];
+
+    // Convert enquiries to CSV rows
+    const csvRows = [
+      headers.join(","), // Header row
+      ...enquiries.map(enq => [
+        enq.id,
+        `"${(enq.organisationName || '').replace(/"/g, '""')}"`,
+        `"${(enq.name || '').replace(/"/g, '""')}"`,
+        `"${enq.email}"`,
+        `"${(enq.phone || '').replace(/"/g, '""')}"`,
+        `"${(enq.mobile || '').replace(/"/g, '""')}"`,
+        `"${(enq.address || '').replace(/"/g, '""')}"`,
+        `"${(enq.city || '').replace(/"/g, '""')}"`,
+        `"${(enq.state || '').replace(/"/g, '""')}"`,
+        `"${(enq.country || '').replace(/"/g, '""')}"`,
+        `"${(enq.postalCode || '').replace(/"/g, '""')}"`,
+        `"${(enq.taxNumber || '').replace(/"/g, '""')}"`,
+        `"${(enq.enquiryText || '').replace(/"/g, '""')}"`,
+        `"${new Date(enq.createdAt).toLocaleString()}"`
+      ].join(","))
+    ];
+
+    // Create CSV content
+    const csvContent = csvRows.join("\n");
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+
+    link.setAttribute("href", url);
+    link.setAttribute("download", `enquiries_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = "hidden";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success(`Exported ${enquiries.length} enquiries to CSV`);
+  }
+
+  return (
+    <div className="flex flex-col h-screen w-full bg-muted/30 overflow-hidden">
+      {/* Header - Full Width */}
+      <header className="h-16 border-b bg-background flex items-center justify-between px-6 shrink-0 z-20 relative">
+        <div className="flex items-center gap-4">
+          {/* Mobile Menu Trigger */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="md:hidden text-muted-foreground">
+                <MoreVertical className="size-5" />
+                <span className="sr-only">Toggle Menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-72 bg-[#0f172a] text-white border-r-slate-800">
+              {/* Mobile Menu Content */}
+              <div className="p-6">
+                <div className="flex items-center gap-2 font-bold text-xl tracking-wide text-white mb-8">
+                  <div className="size-8 rounded-full bg-primary/20 flex items-center justify-center">
+                    <Shield className="size-5 text-primary" />
+                  </div>
+                  CampZeo
+                </div>
+                <div className="flex flex-col gap-1">
+                  {['organisations', 'enquiry', 'platform', 'system', 'logs'].map((tab) => (
+                    <Button
+                      key={tab}
+                      variant="ghost"
+                      className={`justify-start text-slate-400 hover:text-white hover:bg-slate-800 ${activeTab === tab ? 'bg-primary text-white' : ''}`}
+                      onClick={() => setActiveTab(tab)}
+                    >
+                      <span className="capitalize">{tab}</span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          <div className="flex items-center gap-2 font-bold text-xl tracking-wide text-primary">
+            <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center">
+              <Shield className="size-5 text-primary" />
+            </div>
+            <span className="hidden md:inline-block">CampZeo</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 w-1/3 justify-end md:justify-between md:w-auto lg:w-1/3">
+          {/* Global Search - Optional */}
+        </div>
+
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" className="text-muted-foreground hidden sm:flex">
+            <Mail className="size-5" />
+          </Button>
+          <div className="flex  items-center gap-3">
+            <div className="text-right hidden  md:block">
+              <p className="text-sm font-medium leading-none">Admin User</p>
+              <p className="text-xs text-muted-foreground">Administrator</p>
+            </div>
+
+            Hi, {user?.firstName || user?.username || "User"}  <UserButton afterSignOutUrl="/" />
+          </div>
+        </div>
+      </header>
+
+      {/* Main Layout - Sidebar + Content */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} orientation="vertical" className="flex-1 flex flex-row overflow-hidden">
+        {/* Sidebar - Desktop */}
+        <div className="hidden md:flex w-64 shrink-0 bg-[#0f172a] text-white flex-col border-r border-slate-800 overflow-y-auto">
+          <div className="p-4 py-6">
+            <div className="mb-6 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              Main Menu
+            </div>
+            <TabsList className="flex flex-col h-auto items-stretch bg-transparent p-0 gap-1 text-slate-400">
+              <TabsTrigger value="organisations" className="justify-start px-4 py-3 data-[state=active]:bg-primary data-[state=active]:text-white hover:bg-slate-800 hover:text-slate-200 transition-all rounded-md mx-2">
+                <Users className="mr-3 size-4" /> Organisation
+              </TabsTrigger>
+              <TabsTrigger value="enquiry" className="justify-start px-4 py-3 data-[state=active]:bg-primary data-[state=active]:text-white hover:bg-slate-800 hover:text-slate-200 transition-all rounded-md mx-2">
+                <MessageSquare className="mr-3 size-4" /> Enquiry
+              </TabsTrigger>
+              <TabsTrigger value="platform" className="justify-start px-4 py-3 data-[state=active]:bg-primary data-[state=active]:text-white hover:bg-slate-800 hover:text-slate-200 transition-all rounded-md mx-2">
+                <Settings className="mr-3 size-4" /> Platform Config
+              </TabsTrigger>
+              <TabsTrigger value="system" className="justify-start px-4 py-3 data-[state=active]:bg-primary data-[state=active]:text-white hover:bg-slate-800 hover:text-slate-200 transition-all rounded-md mx-2">
+                <MoreVertical className="mr-3 size-4" /> Job Settings
+              </TabsTrigger>
+              <TabsTrigger value="logs" className="justify-start px-4 py-3 data-[state=active]:bg-primary data-[state=active]:text-white hover:bg-slate-800 hover:text-slate-200 transition-all rounded-md mx-2">
+                <CheckCircle className="mr-3 size-4" /> Audit Logs
+              </TabsTrigger>
+            </TabsList>
+          </div>
+        </div>
+
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-y-auto p-8 md:p-24" style={{ paddingBlock: "20px" }}>
+          <div className="max-w-7xl mx-auto space-y-6">
+
+            {/* 1. Organisation Management */}
+            <TabsContent value="organisations" className="m-0 space-y-6 focus-visible:outline-none" style={{ minHeight: "calc(60vh)" }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold tracking-tight text-slate-900">Organisations</h2>
+                  <p className="text-muted-foreground">Manage and monitor all tenant organisations.</p>
+                </div>
+              </div>
+
+              <Card className="border shadow-sm bg-white">
+                {isAddingOrg ? (
+                  <>
+                    <CardHeader className="border-b pb-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle>{formData.id ? 'Edit Organisation' : 'Add Organisation'}</CardTitle>
+                          <CardDescription>Enter the details for the organisation.</CardDescription>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => setIsAddingOrg(false)}>
+                          <ArrowLeft className="mr-2 size-4" /> Back to List
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <form onSubmit={handleCreateOrg} className=" space-y-8">
+                        <div className="  gap-4">
+                          <div className="row flex space-y-4 ">
+                          <div className="space-y-2 "  style={{marginInline:"10px"}}>
+                            <Label htmlFor="orgName">Organisation Name*</Label>
+                            <Input id="orgName"  className="w-1/2 border border-red-500 "  value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required placeholder="e.g. Mobile team" />
+                          </div>
+                          
+                          <div className="space-y-2"  style={{marginInline:"10px"}}>
+                            <Label htmlFor="ownerName">Owner Name*</Label>
+                            <Input id="ownerName"  className="w-1/2 border border-red-500 "  value={formData.ownerName} onChange={(e) => setFormData({...formData, ownerName: e.target.value})} required placeholder="e.g. John Doe" />
+                          </div>
+                          <div className="space-y-2"  style={{marginInline:"10px"}}>
+                            <Label htmlFor="phone">Phone*</Label>
+                            <Input id="phone"   className="w-1/2 border border-red-500 " value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} required placeholder="e.g. 7807271261" />
+                          </div>
+                          <div className="space-y-2 "  style={{marginInline:"10px"}}>
+                            <Label htmlFor="email">Email address*</Label>
+                            <Input id="email"  className="w-1/2 border border-red-500 "  type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} required placeholder="e.g. contact@example.com" />
+                          </div>
+                          <div className="space-y-2 "  style={{marginInline:"10px"}}>
+                            <Label htmlFor="taxNumber">Tax Number*</Label>
+                            <Input id="taxNumber"  className="w-1/2 border border-red-500 "  value={formData.taxNumber} onChange={(e) => setFormData({...formData, taxNumber: e.target.value})} required placeholder="e.g. TEMP123" />
+                          </div>
+                          </div>
+
+                              <div className="row flex space-y-4">
+                          
+                          <div className="space-y-2 "  style={{marginInline:"10px"}}>
+                            <Label htmlFor="address">Address*</Label>
+                            <Input id="address"  className="w-1/2 border border-red-500 "  value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} required placeholder="e.g. Village Karehari" />
+                          </div>
+                          
+                          
+                              <div className="space-y-2 "  style={{marginInline:"10px"}}>
+                            <Label htmlFor="postalCode">Postal Code*</Label>
+                            <Input id="postalCode"  className="w-1/2 border border-red-500 "  value={formData.postalCode} onChange={(e) => setFormData({...formData, postalCode: e.target.value})} required placeholder="e.g. 175021" />
+                          </div>
+                          <div className="space-y-2 "  style={{marginInline:"10px"}}>
+                            <Label htmlFor="city">City*</Label>
+                            <Input id="city"  className="w-1/2 border border-red-500 "  value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} required placeholder="e.g. Mandi" />
+                          </div>
+                          <div className="space-y-2 "  style={{marginInline:"10px"}}>
+                            <Label htmlFor="state">State*</Label>
+                            <Input id="state"  className="w-1/2 border border-red-500 "  value={formData.state} onChange={(e) => setFormData({...formData, state: e.target.value})} required placeholder="e.g. Himachal Pradesh" />
+                          </div>
+                          <div className="space-y-2 "  style={{marginInline:"10px"}}>
+                            <Label htmlFor="country">Country*</Label>
+                            <Input id="country"  className="w-1/2 border border-red-500 "  value={formData.country} onChange={(e) => setFormData({...formData, country: e.target.value})} required placeholder="e.g. India" />
+                          </div>
+                          </div>
+                          <div className="flex items-center ">
+                            <Switch id="free-trial" checked={formData.isFreeTrial} onCheckedChange={(checked) => setFormData({ ...formData, isFreeTrial: checked })} />
+                            <Label htmlFor="free-trial">Free Trial?</Label>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <Label>Choose your Platforms</Label>
+                          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+                            <PlatformIcon name="email" icon={Mail} label="Email" />
+                            <PlatformIcon name="sms" icon={Smartphone} label="SMS" />
+                            <PlatformIcon name="whatsapp" icon={MessageSquare} label="WhatsApp" />
+                            <PlatformIcon name="facebook" icon={Facebook} label="Facebook" />
+                            <PlatformIcon name="instagram" icon={Instagram} label="Instagram" />
+                            <PlatformIcon name="linkedin" icon={Linkedin} label="LinkedIn" />
+                            <PlatformIcon name="youtube" icon={Youtube} label="Youtube" />
+                            <PlatformIcon name="pinterest" icon={Settings} label="Pinterest" />
+                          </div>
+                        </div>
+
+                        <div className="flex gap-4 pt-4 border-t">
+                          <Button type="submit" disabled={isCreatingOrg}>Submit</Button>
+                          <Button type="button" variant="outline" onClick={() => setIsAddingOrg(false)}>Cancel</Button>
+                        </div>
+                      </form>
+                    </CardContent>
+                  </>
+                ) : (
+                  <>
+                    <div className="p-4 border-b flex  items-center justify-between gap-4 bg-slate-50/50">
+                      <div className="flex gap-2 w-1/2 md:w-auto ">
+                        <div className="relative w-1/2 border border-red-500 rounded-xl md:max-w-sm">
+                          <Search className="absolute left-2 top-2.5 size-4 text-muted-foreground" style={{ top: "10px" }} />
+                          <Input
+                            placeholder="Search organisations..."
+                            className="pl-8 bg-white"
+                            value={searchText}
+                            onChange={(e) => setSearchText(e.target.value)}
+                            onKeyDown={handleSearch}
+                          />
+                        </div>
+                        <div className="hidden sm:block">
+                          <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="w-[140px] bg-white">
+                              <SelectValue placeholder="All Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Status</SelectItem>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="suspended">Suspended</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="flex  gap-2 w-1/2 md:w-auto justify-end">
+                        <Button size="sm" onClick={() => {
+                          setFormData({
+                            id: "",
+                            name: "",
+                            ownerName: "",
+                            phone: "",
+                            email: "",
+                            taxNumber: "",
+                            address: "",
+                            postalCode: "",
+                            city: "",
+                            state: "",
+                            country: "",
+                            platforms: [],
+                            isFreeTrial: false
+                          });
+                          setIsAddingOrg(true);
+                        }}>
+                          <Plus className="mr-2 size-4" /> Add New
+                        </Button>
+                      </div>
+                    </div>
+                    <CardContent className="p-0">
+                      <Table>
+                        <TableHeader className="bg-slate-50 ">
+                          <TableRow>
+                            <TableHead className="font-semibold text-slate-700">Name</TableHead>
+                            <TableHead className="font-semibold text-slate-700  md:table-cell">Phone</TableHead>
+                            <TableHead className="font-semibold text-slate-700  lg:table-cell">Email</TableHead>
+                            <TableHead className="font-semibold text-slate-700  xl:table-cell">Address</TableHead>
+                            <TableHead className="font-semibold text-slate-700">Owner</TableHead>
+                            <TableHead className="font-semibold text-slate-700">Status</TableHead>
+                            <TableHead className="font-semibold text-slate-700">Action</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {organisations.map((org) => (
+                            <TableRow key={org.id} className="hover:bg-slate-50/50">
+                              <TableCell className="font-medium">{org.name}</TableCell>
+                              <TableCell className=" md:table-cell">{org.phone || 'N/A'}</TableCell>
+                              <TableCell className=" lg:table-cell">{org.email || org.users?.[0]?.email || 'N/A'}</TableCell>
+                              <TableCell className="max-w-[200px] truncate  xl:table-cell" title={org.address}>{org.address || 'N/A'}</TableCell>
+                              <TableCell>{org.ownerName || org.users?.[0]?.firstName || 'N/A'}</TableCell>
+                              <TableCell>
+                                <div className="flex gap-1">
+                                  <Badge variant={org.isApproved ? 'default' : 'secondary'} className="rounded-md font-normal">
+                                    {org.isApproved ? 'Approved' : 'Pending'}
+                                  </Badge>
+                                  {org.isDeleted && <Badge variant="destructive" className="rounded-md font-normal">Suspended</Badge>}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-2 ">
+                                  {!org.isApproved && (
+                                    <Button style={{ color: "darkgreen", backgroundColor: "lightgreen" }} size="sm" className="h-8 px-2 bg-green-600 hover:bg-green-700" onClick={() => handleApproveClick(org)}>Approve</Button>
+                                  )}
+                                  <Button style={{ color: "blue", backgroundColor: "lightblue" }} size="sm" className="h-8 px-2 bg-blue-600 hover:bg-blue-700" onClick={() => handleImpersonate(org.id)}>Login</Button>
+                                  <Button style={{ color: "indigo", backgroundColor: "lightindigo" }} size="sm" className="h-8 px-2 bg-indigo-500 hover:bg-indigo-600" onClick={() => handleEditOrg(org)}>Edit</Button>
+                                  {org.isApproved && (
+                                    <Button size="sm" variant={org.isDeleted ? "outline" : "destructive"} className="h-8 px-2" onClick={() => handleSuspendOrg(org.id)}>
+                                      {org.isDeleted ? "Recover" : "Suspend"}
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          {organisations.length === 0 && !isLoading && (
+                            <TableRow>
+                              <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                                No organisations found.
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+
+
+              {/* Approval Modal */}
+              <Dialog open={approvalModalOpen} onOpenChange={setApprovalModalOpen}>
+                <DialogContent className="w-1/2">
+                  <DialogHeader>
+                    <DialogTitle>Approve Organisation</DialogTitle>
+                    <DialogDescription>
+                      Create an admin user for this organisation to grant them access.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={submitApproval} className="space-y-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="firstName">First Name</Label>
+                            <Input 
+                                id="firstName" 
+                                value={approvalData.firstName} 
+                                onChange={(e) => setApprovalData({...approvalData, firstName: e.target.value})}
+                                required 
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="lastName">Last Name</Label>
+                            <Input 
+                                id="lastName" 
+                                value={approvalData.lastName} 
+                                onChange={(e) => setApprovalData({...approvalData, lastName: e.target.value})}
+                            />
+                        </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                        <Label htmlFor="username">Username</Label>
+                        <Input 
+                            id="username" 
+                            value={approvalData.username} 
+                            onChange={(e) => setApprovalData({...approvalData, username: e.target.value})}
+                            required 
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input 
+                            id="email" 
+                            type="email"
+                            value={approvalData.email} 
+                            onChange={(e) => setApprovalData({...approvalData, email: e.target.value})}
+                            required 
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="password">Password</Label>
+                        <Input 
+                            id="password" 
+                            type="text" // Visible so admin can copy/see it
+                            value={approvalData.password} 
+                            onChange={(e) => setApprovalData({...approvalData, password: e.target.value})}
+                            placeholder="Enter password"
+                            required 
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Enter a secure password for the user.
+                        </p>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-4">
+                        <Button type="button" variant="outline" onClick={() => setApprovalModalOpen(false)}>Cancel</Button>
+                        <Button type="submit">Approve & Create User</Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+
+                      {/* Pagination Controls */}
+                      <div className="flex items-center justify-between px-4 py-4 border-t  space-y-6">
+                        <div className="text-sm text-muted-foreground">
+                          Showing {organisations.length} of {totalCount} results
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPageNumber(p => Math.max(1, p - 1))}
+                            disabled={pageNumber === 1}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                            Previous
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPageNumber(p => p + 1)}
+                            disabled={organisations.length < pageSize} // Simple check, ideally check totalCount
+                          >
+                            Next
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                    </CardContent>
+                  </>
+                )}
+              </Card>
+            </TabsContent>
+
+            {/* Other Tabs (Enquiry, Platform, System, Logs) - Simplified Placeholders or reusing existing logic */}
+            <TabsContent value="enquiry" className="m-0 focus-visible:outline-none">
+              <div className="mb-6 flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold tracking-tight text-slate-900">Enquiry Management</h2>
+                  <p className="text-muted-foreground">Review and convert leads from sign-up enquiries.</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportEnquiriesToCSV}
+                  className="gap-2"
+                >
+                  <Download className="size-4" />
+                  Export to CSV
+                </Button>
+              </div>
+              <Card className="border shadow-sm">
+                {/* Filter Section */}
+                <div className="p-4 border-b bg-slate-50/50">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="md:col-span-2">
+                      <Label htmlFor="enquiry-search" className="text-sm font-medium mb-2 block">
+                        Search by Name, Email, or Organisation
+                      </Label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                        <Input
+                          id="enquiry-search"
+                          placeholder="Search enquiries..."
+                          value={enquirySearch}
+                          onChange={(e) => setEnquirySearch(e.target.value)}
+                          className="pl-9"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="date-from" className="text-sm font-medium mb-2 block">
+                        From Date
+                      </Label>
+                      <Input
+                        id="date-from"
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => setDateFrom(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="date-to" className="text-sm font-medium mb-2 block">
+                        To Date
+                      </Label>
+                      <Input
+                        id="date-to"
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => setDateTo(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  {(enquirySearch || dateFrom || dateTo) && (
+                    <div className="mt-3 flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEnquirySearch("");
+                          setDateFrom("");
+                          setDateTo("");
+                        }}
+                        className="h-8 text-xs"
+                      >
+                        Clear Filters
+                      </Button>
+                      <span className="text-xs text-muted-foreground">
+                        Showing {filteredEnquiries.length} of {enquiries.length} enquiries
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader className="bg-slate-50">
+                      <TableRow>
+                        <TableHead className="font-semibold text-slate-700">Business Name</TableHead>
+                        <TableHead className="font-semibold text-slate-700">Name</TableHead>
+                        <TableHead className="font-semibold text-slate-700">Email</TableHead>
+                        <TableHead className="font-semibold text-slate-700">Phone</TableHead>
+                        <TableHead className="font-semibold text-slate-700">Enquiry</TableHead>
+                        <TableHead className="font-semibold text-slate-700">Location</TableHead>
+                        <TableHead className="font-semibold text-slate-700">Created</TableHead>
+                        <TableHead className="font-semibold text-slate-700">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredEnquiries.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                            {enquiries.length === 0 ? "No enquiries found." : "No enquiries match your filters."}
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredEnquiries.map((enq) => (
+                          <TableRow key={enq.id} className="hover:bg-slate-50/50">
+                            <TableCell className="font-medium">{enq.organisationName || 'N/A'}</TableCell>
+                            <TableCell>{enq.name || 'N/A'}</TableCell>
+                            <TableCell>{enq.email}</TableCell>
+                            <TableCell>{enq.phone || enq.mobile || 'N/A'}</TableCell>
+                            <TableCell>
+                              {enq.enquiryText ? (
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button variant="outline" size="sm" className="h-8 px-3 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-800 hover:border-blue-300">
+                                      View Details
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-2xl">
+                                    <DialogHeader>
+                                      <DialogTitle>Enquiry Details</DialogTitle>
+                                      <DialogDescription>
+                                        From: {enq.name || enq.organisationName} ({enq.email})
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="mt-4 space-y-4">
+                                      <div className="rounded-lg border p-4 bg-slate-50">
+                                        <p className="text-sm text-slate-600 font-medium mb-2">Enquiry Message:</p>
+                                        <p className="text-sm whitespace-pre-wrap">{enq.enquiryText}</p>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                          <p className="text-slate-600 font-medium">Name:</p>
+                                          <p>{enq.name || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-slate-600 font-medium">Phone:</p>
+                                          <p>{enq.phone || enq.mobile || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-slate-600 font-medium">Location:</p>
+                                          <p>{enq.city}, {enq.state}, {enq.country}</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-slate-600 font-medium">Tax Number:</p>
+                                          <p>{enq.taxNumber || 'N/A'}</p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">No message</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {enq.city}, {enq.state}, {enq.country}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-sm">
+                              {new Date(enq.createdAt).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              {enq.isConverted ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 px-3 bg-green-50 text-green-700 border-green-200 cursor-not-allowed"
+                                  disabled
+                                >
+                                  <CheckCircle className="mr-1 size-3" />
+                                  Organisation Created
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 px-2 hover:bg-primary/10"
+                                  onClick={() => handleConvertToOrg(enq)}
+                                >
+                                  Create Organisation
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+ {/* 3. Platform Configuration */}
+ {/* 3. Platform Configuration */}
+ <TabsContent value="platform" className="m-0 focus-visible:outline-none">
+   <div className="mb-6">
+     <h2 className="text-2xl font-bold tracking-tight text-slate-900">Platform Configuration</h2>
+     <p className="text-muted-foreground">Manage global API keys and secrets.</p>
+   </div>
+   <Card className="border shadow-sm">
+     <CardContent className="p-6">
+        {!selectedPlatform ? (
+            <div className="grid grid-cols-4 md:grid-cols-4 lg:grid-cols-4 gap-4">
+                {[
+                  { name: "Facebook", platform: "FACEBOOK", icon: Facebook },
+                  { name: "Instagram", platform: "INSTAGRAM", icon: Instagram },
+                  { name: "LinkedIn", platform: "LINKEDIN", icon: Linkedin },
+                  { name: "YouTube", platform: "YOUTUBE", icon: Youtube },
+                  { name: "Pinterest", platform: "PINTEREST", icon: Settings },
+                  { name: "WhatsApp", platform: "WHATSAPP", icon: MessageSquare },
+                  { name: "SMS", platform: "SMS", icon: Smartphone },
+                  { name: "Email", platform: "EMAIL", icon: Mail }
+                ].map((p) => (
+                    <Button 
+                        key={p.platform} 
+                        variant="outline" 
+                        className="h-24 flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5"
+                        onClick={() => setSelectedPlatform(p.platform)}
+                    >
+                        <p.icon className="size-8 text-muted-foreground" />
+                        <span className="font-semibold">{p.name}</span>
+                    </Button>
+                ))}
+            </div>
+        ) : (
+            <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedPlatform(null)}>
+                        <ArrowLeft className="mr-2 size-4" /> Back
+                    </Button>
+                    <h3 className="text-lg font-semibold">
+                        {[
+                          { name: "Facebook", platform: "FACEBOOK" },
+                          { name: "Instagram", platform: "INSTAGRAM" },
+                          { name: "LinkedIn", platform: "LINKEDIN" },
+                          { name: "YouTube", platform: "YOUTUBE" },
+                          { name: "Pinterest", platform: "PINTEREST" },
+                          { name: "WhatsApp", platform: "WHATSAPP" },
+                          { name: "SMS", platform: "SMS" },
+                          { name: "Email", platform: "EMAIL" }
+                        ].find(p => p.platform === selectedPlatform)?.name}
+                    </h3>
+                </div>
+                
+                <div className="grid gap-6 max-w-2xl">
+                    {[
+                      {
+                        platform: "FACEBOOK",
+                        keys: [
+                            { key: "FACEBOOK_CLIENT_ID", label: "App ID" },
+                            { key: "FACEBOOK_CLIENT_SECRET", label: "App Secret" }
+                        ]
+                      },
+                      {
+                        platform: "INSTAGRAM",
+                        keys: [
+                            { key: "INSTAGRAM_CLIENT_ID", label: "App ID" },
+                            { key: "INSTAGRAM_CLIENT_SECRET", label: "App Secret" }
+                        ]
+                      },
+                      {
+                        platform: "LINKEDIN",
+                        keys: [
+                            { key: "LINKEDIN_CLIENT_ID", label: "Client ID" },
+                            { key: "LINKEDIN_CLIENT_SECRET", label: "Client Secret" }
+                        ]
+                      },
+                      {
+                        platform: "YOUTUBE",
+                        keys: [
+                            { key: "YOUTUBE_CLIENT_ID", label: "Client ID" },
+                            { key: "YOUTUBE_CLIENT_SECRET", label: "Client Secret" }
+                        ]
+                      },
+                      {
+                        platform: "PINTEREST",
+                        keys: [
+                            { key: "PINTEREST_CLIENT_ID", label: "App ID" },
+                            { key: "PINTEREST_CLIENT_SECRET", label: "Client Secret" },
+                            { key: "PINTEREST_AUTH_TOKEN", label: "Auth Token" }
+                        ]
+                      },
+                      {
+                        platform: "WHATSAPP",
+                        keys: [
+                            { key: "WHATSAPP_ACCOUNT_SID", label: "Account SID" },
+                            { key: "WHATSAPP_AUTH_TOKEN", label: "Auth Token" },
+                            { key: "WHATSAPP_NUMBER", label: "WhatsApp Number" }
+                        ]
+                      },
+                      {
+                        platform: "SMS",
+                        keys: [
+                            { key: "SMS_ACCOUNT_SID", label: "Account SID" },
+                            { key: "SMS_AUTH_TOKEN", label: "Auth Token" },
+                            { key: "SMS_NUMBER", label: "Twilio Number" }
+                        ]
+                      },
+                      {
+                        platform: "EMAIL",
+                        keys: [
+                            { key: "MAILGUN_API_KEY", label: "Mailgun API Key" },
+                            { key: "MAILGUN_DOMAIN", label: "Mailgun Domain" },
+                            { key: "MAILGUN_FROM_EMAIL", label: "From Email" }
+                        ]
+                      },
+
+                    ].find(p => p.platform === selectedPlatform)?.keys.map((item) => {
+                        const config = platformConfigs.find(c => c.key === item.key);
+                        return (
+                            <div key={item.key} className="grid gap-2">
+                                <Label htmlFor={`input-${item.key}`}>{item.label}</Label>
+                                <div className="relative">
+                                    <SecretInput 
+                                        defaultValue={config?.value || ''}
+                                        placeholder={`Enter ${item.label}`}
+                                      
+                                        id={`input-${item.key}`}
+                                        onBlur={(e) => handleUpdateConfig(item.key, e.target.value, selectedPlatform)}
+                                    />
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        )}
+     </CardContent>
+   </Card>
+ </TabsContent>
+
+            {/* 4. System Administration */}
+            <TabsContent value="system" className="m-0 space-y-4 focus-visible:outline-none">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold tracking-tight text-slate-900">System Settings</h2>
+              </div>
+              <div className="grid gap-6 md:grid-cols-2">
+                <Card className="border shadow-sm">
+                  <CardHeader>
+                    <CardTitle>Job Settings</CardTitle>
+                    <CardDescription>Configure background jobs.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {['POST_SCHEDULER', 'ANALYTICS_SYNC', 'BILLING_CYCLE'].map((job) => {
+                      const setting = jobSettings.find(j => j.jobName === job);
+                      return (
+                        <div key={job} className="flex items-center justify-between border-b pb-4 last:border-0">
+                          <div>
+                            <p className="font-medium">{job}</p>
+                            <p className="text-sm text-muted-foreground">Frequency: {setting?.frequency || '5m'}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              checked={setting?.isEnabled ?? true}
+                              onCheckedChange={(checked) => handleUpdateJob(job, setting?.frequency || '5m', checked)}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+
+                <Card className="border shadow-sm">
+                  <CardHeader>
+                    <CardTitle>Message Center</CardTitle>
+                    <CardDescription>Broadcast notifications to all tenants.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Textarea placeholder="Type your message here..." id="broadcast-msg" />
+                    <Button className="w-full" onClick={() => {
+                      const msg = (document.getElementById('broadcast-msg') as HTMLTextAreaElement).value;
+                      handleSendNotification(msg);
+                    }}>
+                      <MessageSquare className="mr-2 size-4" /> Send Broadcast
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            {/* 5. Logs */}
+            <TabsContent value="logs" className="m-0 focus-visible:outline-none">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold tracking-tight text-slate-900">Audit Logs</h2>
+              </div>
+              <Card className="border shadow-sm">
+                <CardContent className="p-0">
+                  <div className="max-h-[600px] overflow-y-auto">
+                    <Table>
+                      <TableHeader className="bg-slate-50 sticky top-0">
+                        <TableRow>
+                          <TableHead>Action</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead>User</TableHead>
+                          <TableHead>Tenant</TableHead>
+                          <TableHead>Date</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {logs.map((log) => (
+                          <TableRow key={log.id}>
+                            <TableCell className="font-medium">{log.action}</TableCell>
+                            <TableCell>{log.description}</TableCell>
+                            <TableCell>{log.user?.email || 'System'}</TableCell>
+                            <TableCell>{log.tenant?.name || 'System'}</TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {new Date(log.createdAt).toLocaleString()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+          </div>
+        </main>
+      </Tabs>
+    </div>
+  );
+}
