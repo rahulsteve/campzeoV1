@@ -31,7 +31,7 @@ export async function GET() {
         });
 
         // Extract platform types
-        const platforms = orgPlatforms.map(op => op.platform);
+        const platforms = orgPlatforms.map((op: { platform: string }) => op.platform);
 
         // Always include EMAIL, SMS, WHATSAPP as they're admin-configured
         const allPlatforms = ['EMAIL', 'SMS', 'WHATSAPP', ...platforms];
