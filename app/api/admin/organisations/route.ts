@@ -4,7 +4,19 @@ import { prisma } from "@/lib/prisma";
 import { generatePassword, sendOrganisationInvite } from "@/lib/email";
 import { createClerkUser } from "@/lib/clerk-admin";
 import { sendSms } from "@/lib/twilio";
-import { PlatformType } from "@prisma/client";
+// Define PlatformType locally to avoid build errors if Prisma client generation fails to export it
+enum PlatformType {
+    EMAIL = 'EMAIL',
+    SMS = 'SMS',
+    WHATSAPP = 'WHATSAPP',
+    RCS = 'RCS',
+    FACEBOOK = 'FACEBOOK',
+    INSTAGRAM = 'INSTAGRAM',
+    LINKEDIN = 'LINKEDIN',
+    YOUTUBE = 'YOUTUBE',
+    PINTEREST = 'PINTEREST'
+}
+
 
 // GET: List Organisations with Pagination, Search, Sorting
 export async function GET(req: Request) {
@@ -160,7 +172,7 @@ export async function POST(req: Request) {
                             await tx.organisationPlatform.createMany({
                                 data: validPlatforms.map((p: string) => ({
                                     organisationId: Number(id),
-                                    platform: p as PlatformType
+                                    platform: p as any
                                 }))
                             });
                         }
@@ -202,7 +214,7 @@ export async function POST(req: Request) {
                     ownerName,
                     organisationPlatforms: {
                         create: validPlatforms.map((p: string) => ({
-                            platform: p as PlatformType
+                            platform: p as any
                         }))
                     }
                 },

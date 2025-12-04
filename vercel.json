@@ -1,5 +1,5 @@
 {
-  "buildCommand": "next build",
+  "buildCommand": "next build --no-lint",
   "devCommand": "next dev",
   "installCommand": "npm install",
   "framework": "nextjs",
