@@ -1,6 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import fs from "fs/promises";
-import path from "path";
 
 interface LinkedInCredentials {
     accessToken: string;
@@ -68,11 +66,26 @@ export async function postToLinkedIn(
             console.log(`[LinkedIn] Upload registered. Asset URN: ${assetUrn}`);
 
             // 2. Upload File
-            const publicDir = path.join(process.cwd(), "public");
-            const filePath = path.join(publicDir, mediaUrl);
+            // Fetch the media file from the URL (works with both Vercel Blob and local URLs)
+            console.log(`[LinkedIn] Fetching media from: ${mediaUrl}`);
 
-            console.log(`[LinkedIn] Reading file from: ${filePath}`);
-            const fileBuffer = await fs.readFile(filePath);
+            // Determine the full URL
+            let fetchUrl = mediaUrl;
+            if (!mediaUrl.startsWith('http://') && !mediaUrl.startsWith('https://')) {
+                // Relative URL - convert to absolute
+                const baseUrl = process.env.NEXT_PUBLIC_APP_URL ||
+                    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+                fetchUrl = `${baseUrl}${mediaUrl.startsWith('/') ? mediaUrl : `/${mediaUrl}`}`;
+            }
+
+            console.log(`[LinkedIn] Fetching from URL: ${fetchUrl}`);
+            const mediaResponse = await fetch(fetchUrl);
+
+            if (!mediaResponse.ok) {
+                throw new Error(`Failed to fetch media file: ${mediaResponse.status} ${mediaResponse.statusText}`);
+            }
+
+            const fileBuffer = Buffer.from(await mediaResponse.arrayBuffer());
 
             console.log("[LinkedIn] Uploading file...");
             const uploadResponse = await fetch(uploadUrl, {

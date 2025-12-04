@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { put } from '@vercel/blob';
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 import crypto from "crypto";
 
 // File size limits (in bytes)
@@ -44,43 +42,22 @@ export async function POST(request: NextRequest) {
         const fileExtension = file.name.split('.').pop();
         const filename = `${crypto.randomUUID()}.${fileExtension}`;
 
-        // Check if we're in production (Vercel) or development (localhost)
-        const isProduction = process.env.VERCEL === '1' || process.env.BLOB_READ_WRITE_TOKEN;
-
-        let url: string;
-
-        if (isProduction && process.env.BLOB_READ_WRITE_TOKEN) {
-            // Production: Use Vercel Blob
-            console.log('[Upload] Using Vercel Blob storage');
-
-            const blob = await put(filename, file, {
-                access: 'public',
-                addRandomSuffix: false,
-            });
-
-            url = blob.url;
-            console.log('[Upload] File uploaded to Vercel Blob:', url);
-
-        } else {
-            // Development: Use local filesystem
-            console.log('[Upload] Using local filesystem storage');
-
-            const buffer = Buffer.from(await file.arrayBuffer());
-            const uploadDir = path.join(process.cwd(), "public", "uploads");
-
-            try {
-                await mkdir(uploadDir, { recursive: true });
-            } catch (e) {
-                // Directory already exists
-            }
-
-            const filepath = path.join(uploadDir, filename);
-            await writeFile(filepath, buffer);
-
-            // Return relative URL for localhost
-            url = `/uploads/${filename}`;
-            console.log('[Upload] File uploaded to local storage:', url);
+        // Always use Vercel Blob storage
+        if (!process.env.BLOB_READ_WRITE_TOKEN) {
+            return NextResponse.json({
+                error: 'Blob storage not configured. Please set BLOB_READ_WRITE_TOKEN environment variable.'
+            }, { status: 500 });
         }
+
+        console.log('[Upload] Using Vercel Blob storage');
+
+        const blob = await put(filename, file, {
+            access: 'public',
+            addRandomSuffix: false,
+        });
+
+        const url = blob.url;
+        console.log('[Upload] File uploaded to Vercel Blob:', url);
 
         return NextResponse.json({
             url,
@@ -106,6 +83,7 @@ export async function GET() {
         maxVideoSize: MAX_VIDEO_SIZE,
         allowedImageTypes: ALLOWED_IMAGE_TYPES,
         allowedVideoTypes: ALLOWED_VIDEO_TYPES,
-        storage: process.env.BLOB_READ_WRITE_TOKEN ? 'vercel-blob' : 'local-filesystem'
+        storage: 'vercel-blob',
+        configured: !!process.env.BLOB_READ_WRITE_TOKEN
     });
 }

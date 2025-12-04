@@ -1,6 +1,3 @@
-import fs from 'fs/promises';
-import path from 'path';
-
 interface YouTubeCredentials {
     accessToken: string;
     refreshToken?: string;
@@ -48,12 +45,26 @@ export async function postToYouTube(
     console.log(`[YouTube] Starting video upload: ${title}`);
 
     try {
-        // Step 1: Read the video file from local storage
-        const publicDir = path.join(process.cwd(), 'public');
-        const videoPath = path.join(publicDir, videoUrl);
+        // Step 1: Fetch the video file from URL (works with Vercel Blob)
+        console.log(`[YouTube] Fetching video from: ${videoUrl}`);
 
-        console.log(`[YouTube] Reading video from: ${videoPath}`);
-        const videoBuffer = await fs.readFile(videoPath);
+        // Determine the full URL
+        let fetchUrl = videoUrl;
+        if (!videoUrl.startsWith('http://') && !videoUrl.startsWith('https://')) {
+            // Relative URL - convert to absolute
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL ||
+                (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+            fetchUrl = `${baseUrl}${videoUrl.startsWith('/') ? videoUrl : `/${videoUrl}`}`;
+        }
+
+        console.log(`[YouTube] Fetching from URL: ${fetchUrl}`);
+        const videoResponse = await fetch(fetchUrl);
+
+        if (!videoResponse.ok) {
+            throw new Error(`Failed to fetch video file: ${videoResponse.status} ${videoResponse.statusText}`);
+        }
+
+        const videoBuffer = Buffer.from(await videoResponse.arrayBuffer());
         const videoSize = videoBuffer.length;
 
         console.log(`[YouTube] Video size: ${videoSize} bytes`);
