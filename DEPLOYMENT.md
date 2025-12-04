@@ -20,6 +20,8 @@ The project has been successfully configured and tested for Vercel deployment:
 ### 2. API Route Type Errors
 - Fixed implicit `any` type in `app/api/Organisation/GetPlatforms/route.ts`
 - Fixed implicit `any` type in `app/api/admin/organisations/route.ts` (map callback and transaction)
+- Fixed implicit `any` type in `app/api/contacts/export/route.ts` (map callback)
+- Fixed implicit `any` type in `app/api/contacts/import/route.ts` (map callback)
 - Audited other API routes for similar issues
 
 ### 3. Missing Type Declarations

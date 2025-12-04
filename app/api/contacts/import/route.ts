@@ -42,11 +42,11 @@ function parseCSV(csvText: string): CSVRow[] {
     const lines = csvText.split('\n').filter(line => line.trim());
     if (lines.length === 0) return [];
 
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const headers = lines[0].split(',').map((h: string) => h.trim().toLowerCase());
     const rows: CSVRow[] = [];
 
     for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim());
+        const values = lines[i].split(',').map((v: string) => v.trim());
         const row: CSVRow = {};
 
         headers.forEach((header, index) => {
@@ -117,10 +117,10 @@ export async function POST(request: NextRequest) {
         });
 
         const existingEmails = new Set(
-            existingContacts.map(c => c.contactEmail?.toLowerCase()).filter(Boolean)
+            existingContacts.map((c: any) => c.contactEmail?.toLowerCase()).filter(Boolean)
         );
         const existingMobiles = new Set(
-            existingContacts.map(c => c.contactMobile).filter(Boolean)
+            existingContacts.map((c: any) => c.contactMobile).filter(Boolean)
         );
 
         // Validate and prepare contacts for import

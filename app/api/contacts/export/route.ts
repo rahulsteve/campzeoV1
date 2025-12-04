@@ -69,21 +69,21 @@ export async function GET(request: NextRequest) {
 
         // Generate CSV content
         const csvHeaders = ['ID', 'Name', 'Email', 'Mobile', 'WhatsApp', 'Campaigns', 'Created At'];
-        const csvRows = contacts.map(contact => [
+        const csvRows = contacts.map((contact: any) => [
             contact.id,
             contact.contactName || '',
             contact.contactEmail || '',
             contact.contactMobile || '',
             contact.contactWhatsApp || '',
-            contact.campaigns.map(c => c.name).join('; ') || '',
+            contact.campaigns.map((c: any) => c.name).join('; ') || '',
             new Date(contact.createdAt).toLocaleString()
         ]);
 
         // Create CSV string
         const csvContent = [
             csvHeaders.join(','),
-            ...csvRows.map(row =>
-                row.map(cell => {
+            ...csvRows.map((row: any) =>
+                row.map((cell: any) => {
                     // Escape cells containing commas, quotes, or newlines
                     const cellStr = String(cell);
                     if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
