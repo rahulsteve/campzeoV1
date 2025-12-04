@@ -1,12 +1,13 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { XCircle, RefreshCcw, HelpCircle } from "lucide-react";
 import Link from "next/link";
 
-export default function PaymentFailurePage() {
+function PaymentFailureContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
 
@@ -47,5 +48,13 @@ export default function PaymentFailurePage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function PaymentFailurePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <PaymentFailureContent />
+    </Suspense>
   );
 }
