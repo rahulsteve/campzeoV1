@@ -34,10 +34,12 @@ const SidebarContent = () => (
       <Users className="size-4 mr-2" />
       Team
     </Button>
-    <Button variant="ghost" className="w-full justify-start">
-      <BarChart3 className="size-4 mr-2" />
-      Analytics
-    </Button>
+    <Link href="/organisation/analytics">
+      <Button variant="ghost" className="w-full justify-start">
+        <BarChart3 className="size-4 mr-2" />
+        Analytics
+      </Button>
+    </Link>
     <Link href="/organisation/billing">
       <Button variant="ghost" className="w-full justify-start">
         <CreditCard className="size-4 mr-2" />

@@ -72,13 +72,29 @@ export function Sidebar() {
                         Accounts
                     </Link>
                 </Button>
+                <Button
+                    variant={isActive('/organisation/analytics') ? 'secondary' : 'ghost'}
+                    className="w-full justify-start"
+                    asChild
+                >
+                    <Link href="/organisation/analytics">
+                        <FileText className="size-4 mr-2" />
+                        Analytics
+                    </Link>
+                </Button>
                 {/* <Button variant="ghost" className="w-full justify-start">
                     <Users className="size-4 mr-2" />
                     Team
                 </Button>
-                <Button variant="ghost" className="w-full justify-start">
-                    <BarChart3 className="size-4 mr-2" />
-                    Analytics
+                <Button
+                    variant={isActive('/organisation/analytics') ? 'secondary' : 'ghost'}
+                    className="w-full justify-start"
+                    asChild
+                >
+                    <Link href="/organisation/analytics">
+                        <BarChart3 className="size-4 mr-2" />
+                        Analytics
+                    </Link>
                 </Button>
                 <Button variant="ghost" className="w-full justify-start">
                     <CreditCard className="size-4 mr-2" />
