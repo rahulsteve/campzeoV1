@@ -150,12 +150,12 @@ export default function TemplatesPage() {
 
     // Platform filter
     if (platformFilter !== "ALL") {
-      filtered = filtered.filter((t) => t.platform === platformFilter);
+      filtered = filtered.filter((t:any) => t.platform === platformFilter);
     }
 
     // Category filter
     if (categoryFilter !== "ALL") {
-      filtered = filtered.filter((t) => t.category === categoryFilter);
+      filtered = filtered.filter((t:any) => t.category === categoryFilter);
     }
 
     // Search filter

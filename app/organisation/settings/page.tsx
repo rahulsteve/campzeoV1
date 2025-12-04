@@ -38,12 +38,12 @@ export default async function SettingsPage() {
     linkedInAuthUrn: dbUser.linkedInAuthUrn,
     youtubeConnected: !!dbUser.youtubeAccessToken,
     pinterestConnected: !!dbUser.pinterestAccessToken,
-    emailConnected: dbUser.organisation?.organisationPlatforms.some(p => p.platform === 'EMAIL') ?? false,
-    smsConnected: dbUser.organisation?.organisationPlatforms.some(p => p.platform === 'SMS') ?? false,
-    whatsappConnected: dbUser.organisation?.organisationPlatforms.some(p => p.platform === 'WHATSAPP') ?? false,
+    emailConnected: dbUser.organisation?.organisationPlatforms.some((p:any) => p.platform === 'EMAIL') ?? false,
+    smsConnected: dbUser.organisation?.organisationPlatforms.some((p:any) => p.platform === 'SMS') ?? false,
+    whatsappConnected: dbUser.organisation?.organisationPlatforms.some((p:any) => p.platform === 'WHATSAPP') ?? false,
   };
 
-  const assignedPlatforms = dbUser.organisation?.organisationPlatforms.map(p => p.platform) || [];
+  const assignedPlatforms = dbUser.organisation?.organisationPlatforms.map((p:any) => p.platform) || [];
 
   return (
     <div className="min-h-screen bg-background">

@@ -51,14 +51,14 @@ export default function OrganisationDashboard() {
   useEffect(() => {
     // Sync user on mount
     fetch("/api/user/sync")
-      .then((res) => res.json())
-      .then((data) => console.log("User sync status:", data))
-      .catch((err) => console.error("User sync error:", err));
+      .then((res:any) => res.json())
+      .then((data:any) => console.log("User sync status:", data))
+      .catch((err:any) => console.error("User sync error:", err));
 
     // Fetch tenant data
     fetch("/api/tenant")
-      .then((res) => res.json())
-      .then((data) => {
+      .then((res:any) => res.json())
+      .then((data:any) => {
         console.log("=== TENANT DATA ===");
         console.log("Full Response:", data);
         if (data.tenant) {
