@@ -8,7 +8,12 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "CampZeo",
-  description: "SaaS Platform",
+  description: "Social Media Management Platform - Streamline your social media with powerful tools and insights",
+  icons: {
+    icon: '/logo-3.png',
+    shortcut: '/logo-3.png',
+    apple: '/logo-3.png',
+  },
 };
 
 export default function RootLayout({
