@@ -141,7 +141,7 @@ export async function POST(req: Request) {
 
         if (id && id !== 0 && id !== "0") {
             // UPDATE
-            await prisma.$transaction(async (tx) => {
+            await prisma.$transaction(async (tx: any) => {
                 await tx.organisation.update({
                     where: { id: Number(id) },
                     data: {
