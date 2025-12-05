@@ -9,8 +9,6 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
-import { Header } from '@/components/Header';
-import { Sidebar } from '@/components/Sidebar';
 
 interface Campaign {
     id: number;
@@ -176,9 +174,9 @@ export default function EditContactPage() {
 
     return (
         <div className="min-h-screen bg-background">
-            <Header />
+      
             <div className="flex">
-                <Sidebar />
+            
                 <main className="flex-1 p-6">
                     <div className="max-w-3xl mx-auto space-y-6">
                         {/* Header */}

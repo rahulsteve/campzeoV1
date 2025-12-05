@@ -51,8 +51,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Sidebar } from '@/components/Sidebar';
-import { Header } from '@/components/Header';
+
 
 interface Campaign {
     id: number;
@@ -176,12 +175,8 @@ export default function CampaignsPage() {
     };
 
     return (
-        <div className="min-h-screen bg-background">
-            <Header />
-            <div className="flex">
-                <Sidebar />
-                <main className="flex-1 p-6">
-                    <div className="max-w-7xl mx-auto space-y-6">
+        <div className="p-6">
+            <div className="max-w-7xl mx-auto space-y-6">
                         {/* Header */}
                         <div className="flex items-center justify-between">
                             <div>
@@ -380,8 +375,6 @@ export default function CampaignsPage() {
                             </CardContent>
                         </Card>
                     </div>
-                </main>
-            </div>
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

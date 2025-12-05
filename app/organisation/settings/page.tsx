@@ -2,8 +2,6 @@ import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { SettingsClient } from "./_components/settings-client";
-import { Sidebar } from '@/components/Sidebar';
-import { Header } from '@/components/Header';
 
 export default async function SettingsPage() {
   const user = await currentUser();
@@ -46,22 +44,11 @@ export default async function SettingsPage() {
   const assignedPlatforms = dbUser.organisation?.organisationPlatforms.map((p:any) => p.platform) || [];
 
   return (
-    <div className="min-h-screen bg-background">
-                <Header />
-                <div className="flex">
-                    <Sidebar />
-                    <main className="flex-1 p-6">
-                        <div className="max-w-7xl mx-auto space-y-6">
-                            {/* Header */}
-                             <div className="container mx-auto py-10">
-      <SettingsClient userData={userData} assignedPlatforms={assignedPlatforms} />
+    <div className="p-6">
+      <div className="max-w-7xl mx-auto">
+        <SettingsClient userData={userData} assignedPlatforms={assignedPlatforms} />
+      </div>
     </div>
-                        </div>
-                    </main>
-                </div>
-    
-                
-            </div>
-   
   );
 }
+

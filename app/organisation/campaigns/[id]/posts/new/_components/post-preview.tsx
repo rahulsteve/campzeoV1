@@ -266,11 +266,33 @@ function TwitterPreview({ subject, message, mediaUrls, user }: any) {
 }
 
 function YouTubePreview({ subject, message, mediaUrls, user }: any) {
+    const isExternalUrl = (url: string) => url.startsWith('http://') || url.startsWith('https://');
+    const hasVideo = mediaUrls && mediaUrls.length > 0 && mediaUrls[0].match(/\.(mp4|mov|webm)$/i);
+    const hasImage = mediaUrls && mediaUrls.length > 0 && !hasVideo;
+    
     return (
         <div className="space-y-3 pb-4">
-            {mediaUrls && mediaUrls.length > 0 && mediaUrls[0].match(/\.(mp4|mov|webm)$/i) ? (
-                <div className="aspect-video bg-black flex items-center justify-center text-white">
-                    Video Preview
+            {hasVideo ? (
+                <div className="aspect-video bg-black flex items-center justify-center text-white relative">
+                    <div className="size-16 rounded-full bg-red-600 flex items-center justify-center">
+                        <div className="ml-1 size-0 border-y-[12px] border-y-transparent border-l-[20px] border-l-white" />
+                    </div>
+                    <span className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-1 rounded">0:00</span>
+                </div>
+            ) : hasImage ? (
+                <div className="aspect-video relative bg-muted overflow-hidden">
+                    <Image 
+                        src={mediaUrls[0]}
+                        alt="Video Thumbnail"
+                        fill
+                        className="object-cover"
+                        unoptimized={isExternalUrl(mediaUrls[0])}
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="size-16 rounded-full bg-red-600/90 flex items-center justify-center">
+                            <div className="ml-1 size-0 border-y-[12px] border-y-transparent border-l-[20px] border-l-white" />
+                        </div>
+                    </div>
                 </div>
             ) : (
                 <div className="aspect-video bg-muted flex items-center justify-center text-muted-foreground">
@@ -292,6 +314,8 @@ function YouTubePreview({ subject, message, mediaUrls, user }: any) {
 }
 
 function PinterestPreview({ subject, message, mediaUrls, user }: any) {
+    const isExternalUrl = (url: string) => url.startsWith('http://') || url.startsWith('https://');
+    
     return (
         <div className="p-4 max-w-[236px] mx-auto">
             <div className="rounded-2xl overflow-hidden bg-muted mb-2">
@@ -302,6 +326,7 @@ function PinterestPreview({ subject, message, mediaUrls, user }: any) {
                         width={236} 
                         height={354} 
                         className="object-cover w-full h-auto"
+                        unoptimized={isExternalUrl(mediaUrls[0])}
                     />
                 ) : (
                     <div className="aspect-[2/3] flex items-center justify-center text-muted-foreground">

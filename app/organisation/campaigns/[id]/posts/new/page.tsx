@@ -38,8 +38,6 @@ import { useUser } from '@clerk/nextjs';
 import { PostPreview } from './_components/post-preview';
 import { useRouter, useParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { Sidebar } from '@/components/Sidebar';
-import { Header } from '@/components/Header';
 import Image from 'next/image';
 import {
     Select,
@@ -392,9 +390,9 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
 
     return (
         <div className="min-h-screen bg-background">
-            <Header />
+    
             <div className="flex">
-                <Sidebar />
+        
                 <main className="flex-1 p-6">
                     <div className="max-w-5xl mx-auto space-y-6">
                         {/* Header */}
@@ -862,24 +860,44 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                 </>
                                             )}
                                         </Button>
+                                        
+                                        {/* Preview Button - Opens Modal */}
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <Button type="button" variant="secondary" disabled={!selectedPlatform}>
+                                                    <Eye className="size-4 mr-2" />
+                                                    Preview
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                                                <DialogHeader>
+                                                    <DialogTitle className="flex items-center gap-2">
+                                                        {selectedPlatform && (() => {
+                                                            const Icon = getPlatformIcon(selectedPlatform);
+                                                            return <Icon className="size-5" />;
+                                                        })()}
+                                                        Post Preview
+                                                    </DialogTitle>
+                                                    <DialogDescription>
+                                                        See how your post will look on {selectedPlatform?.charAt(0)}{selectedPlatform?.slice(1).toLowerCase()}
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <div className="mt-4">
+                                                    <PostPreview 
+                                                        platforms={selectedPlatform ? [selectedPlatform] : []}
+                                                        subject={subject}
+                                                        message={message}
+                                                        mediaUrls={mediaUrls}
+                                                        user={{
+                                                            name: user?.fullName || user?.firstName || 'User',
+                                                            image: user?.imageUrl
+                                                        }}
+                                                    />
+                                                </div>
+                                            </DialogContent>
+                                        </Dialog>
                                     </div>
                                 </form>
-                            </div>
-
-                            {/* Preview Column */}
-                            <div className="lg:col-span-1">
-                                <div className="sticky top-6">
-                                    <PostPreview 
-                                        platforms={selectedPlatform ? [selectedPlatform] : []}
-                                        subject={subject}
-                                        message={message}
-                                        mediaUrls={mediaUrls}
-                                        user={{
-                                            name: user?.fullName || user?.firstName || 'User',
-                                            image: user?.imageUrl
-                                        }}
-                                    />
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -888,3 +906,4 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
         </div>
     );
 }
+

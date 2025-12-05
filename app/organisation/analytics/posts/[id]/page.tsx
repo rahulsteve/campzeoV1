@@ -18,8 +18,6 @@ import {
     Video,
     Image as ImageIcon
 } from 'lucide-react';
-import { Sidebar } from '@/components/Sidebar';
-import { Header } from '@/components/Header';
 import { toast } from 'sonner';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -100,9 +98,9 @@ export default function PostDetailsPage({ params }: { params: Promise<{ id: stri
     if (!post) {
         return (
             <div className="min-h-screen bg-background">
-                <Header />
+               
                 <div className="flex">
-                    <Sidebar />
+                   
                     <main className="flex-1 p-6 flex flex-col items-center justify-center">
                         <h2 className="text-2xl font-bold">Post not found</h2>
                         <Button onClick={() => router.back()} className="mt-4">
@@ -116,9 +114,9 @@ export default function PostDetailsPage({ params }: { params: Promise<{ id: stri
 
     return (
         <div className="min-h-screen bg-background">
-            <Header />
+           
             <div className="flex">
-                <Sidebar />
+           
                 <main className="flex-1 p-6">
                     <div className="max-w-6xl mx-auto space-y-6">
                         {/* Header */}
