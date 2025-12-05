@@ -12,7 +12,17 @@ export async function GET() {
 
         const dbUser = await prisma.user.findUnique({
             where: { clerkId: user.id },
-            include: { organisation: true },
+            include: {
+                organisation: {
+                    include: {
+                        subscriptions: {
+                            orderBy: { createdAt: 'desc' },
+                            take: 1,
+                            include: { plan: true }
+                        }
+                    }
+                }
+            },
         });
 
         if (!dbUser) {
@@ -26,8 +36,6 @@ export async function GET() {
             firstName: dbUser.firstName,
             lastName: dbUser.lastName,
             mobile: dbUser.mobile,
-            // imageUrl: dbUser.imageUrl, // imageUrl is not in the schema I saw, checking schema again... it's not there. Clerk handles it.
-            // But we can return what we have.
             role: dbUser.role,
             organisationId: dbUser.organisationId,
             organisation: dbUser.organisation,

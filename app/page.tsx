@@ -122,14 +122,14 @@ export default function LandingPage() {
             <div className="flex items-center gap-4">
               <SignedOut>
                 <div className="flex items-center gap-3">
-                  <SignUpButton mode="modal">
+                  <SignUpButton>
                     <button className="px-3 py-2 text-red-500 border border-red-500 rounded-md">
                       Sign Up
                     </button>
                   </SignUpButton>
 
-                  <SignInButton mode="modal">
-                    <button className="px-3 py-2 text-red-500 border border-red-500 rounded-md" style={{ backgroundColor: "red",color :"white" }}>
+                  <SignInButton>
+                    <button className="px-3 py-2 text-red-500 border border-red-500 rounded-md" style={{ backgroundColor: "red", color: "white" }}>
                       Sign In
                     </button>
                   </SignInButton>
@@ -138,7 +138,7 @@ export default function LandingPage() {
               <SignedIn>
                 <UserButton afterSignOutUrl="/" />
                 <Link href="/organisation">
-                    <Button variant="outline">Dashboard</Button>
+                  <Button variant="outline">Dashboard</Button>
                 </Link>
               </SignedIn>
             </div>

@@ -21,7 +21,16 @@ export default async function OrganisationLayout({
   // Get user from database
   const dbUser = await prisma.user.findUnique({
     where: { clerkId: user.id },
-    include: { organisation: true },
+    include: {
+      organisation: {
+        include: {
+          subscriptions: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+        },
+      },
+    },
   });
 
   // If user doesn't exist in DB, redirect to onboarding
@@ -48,6 +57,25 @@ export default async function OrganisationLayout({
 
     if (dbUser.organisation && !dbUser.organisation.isApproved) {
       redirect("/pending-approval");
+    }
+
+    // Check for trial/subscription validity
+    const organisation = dbUser.organisation;
+    const subscription = organisation?.subscriptions?.[0];
+    const now = new Date();
+
+    // Check if trial is valid
+    const isTrialValid = organisation?.isTrial && organisation?.trialEndDate && organisation.trialEndDate > now;
+
+    // Check if has active subscription
+    // Assuming 'COMPLETED' or 'active' statuses indicate a valid paid subscription
+    // And checking endDate if it exists
+    const hasActiveSubscription = subscription &&
+      (subscription.status === 'COMPLETED' || subscription.status === 'active' || subscription.status === 'ACTIVE') &&
+      (!subscription.endDate || subscription.endDate > now);
+
+    if (!isTrialValid && !hasActiveSubscription) {
+      redirect("/select-plan");
     }
   }
 

@@ -11,81 +11,118 @@ import {
   CreditCard,
   BarChart3,
   Zap,
+  Megaphone,
+  Contact,
+  Loader2
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { toast } from "sonner";
 
-// Mock organisation data
-const mockOrganisation = {
-  name: "Acme Corp",
-  email: "admin@acme.com",
-  plan: "Professional",
-  status: "active",
-  trialEndsAt: null,
-  storageUsed: 45,
-  storageLimit: 100,
-  usersCount: 12,
-  usersLimit: 50,
-  nextBillingDate: "2025-01-15",
-  nextBillingAmount: 2999,
-};
-
-const mockTeamMembers = [
-  { id: 1, name: "John Doe", email: "john@acme.com", role: "Admin", status: "active" },
-  { id: 2, name: "Jane Smith", email: "jane@acme.com", role: "Member", status: "active" },
-  { id: 3, name: "Bob Johnson", email: "bob@acme.com", role: "Member", status: "active" },
-];
-
-const mockRecentActivity = [
-  { id: 1, action: "Document uploaded", user: "John Doe", timestamp: "2 hours ago" },
-  { id: 2, action: "Team member invited", user: "Jane Smith", timestamp: "5 hours ago" },
-  { id: 3, action: "Settings updated", user: "John Doe", timestamp: "1 day ago" },
-];
+interface User {
+  id: number;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+  role: string;
+  organisation?: {
+    name: string;
+    isTrial: boolean;
+    trialEndDate: string | null;
+    subscriptions?: {
+      plan?: {
+        name: string;
+      };
+    }[];
+  };
+}
 
 export default function OrganisationDashboard() {
   const router = useRouter();
-  const [orgName, setOrgName] = useState(mockOrganisation.name);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    campaigns: 0,
+    contacts: 0,
+    users: 1 // Default to 1 (current user) as we don't have a users list API yet
+  });
 
   useEffect(() => {
-    // Sync user on mount
-    fetch("/api/user/sync")
-      .then((res:any) => res.json())
-      .then((data:any) => console.log("User sync status:", data))
-      .catch((err:any) => console.error("User sync error:", err));
+    const fetchData = async () => {
+      try {
+        setLoading(true);
 
-    // Fetch tenant data
-    fetch("/api/tenant")
-      .then((res:any) => res.json())
-      .then((data:any) => {
-        console.log("=== TENANT DATA ===");
-        console.log("Full Response:", data);
-        if (data.tenant) {
-          console.log("Organization Name:", data.tenant.name);
-          console.log("Plan:", data.tenant.plan);
-          console.log("Status:", data.tenant.status);
-          console.log("Enquiry:", data.tenant.enquiry);
-          console.log("Created At:", data.tenant.createdAt);
-          console.log("==================");
+        // 1. Fetch User & Organisation Details
+        const userRes = await fetch("/api/user/me");
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          setUser(userData);
+        } else {
+          console.error("Failed to fetch user");
+          toast.error("Failed to load user profile");
         }
-      })
-      .catch((err) => console.error("Error fetching tenant:", err));
+
+        // 2. Fetch Campaigns Count
+        const campaignsRes = await fetch("/api/campaigns?limit=1");
+        if (campaignsRes.ok) {
+          const data = await campaignsRes.json();
+          setStats(prev => ({ ...prev, campaigns: data.pagination?.total || 0 }));
+        }
+
+        // 3. Fetch Contacts Count
+        const contactsRes = await fetch("/api/contacts?limit=1");
+        if (contactsRes.ok) {
+          const data = await contactsRes.json();
+          setStats(prev => ({ ...prev, contacts: data.pagination?.total || 0 }));
+        }
+
+      } catch (error) {
+        console.error("Error loading dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
-  const handleInviteMember = () => {
-    alert("Invite member functionality would open a modal here");
+  const handleManageBilling = () => {
+    router.push("/organisation/billing");
   };
 
-  const handleManageBilling = () => {
-    alert("Manage billing functionality would be implemented here");
+  const getUserInitials = (firstName: string | null, lastName: string | null) => {
+    const first = firstName?.charAt(0) || "";
+    const last = lastName?.charAt(0) || "";
+    return (first + last).toUpperCase() || "U";
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Derived state or mocks
+  const orgName = user?.organisation?.name || "Your Organisation";
+
+  // Get Plan Name from subscription
+  const latestSubscription = user?.organisation?.subscriptions?.[0];
+  const planName = latestSubscription?.plan?.name || "Free";
+
+  const isTrial = user?.organisation?.isTrial || false;
+  // Mock usage data
+  const storageUsed = 2.4;
+  const storageLimit = 5.0;
 
   return (
     <div className="p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Welcome Section */}
         <div>
-          <h1>Welcome back, {orgName}</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold tracking-tight">Welcome back, {orgName}</h1>
+          <p className="text-muted-foreground mt-1">
             Here's what's happening with your account today
           </p>
         </div>
@@ -96,14 +133,18 @@ export default function OrganisationDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-primary-foreground">{mockOrganisation.plan} Plan</h3>
-                  <Badge variant="secondary">Active</Badge>
+                  <h3 className="text-xl font-bold text-primary-foreground">{planName} Plan</h3>
+                  <Badge variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-0">
+                    {isTrial ? "Trial Period" : "Active"}
+                  </Badge>
                 </div>
                 <p className="text-primary-foreground/80">
-                  Next billing: {mockOrganisation.nextBillingDate} • ₹{mockOrganisation.nextBillingAmount}
+                  {isTrial && user?.organisation?.trialEndDate
+                    ? `Trial ends on ${new Date(user.organisation.trialEndDate).toLocaleDateString()}`
+                    : "Your subscription is active."}
                 </p>
               </div>
-              <Button variant="secondary" onClick={handleManageBilling}>
+              <Button variant="secondary" onClick={handleManageBilling} className="bg-white text-primary hover:bg-white/90">
                 <CreditCard className="size-4 mr-2" />
                 Manage Billing
               </Button>
@@ -115,42 +156,39 @@ export default function OrganisationDashboard() {
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm">Team Members</CardTitle>
+              <CardTitle className="text-sm font-medium">Total Campaigns</CardTitle>
+              <Megaphone className="size-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.campaigns}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Active marketing campaigns
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
+              <Contact className="size-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.contacts}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Audience reach
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Team Size</CardTitle>
               <Users className="size-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl">{mockOrganisation.usersCount}</div>
-              <Progress value={(mockOrganisation.usersCount / mockOrganisation.usersLimit) * 100} className="mt-2" />
-              <p className="text-xs text-muted-foreground mt-2">
-                {mockOrganisation.usersCount} of {mockOrganisation.usersLimit} users
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm">Storage Used</CardTitle>
-              <BarChart3 className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl">{mockOrganisation.storageUsed}GB</div>
-              <Progress value={mockOrganisation.storageUsed} className="mt-2" />
-              <p className="text-xs text-muted-foreground mt-2">
-                {mockOrganisation.storageUsed} of {mockOrganisation.storageLimit}GB used
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm">API Calls</CardTitle>
-              <Zap className="size-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl">12,450</div>
-              <Progress value={62} className="mt-2" />
-              <p className="text-xs text-muted-foreground mt-2">
-                62% of monthly limit
+              <div className="text-2xl font-bold">{stats.users}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Active team members
               </p>
             </CardContent>
           </Card>
@@ -173,16 +211,8 @@ export default function OrganisationDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {mockRecentActivity.map((activity) => (
-                    <div key={activity.id} className="flex items-center justify-between py-3 border-b last:border-0">
-                      <div>
-                        <p>{activity.action}</p>
-                        <p className="text-sm text-muted-foreground">{activity.user}</p>
-                      </div>
-                      <span className="text-sm text-muted-foreground">{activity.timestamp}</span>
-                    </div>
-                  ))}
+                <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+                  <p>No recent activity to show yet.</p>
                 </div>
               </CardContent>
             </Card>
@@ -198,31 +228,29 @@ export default function OrganisationDashboard() {
                       Manage your team members and their roles
                     </CardDescription>
                   </div>
-                  <Button onClick={handleInviteMember}>
-                    <Users className="size-4 mr-2" />
-                    Invite Member
-                  </Button>
+                  {/* Future: Invite Member Button */}
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {mockTeamMembers.map((member) => (
-                    <div key={member.id} className="flex items-center justify-between py-3 border-b last:border-0">
+                  {user && (
+                    <div className="flex items-center justify-between py-3 border-b last:border-0">
                       <div className="flex items-center gap-3">
                         <Avatar>
-                          <AvatarFallback>{member.name.split(" ").map((n) => n[0]).join("")}</AvatarFallback>
+                          <AvatarFallback>{getUserInitials(user.firstName, user.lastName)}</AvatarFallback>
                         </Avatar>
                         <div>
-                          <p>{member.name}</p>
-                          <p className="text-sm text-muted-foreground">{member.email}</p>
+                          <p className="font-medium">
+                            {[user.firstName, user.lastName].filter(Boolean).join(" ") || "User"}
+                          </p>
+                          <p className="text-sm text-muted-foreground">{user.email}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="secondary">{member.role}</Badge>
-                        <Button variant="ghost" size="sm">Edit</Button>
+                        <Badge variant="secondary">{user.role.replace('_', ' ')}</Badge>
                       </div>
                     </div>
-                  ))}
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -240,24 +268,14 @@ export default function OrganisationDashboard() {
                 <div className="space-y-6">
                   <div>
                     <div className="flex justify-between mb-2">
-                      <span>Storage</span>
-                      <span className="text-muted-foreground">{mockOrganisation.storageUsed}/{mockOrganisation.storageLimit}GB</span>
+                      <span className="text-sm font-medium">Storage</span>
+                      <span className="text-sm text-muted-foreground">{storageUsed}/{storageLimit}GB</span>
                     </div>
-                    <Progress value={mockOrganisation.storageUsed} />
+                    <Progress value={(storageUsed / storageLimit) * 100} />
                   </div>
-                  <div>
-                    <div className="flex justify-between mb-2">
-                      <span>Team Members</span>
-                      <span className="text-muted-foreground">{mockOrganisation.usersCount}/{mockOrganisation.usersLimit}</span>
-                    </div>
-                    <Progress value={(mockOrganisation.usersCount / mockOrganisation.usersLimit) * 100} />
-                  </div>
-                  <div>
-                    <div className="flex justify-between mb-2">
-                      <span>API Calls</span>
-                      <span className="text-muted-foreground">12,450/20,000</span>
-                    </div>
-                    <Progress value={62} />
+                  {/* Add more usage stats when API is available */}
+                  <div className="p-4 bg-muted/50 rounded-lg text-sm text-center text-muted-foreground">
+                    Detailed usage metrics coming soon.
                   </div>
                 </div>
               </CardContent>

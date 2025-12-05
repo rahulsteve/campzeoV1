@@ -30,9 +30,6 @@ export async function POST(req: Request) {
         if (!data.organisationName || data.organisationName.trim() === '') {
             errors.push("Organisation name is required");
         }
-        if (!data.phone || data.phone.trim() === '') {
-            errors.push("Phone number is required");
-        }
         if (!data.mobile || data.mobile.trim() === '') {
             errors.push("Mobile number is required");
         }
@@ -78,15 +75,6 @@ export async function POST(req: Request) {
             errors.push("Organisation name must be less than 200 characters");
         }
 
-        // 6. Validate phone number format
-        if (data.phone && data.phone.trim() !== '') {
-            if (!PHONE_REGEX.test(data.phone.trim())) {
-                errors.push("Invalid phone number format");
-            }
-            if (data.phone.trim().length < 10 || data.phone.trim().length > 20) {
-                errors.push("Phone number must be between 10 and 20 characters");
-            }
-        }
 
         // 7. Validate mobile number format
         if (data.mobile && data.mobile.trim() !== '') {
@@ -160,7 +148,7 @@ export async function POST(req: Request) {
             data: {
                 name: data.name.trim(),
                 organisationName: data.organisationName.trim(),
-                mobile: data.phone.trim(),
+                mobile: data.mobile.trim(),
                 email: data.email.trim().toLowerCase(),
                 password: data.password,
                 address: data.address.trim(),
