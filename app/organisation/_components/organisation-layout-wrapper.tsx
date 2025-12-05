@@ -3,89 +3,145 @@
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
-  FileText,
-  Users,
   BarChart3,
-  CreditCard,
-  Settings,
+  Menu,
+  Contact,
+  Megaphone,
+  FileStack,
+  UserCircle,
   Home,
   Bell,
-  Zap,
-  Menu,
 } from "lucide-react";
-import { SignedIn, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { useState } from "react";
+import { SignedIn, UserButton } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 
-const SidebarContent = () => (
-  <nav className="space-y-2">
-    <Link href="/organisation">
-      <Button variant="secondary" className="w-full justify-start">
-        <LayoutDashboard className="size-4 mr-2" />
-        Dashboard
-      </Button>
-    </Link>
-    <Button variant="ghost" className="w-full justify-start">
-      <FileText className="size-4 mr-2" />
-      Documents
-    </Button>
-    <Button variant="ghost" className="w-full justify-start">
-      <Users className="size-4 mr-2" />
-      Team
-    </Button>
-    <Link href="/organisation/analytics">
-      <Button variant="ghost" className="w-full justify-start">
-        <BarChart3 className="size-4 mr-2" />
-        Analytics
-      </Button>
-    </Link>
-    <Link href="/organisation/billing">
-      <Button variant="ghost" className="w-full justify-start">
-        <CreditCard className="size-4 mr-2" />
-        Billing
-      </Button>
-    </Link>
-    <Link href="/organisation/settings">
-      <Button variant="ghost" className="w-full justify-start">
-        <Settings className="size-4 mr-2" />
-        Settings
-      </Button>
-    </Link>
-  </nav>
-);
+// Navigation items configuration
+const navItems = [
+  { href: "/organisation", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/contacts", label: "Contacts", icon: Contact },
+  { href: "/organisation/campaigns", label: "Campaigns", icon: Megaphone },
+  { href: "/organisation/templates", label: "Templates", icon: FileStack },
+  { href: "/organisation/settings", label: "Accounts", icon: UserCircle },
+  { href: "/organisation/analytics", label: "Analytics", icon: BarChart3 },
+];
 
-export function OrganisationLayoutWrapper({ children, isImpersonating }: { children: React.ReactNode; isImpersonating?: boolean }) {
+// Sidebar Navigation Component
+const SidebarNav = ({ onItemClick }: { onItemClick?: () => void }) => {
+  const pathname = usePathname();
+
+  const isActive = (href: string, exact?: boolean) => {
+    if (exact) {
+      return pathname === href;
+    }
+    return pathname === href || pathname?.startsWith(`${href}/`);
+  };
+
+  return (
+    <nav className="space-y-1 px-2">
+      {navItems.map((item) => (
+        <Link key={item.href} href={item.href} onClick={onItemClick}>
+          <Button
+            variant={isActive(item.href, item.exact) ? "secondary" : "ghost"}
+            className="w-full justify-start h-10"
+          >
+            <item.icon className="size-4 mr-3" />
+            {item.label}
+          </Button>
+        </Link>
+      ))}
+    </nav>
+  );
+};
+
+export function OrganisationLayoutWrapper({ 
+  children, 
+  isImpersonating 
+}: { 
+  children: React.ReactNode; 
+  isImpersonating?: boolean;
+}) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const router = useRouter();
+
   const handleExitImpersonation = () => {
-    // Clear the cookie
     document.cookie = "admin_impersonation=; path=/; max-age=0";
-    // Redirect to admin
     window.location.href = "/admin";
   };
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      {/* Header */}
-      <header className="sticky top-0 z-40 border-b bg-background">
-        {isImpersonating && (
-            <div className="bg-amber-100 text-amber-900 px-4 py-1 text-xs font-medium text-center border-b border-amber-200 flex items-center justify-center gap-2">
-                <span>You are impersonating an organisation.</span>
-                <button onClick={handleExitImpersonation} className="underline hover:text-amber-700 font-bold">
-                    Back to Admin
-                </button>
-            </div>
-        )}
-        
+    <div className="h-screen flex flex-col overflow-hidden bg-muted/30">
+      {/* Impersonation Banner - Always at very top */}
+      {isImpersonating && (
+        <div className="flex-shrink-0 bg-amber-100 text-amber-900 px-4 py-1.5 text-xs font-medium text-center border-b border-amber-200 flex items-center justify-center gap-2">
+          <span>You are impersonating an organisation.</span>
+          <button 
+            onClick={handleExitImpersonation} 
+            className="underline hover:text-amber-700 font-bold"
+          >
+            Back to Admin
+          </button>
+        </div>
+      )}
+
+      {/* Fixed Header */}
+      <header className="flex-shrink-0 h-16 border-b bg-background z-40">
+        <div className="flex h-full items-center gap-4 px-6">
+          {/* Mobile Menu Trigger */}
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild className="md:hidden">
+              <Button variant="ghost" size="icon">
+                <Menu className="size-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-64 p-0">
+              <SheetTitle>
+                <VisuallyHidden>Navigation Menu</VisuallyHidden>
+              </SheetTitle>
+              <div className="p-4 border-b">
+                <img src="/logo-1.png" alt="CampZeo" className="h-8" />
+              </div>
+              <div className="py-4">
+                <SidebarNav onItemClick={() => setMobileMenuOpen(false)} />
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          {/* Logo */}
+          <div className="flex items-center gap-2 font-semibold">
+            <img src="/logo-1.png" alt="CampZeo" className="h-10" />
+          </div>
+
+          <div className="flex-1" />
+
+          {/* Header Actions */}
+          <Button variant="ghost" size="icon" onClick={() => router.push("/")}>
+            <Home className="size-5" />
+          </Button>
+          <Button variant="ghost" size="icon">
+            <Bell className="size-5" />
+          </Button>
+          <SignedIn>
+            <UserButton />
+          </SignedIn>
+        </div>
       </header>
 
-      <div className="flex">
-        {/* Sidebar (Desktop) */}
-        <aside className="w-64 border-r bg-background min-h-[calc(100vh-4rem)] p-4 hidden md:block">
-          <SidebarContent />
+      {/* Main Layout: Sidebar + Content */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Fixed Sidebar (Desktop Only) */}
+        <aside className="hidden md:flex flex-col w-64 border-r bg-background flex-shrink-0">
+          <div className="flex-1 overflow-y-auto py-4">
+            <SidebarNav />
+          </div>
         </aside>
 
-        {/* Main Content */}
-        <main className="flex-1">
+        {/* Scrollable Main Content */}
+        <main className="flex-1 overflow-y-auto">
           {children}
         </main>
       </div>

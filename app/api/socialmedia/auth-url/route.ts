@@ -38,7 +38,15 @@ export async function GET(request: NextRequest) {
         switch (platform) {
             case "FACEBOOK":
             case "INSTAGRAM": // Instagram Graph API uses Facebook Login
-                authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${clientIdConfig.value}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish`;
+                // Permissions needed:
+                // - pages_show_list: To see user's Facebook Pages
+                // - pages_read_engagement: To read page insights
+                // - pages_manage_posts: To post content to pages
+                // - instagram_basic: Basic Instagram account info
+                // - instagram_content_publish: To publish to Instagram
+                // - instagram_manage_insights: For Instagram analytics
+                // - business_management: For Instagram Business Account access
+                authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${clientIdConfig.value}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish,instagram_manage_insights,business_management`;
                 break;
             case "LINKEDIN":
                 authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientIdConfig.value}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=w_member_social,r_basicprofile,w_organization_social,r_organization_social,rw_organization_admin`;
