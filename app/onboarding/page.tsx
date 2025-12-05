@@ -65,18 +65,18 @@ export default function OnboardingPage() {
           return;
         }
 
-        if (syncedUser.needsOnboarding && 
-            syncedUser.organisation && 
-            syncedUser.organisationId && 
-            !syncedUser.hasActiveSubscription &&
-            !syncedUser.subscription) {
-          
+        if (syncedUser.needsOnboarding &&
+          syncedUser.organisation &&
+          syncedUser.organisationId &&
+          !syncedUser.hasActiveSubscription &&
+          !syncedUser.subscription) {
+
           console.log(" User from enquiry - Prefilling onboarding form");
           console.log("Organization ID:", syncedUser.organisationId);
           console.log("Organization Name:", syncedUser.organisation.name);
           console.log("Has Subscription:", syncedUser.hasActiveSubscription);
           console.log("Subscription Object:", syncedUser.subscription);
-          
+
           setFormData({
             organizationName: syncedUser.organisation.name || "",
             email: syncedUser.organisation.email || user?.primaryEmailAddress?.emailAddress || "",
@@ -207,7 +207,7 @@ export default function OnboardingPage() {
     try {
       setIsLoading(true);
       toast.info("Payment successful! Creating your organization...");
-      
+
       // Store payment info to pass to organisation creation
       if (paymentData?.payment) {
         // Create organisation with payment information

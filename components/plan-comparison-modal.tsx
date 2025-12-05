@@ -28,7 +28,7 @@ export function PlanComparisonModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[90vw]  overflow-y-auto" style={{ height: "90vh" }}>
                 <DialogHeader>
                     <DialogTitle>Compare Plans</DialogTitle>
                     <DialogDescription>
@@ -105,8 +105,8 @@ export function PlanComparisonModal({
                 {/* Feature Comparison Table */}
                 <div className="mt-8">
                     <h3 className="text-lg font-semibold mb-4">Feature Comparison</h3>
-                    <div className="border rounded-lg overflow-hidden">
-                        <table className="w-full">
+                    <div className="border rounded-lg overflow-hidden mx-auto" style={{ width: "50vw" }}>
+                        <table className=" w-full">
                             <thead className="bg-muted">
                                 <tr>
                                     <th className="text-left p-3 font-medium">Feature</th>

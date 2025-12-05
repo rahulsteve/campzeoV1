@@ -105,8 +105,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-2">
-              <Zap className="size-8 text-primary" />
-              <span className="font-semibold">SaaSify</span>
+              <img src="/logo-1.png" alt="Campzeo" className="h-8" />
             </div>
             <div className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-muted-foreground hover:text-foreground">
@@ -122,14 +121,15 @@ export default function LandingPage() {
             <div className="flex items-center gap-4">
               <SignedOut>
                 <div className="flex items-center gap-3">
-                  <SignUpButton mode="modal">
-                    <button className="px-3 py-2 text-red-500 border border-red-500 rounded-md">
-                      Sign Up
-                    </button>
-                  </SignUpButton>
+                  <button
+                    className="px-3 py-2 text-red-500 border border-red-500 rounded-md"
+                    onClick={() => router.push("/sign-up")}
+                  >
+                    Sign Up
+                  </button>
 
                   <SignInButton mode="modal">
-                    <button className="px-3 py-2 text-red-500 border border-red-500 rounded-md" style={{ backgroundColor: "red",color :"white" }}>
+                    <button className="px-3 py-2 text-red-500 border border-red-500 rounded-md" style={{ backgroundColor: "red", color: "white" }}>
                       Sign In
                     </button>
                   </SignInButton>
@@ -138,7 +138,7 @@ export default function LandingPage() {
               <SignedIn>
                 <UserButton afterSignOutUrl="/" />
                 <Link href="/organisation">
-                    <Button variant="outline">Dashboard</Button>
+                  <Button variant="outline">Dashboard</Button>
                 </Link>
               </SignedIn>
             </div>
@@ -307,8 +307,7 @@ export default function LandingPage() {
             {/* Brand Section */}
             <div className="text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
-                <Zap className="size-6 text-primary" />
-                <span className="font-semibold text-foreground">Campzeo</span>
+                <img src="/logo-1.png" alt="Campzeo" className="h-8" />
               </div>
               <p className="text-muted-foreground text-sm">
                 Streamline your social media management with powerful tools and insights.

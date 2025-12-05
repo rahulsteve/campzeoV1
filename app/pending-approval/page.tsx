@@ -1,5 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Clock, Home } from "lucide-react";
 
 export default function PendingApprovalPage() {
   return (
@@ -20,9 +22,15 @@ export default function PendingApprovalPage() {
           <p className="text-muted-foreground mb-6">
             We are reviewing your account details. You will receive an email notification once your account has been approved.
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground mb-6">
             If you have any questions, please contact support.
           </p>
+          <Link href="/">
+            <Button className="w-full" variant="outline">
+              <Home className="mr-2 h-4 w-4" />
+              Back to Home
+            </Button>
+          </Link>
         </CardContent>
       </Card>
     </div>
