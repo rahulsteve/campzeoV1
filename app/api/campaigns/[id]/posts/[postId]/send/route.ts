@@ -176,45 +176,84 @@ export async function POST(
                     return NextResponse.json({ error: 'Instagram credentials not found. Please connect your account.' }, { status: 400 });
                 }
 
-                const platformResponse = await postToInstagram(
-                    {
-                        accessToken: dbUser.instagramAccessToken,
+                // Check if user has a valid Instagram Business Account
+                if (dbUser.instagramUserId === 'no-business-account') {
+                    return NextResponse.json({
+                        error: 'No Instagram Business Account found. Please ensure your Instagram account is a Business or Creator account linked to a Facebook Page.'
+                    }, { status: 400 });
+                }
+
+                try {
+                    console.log('[Instagram Send] Starting post with:', {
                         userId: dbUser.instagramUserId,
-                    },
-                    post.message || post.subject || "",
-                    post.mediaUrls.length > 0 ? post.mediaUrls : post.videoUrl,
-                    {
-                        isReel: (post.metadata as any)?.isReel,
-                        shareToFeed: true
+                        hasAccessToken: !!dbUser.instagramAccessToken,
+                        mediaCount: post.mediaUrls.length,
+                        hasVideoUrl: !!post.videoUrl,
+                        isReel: (post.metadata as any)?.isReel
+                    });
+
+                    const platformResponse = await postToInstagram(
+                        {
+                            accessToken: dbUser.instagramAccessToken,
+                            userId: dbUser.instagramUserId,
+                        },
+                        post.message || post.subject || "",
+                        post.mediaUrls.length > 0 ? post.mediaUrls : post.videoUrl,
+                        {
+                            isReel: (post.metadata as any)?.isReel,
+                            shareToFeed: true
+                        }
+                    );
+
+                    await prisma.campaignPost.update({
+                        where: { id: post.id },
+                        data: { isPostSent: true }
+                    });
+
+                    await prisma.postTransaction.create({
+                        data: {
+                            refId: post.id,
+                            platform: 'INSTAGRAM',
+                            postId: platformResponse.id,
+                            accountId: dbUser.instagramUserId,
+                            message: post.message || post.subject || "",
+                            mediaUrls: post.mediaUrls.length > 0 ? post.mediaUrls[0] : post.videoUrl,
+                            postType: (post.metadata as any)?.isReel ? 'REEL' : 'IMAGE',
+                            accessToken: dbUser.instagramAccessToken,
+                            published: true,
+                            publishedAt: new Date(),
+                        }
+                    });
+
+                    return NextResponse.json({
+                        success: true,
+                        sent: 1,
+                        failed: 0,
+                        postData: platformResponse
+                    });
+
+                } catch (instagramError: any) {
+                    console.error('[Instagram Send Error]:', instagramError);
+
+                    // Extract meaningful error message
+                    let errorMessage = 'Failed to post to Instagram';
+                    if (instagramError.message) {
+                        // Try to parse error JSON from Instagram
+                        try {
+                            const errorJson = JSON.parse(instagramError.message.replace(/^.*?({.*}).*$/, '$1'));
+                            if (errorJson.error) {
+                                errorMessage = errorJson.error.message || errorJson.error.error_user_msg || errorMessage;
+                            }
+                        } catch {
+                            errorMessage = instagramError.message;
+                        }
                     }
-                );
 
-                await prisma.campaignPost.update({
-                    where: { id: post.id },
-                    data: { isPostSent: true }
-                });
-
-                await prisma.postTransaction.create({
-                    data: {
-                        refId: post.id,
-                        platform: 'INSTAGRAM',
-                        postId: platformResponse.id,
-                        accountId: dbUser.instagramUserId,
-                        message: post.message || post.subject || "",
-                        mediaUrls: post.mediaUrls.length > 0 ? post.mediaUrls[0] : post.videoUrl,
-                        postType: (post.metadata as any)?.isReel ? 'REEL' : 'IMAGE',
-                        accessToken: dbUser.instagramAccessToken,
-                        published: true,
-                        publishedAt: new Date(),
-                    }
-                });
-
-                return NextResponse.json({
-                    success: true,
-                    sent: 1,
-                    failed: 0,
-                    postData: platformResponse
-                });
+                    return NextResponse.json({
+                        error: errorMessage,
+                        details: instagramError.message
+                    }, { status: 500 });
+                }
 
             } else if (post.type === 'YOUTUBE') {
                 if (!dbUser.youtubeAccessToken) {

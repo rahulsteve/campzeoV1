@@ -50,19 +50,36 @@ export async function GET() {
             status.facebook = { connected: false };
         }
 
-        // Instagram
-        if (dbUser.instagramAccessToken) {
-            try {
-                const res = await fetchWithTimeout(`https://graph.instagram.com/me?fields=username&access_token=${dbUser.instagramAccessToken}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    status.instagram = { connected: true, name: data.username };
-                } else {
+        // Instagram (via Facebook Graph API for Business Accounts)
+        if (dbUser.instagramAccessToken && dbUser.instagramUserId) {
+            // Skip if no business account
+            if (dbUser.instagramUserId === 'no-business-account') {
+                status.instagram = { connected: true, name: "No Business Account" };
+            } else {
+                try {
+                    // Use Facebook Graph API with the Instagram Business Account ID
+                    const res = await fetchWithTimeout(
+                        `https://graph.facebook.com/v18.0/${dbUser.instagramUserId}?fields=username,name&access_token=${dbUser.instagramAccessToken}`
+                    );
+                    if (res.ok) {
+                        const data = await res.json();
+                        // Prefer username, fallback to name
+                        const displayName = data.username ? `@${data.username}` : data.name || "Connected";
+                        status.instagram = { connected: true, name: displayName, username: data.username };
+                    } else {
+                        // Try to get error details
+                        const errorData = await res.json().catch(() => ({}));
+                        console.error("[Social Status] Instagram fetch error:", errorData);
+                        status.instagram = { connected: true, name: "Connected" };
+                    }
+                } catch (e) {
+                    console.error("[Social Status] Instagram error:", e);
                     status.instagram = { connected: true, name: "Connected" };
                 }
-            } catch (e) {
-                status.instagram = { connected: true, name: "Connected" };
             }
+        } else if (dbUser.instagramAccessToken) {
+            // Has token but no userId
+            status.instagram = { connected: true, name: "Connected (Missing ID)" };
         } else {
             status.instagram = { connected: false };
         }

@@ -68,6 +68,7 @@ interface Post {
     createdAt: string;
     senderEmail: string | null;
     videoUrl: string | null;
+    mediaUrls: string[];
 }
 
 interface Campaign {
@@ -575,9 +576,12 @@ export default function CampaignPostsPage() {
 
             {/* Preview Dialog */}
             <Dialog open={!!previewPost} onOpenChange={(open) => !open && setPreviewPost(null)}>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Post Preview</DialogTitle>
+                        <DialogTitle className="flex items-center gap-2">
+                            {previewPost && getPlatformIcon(previewPost.type)}
+                            Post Preview - {previewPost?.type}
+                        </DialogTitle>
                         <DialogDescription>
                             Preview how your post will look
                         </DialogDescription>
@@ -586,19 +590,63 @@ export default function CampaignPostsPage() {
                         <div className="space-y-4">
                             {previewPost.subject && (
                                 <div>
-                                    <p className="text-sm font-medium mb-1">Subject:</p>
-                                    <p className="text-sm text-muted-foreground">{previewPost.subject}</p>
+                                    <p className="text-sm font-medium mb-1">Subject/Title:</p>
+                                    <p className="text-sm text-muted-foreground font-semibold">{previewPost.subject}</p>
                                 </div>
                             )}
+                            
+                            {/* Media Preview */}
+                            {((previewPost.mediaUrls && previewPost.mediaUrls.length > 0) || previewPost.videoUrl) && (
+                                <div>
+                                    <p className="text-sm font-medium mb-2">Media:</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {(previewPost.mediaUrls || [previewPost.videoUrl].filter(Boolean)).map((url, index) => (
+                                            <div key={index} className="relative aspect-video bg-muted rounded-lg overflow-hidden">
+                                                {url && url.match(/\.(mp4|mov|webm)$/i) ? (
+                                                    <div className="flex items-center justify-center h-full bg-black/10">
+                                                        <div className="size-12 rounded-full bg-white/80 flex items-center justify-center shadow">
+                                                            <div className="ml-1 size-0 border-y-[8px] border-y-transparent border-l-[14px] border-l-primary" />
+                                                        </div>
+                                                        <p className="absolute bottom-2 left-2 text-xs bg-black/50 text-white px-2 py-1 rounded">Video</p>
+                                                    </div>
+                                                ) : url ? (
+                                                    <img 
+                                                        src={url} 
+                                                        alt={`Media ${index + 1}`} 
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                ) : null}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            
                             <div>
                                 <p className="text-sm font-medium mb-1">Message:</p>
-                                <div className="p-4 border rounded-lg bg-muted/50 whitespace-pre-wrap">
-                                    {getPreviewContent(previewPost.message)}
+                                <div className="p-4 border rounded-lg bg-muted/50 whitespace-pre-wrap max-h-[200px] overflow-y-auto">
+                                    {getPreviewContent(previewPost.message) || <span className="text-muted-foreground italic">No message</span>}
                                 </div>
                             </div>
-                            {!['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE'].includes(previewPost.type) && (
+                            
+                            {/* Status Info */}
+                            <div className="flex items-center justify-between text-sm pt-2 border-t">
+                                <div className="flex items-center gap-2">
+                                    {getStatusBadge(previewPost)}
+                                    {previewPost.scheduledPostTime && (
+                                        <span className="text-muted-foreground text-xs">
+                                            Scheduled: {formatDate(previewPost.scheduledPostTime)}
+                                        </span>
+                                    )}
+                                </div>
+                                <span className="text-muted-foreground text-xs">
+                                    Created: {formatDate(previewPost.createdAt)}
+                                </span>
+                            </div>
+                            
+                            {!['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'PINTEREST'].includes(previewPost.type) && (
                                 <div className="text-xs text-muted-foreground italic">
-                                    * Variables like {'{{name}}'} are replaced with sample data from your campaign contacts.
+                                    * Variables like {'{{name}}'} are replaced with actual contact data when sent.
                                 </div>
                             )}
                         </div>

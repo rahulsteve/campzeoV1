@@ -350,16 +350,28 @@ function MediaGrid({ mediaUrls, square, rounded }: { mediaUrls: string[], square
     const count = mediaUrls.length;
     const displayUrls = mediaUrls.slice(0, 4);
     
+    // Check if URL is external (Vercel Blob, etc.)
+    const isExternalUrl = (url: string) => url.startsWith('http://') || url.startsWith('https://');
+    
     return (
         <div className={`grid gap-0.5 ${count === 1 ? 'grid-cols-1' : 'grid-cols-2'} ${rounded ? 'rounded-xl overflow-hidden border' : ''}`}>
             {displayUrls.map((url, index) => (
-                <div key={index} className={`relative ${square ? 'aspect-square' : (count === 1 ? 'aspect-video' : 'aspect-square')} bg-muted`}>
+                <div key={index} className={`relative ${square ? 'aspect-square' : (count === 1 ? 'aspect-video' : 'aspect-square')} bg-muted overflow-hidden`}>
                     {url.match(/\.(mp4|mov|webm)$/i) ? (
                         <div className="flex items-center justify-center h-full bg-black/10">
                             <div className="size-8 rounded-full bg-white/80 flex items-center justify-center">
                                 <div className="ml-1 size-0 border-y-[6px] border-y-transparent border-l-[10px] border-l-black" />
                             </div>
                         </div>
+                    ) : isExternalUrl(url) ? (
+                        // Use unoptimized for external URLs (Vercel Blob, etc.)
+                        <Image 
+                            src={url} 
+                            alt={`Media ${index}`} 
+                            fill 
+                            className="object-cover"
+                            unoptimized
+                        />
                     ) : (
                         <Image 
                             src={url} 

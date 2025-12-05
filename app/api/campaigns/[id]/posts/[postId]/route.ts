@@ -115,16 +115,27 @@ export async function PUT(
         }
 
         const body = await request.json();
-        const { subject, message, type, scheduledPostTime, senderEmail, videoUrl, pinterestBoardId, pinterestLink } = body;
+        const {
+            subject,
+            message,
+            type,
+            scheduledPostTime,
+            senderEmail,
+            videoUrl,
+            mediaUrls,
+            metadata: incomingMetadata,
+            pinterestBoardId,
+            pinterestLink
+        } = body;
 
         // Construct metadata
-        let metadata: any = existingPost.metadata || {};
+        let metadata: any = incomingMetadata || existingPost.metadata || {};
 
         if (type === 'PINTEREST') {
             metadata = {
                 ...metadata,
-                boardId: pinterestBoardId,
-                link: pinterestLink
+                boardId: pinterestBoardId || metadata.boardId,
+                link: pinterestLink || metadata.link
             };
         }
 
@@ -137,7 +148,8 @@ export async function PUT(
                 type,
                 senderEmail,
                 scheduledPostTime: scheduledPostTime ? new Date(scheduledPostTime) : null,
-                videoUrl: videoUrl || null,
+                videoUrl: videoUrl || (mediaUrls && mediaUrls.length > 0 ? mediaUrls[0] : null),
+                mediaUrls: mediaUrls || existingPost.mediaUrls || [],
                 metadata: metadata,
             },
         });

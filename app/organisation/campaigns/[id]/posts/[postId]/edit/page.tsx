@@ -13,7 +13,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, Loader2, Save, Upload, X, Youtube } from 'lucide-react';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { ArrowLeft, Loader2, Save, Upload, X, Youtube, Eye, Video, Trash2 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Sidebar } from '@/components/Sidebar';
@@ -29,6 +36,8 @@ interface Post {
     scheduledPostTime: string | null;
     isPostSent: boolean;
     videoUrl: string | null;
+    mediaUrls: string[];
+    metadata: any;
 }
 
 export default function EditPostPage() {
@@ -43,9 +52,12 @@ export default function EditPostPage() {
     const [type, setType] = useState('');
     const [senderEmail, setSenderEmail] = useState('');
     const [scheduledPostTime, setScheduledPostTime] = useState('');
-    const [mediaUrl, setMediaUrl] = useState('');
+    const [mediaUrls, setMediaUrls] = useState<string[]>([]);
     const [pinterestBoardId, setPinterestBoardId] = useState('');
     const [pinterestLink, setPinterestLink] = useState('');
+    const [youtubeTags, setYoutubeTags] = useState('');
+    const [youtubePrivacy, setYoutubePrivacy] = useState('public');
+    const [isReel, setIsReel] = useState(false);
     const [uploadingMedia, setUploadingMedia] = useState(false);
     
     // Pinterest Boards
@@ -53,6 +65,9 @@ export default function EditPostPage() {
     const [loadingPinterestBoards, setLoadingPinterestBoards] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    
+    // Preview state
+    const [showPreview, setShowPreview] = useState(false);
 
     // Fetch post data
     useEffect(() => {
@@ -75,12 +90,21 @@ export default function EditPostPage() {
                 setMessage(post.message || '');
                 setType(post.type);
                 setSenderEmail(post.senderEmail || '');
-                setMediaUrl(post.videoUrl || '');
+                
+                // Load media URLs
+                if (post.mediaUrls && post.mediaUrls.length > 0) {
+                    setMediaUrls(post.mediaUrls);
+                } else if (post.videoUrl) {
+                    setMediaUrls([post.videoUrl]);
+                }
                 
                 // Load metadata
-                const metadata = (post as any).metadata || {};
+                const metadata = post.metadata || {};
                 setPinterestBoardId(metadata.boardId || '');
                 setPinterestLink(metadata.link || '');
+                setYoutubeTags(metadata.tags ? (Array.isArray(metadata.tags) ? metadata.tags.join(', ') : metadata.tags) : '');
+                setYoutubePrivacy(metadata.privacy || 'public');
+                setIsReel(metadata.isReel || false);
                 
                 if (post.scheduledPostTime) {
                     const date = new Date(post.scheduledPostTime);
@@ -127,32 +151,47 @@ export default function EditPostPage() {
 
     // Handle file upload
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        // Limit to 10 images
+        if (mediaUrls.length + files.length > 10) {
+            toast.error('You can upload a maximum of 10 media files');
+            return;
+        }
 
         try {
             setUploadingMedia(true);
-            const formData = new FormData();
-            formData.append('file', file);
+            const newUrls: string[] = [];
 
-            const response = await fetch('/api/socialmedia/upload-media-file', {
-                method: 'POST',
-                body: formData,
-            });
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const formData = new FormData();
+                formData.append('file', file);
 
-            if (!response.ok) {
-                throw new Error('Upload failed');
+                const response = await fetch('/api/socialmedia/upload-media-file', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) throw new Error('Upload failed');
+
+                const data = await response.json();
+                newUrls.push(data.url);
             }
 
-            const data = await response.json();
-            setMediaUrl(data.url);
-            toast.success('File uploaded successfully');
+            setMediaUrls(prev => [...prev, ...newUrls]);
+            toast.success('Files uploaded successfully');
         } catch (error) {
             console.error('Error uploading file:', error);
             toast.error('Failed to upload file');
         } finally {
             setUploadingMedia(false);
         }
+    };
+
+    const removeMedia = (index: number) => {
+        setMediaUrls(prev => prev.filter((_, i) => i !== index));
     };
 
     // Handle form submit
@@ -175,9 +214,19 @@ export default function EditPostPage() {
             return;
         }
 
-        if (['INSTAGRAM', 'YOUTUBE', 'PINTEREST'].includes(type) && !mediaUrl) {
+        if (['INSTAGRAM', 'YOUTUBE', 'PINTEREST'].includes(type) && mediaUrls.length === 0) {
             toast.error(`${type} posts require media (image/video)`);
             return;
+        }
+
+        // Prepare metadata
+        let metadata: any = {};
+        if (type === 'YOUTUBE') {
+            metadata = { tags: youtubeTags ? youtubeTags.split(',').map(t => t.trim()) : [], privacy: youtubePrivacy };
+        } else if (type === 'PINTEREST') {
+            metadata = { boardId: pinterestBoardId, link: pinterestLink };
+        } else if (type === 'FACEBOOK' || type === 'INSTAGRAM') {
+            metadata = { isReel: !!isReel };
         }
 
         try {
@@ -192,9 +241,9 @@ export default function EditPostPage() {
                     type,
                     senderEmail: type === 'EMAIL' ? senderEmail : null,
                     scheduledPostTime: scheduledPostTime || null,
-                    videoUrl: mediaUrl || null,
-                    pinterestBoardId,
-                    pinterestLink
+                    mediaUrls: mediaUrls,
+                    videoUrl: mediaUrls.length > 0 ? mediaUrls[0] : null,
+                    metadata
                 }),
             });
 
@@ -212,6 +261,9 @@ export default function EditPostPage() {
             setSaving(false);
         }
     };
+
+    // Check if a URL is a video
+    const isVideoUrl = (url: string) => url.match(/\.(mp4|mov|webm)$/i);
 
     if (loading) {
         return (
@@ -235,23 +287,29 @@ export default function EditPostPage() {
             <div className="flex">
                 <Sidebar />
                 <main className="flex-1 p-6">
-                    <div className="max-w-3xl mx-auto space-y-6">
+                    <div className="max-w-4xl mx-auto space-y-6">
                         {/* Header */}
-                        <div className="flex items-center gap-4">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => router.back()}
-                            >
-                                <ArrowLeft className="size-4 mr-2" />
-                                Back
-                            </Button>
-                            <div>
-                                <h1 className="text-3xl font-bold tracking-tight">Edit Post</h1>
-                                <p className="text-muted-foreground mt-1">
-                                    Update post details
-                                </p>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => router.back()}
+                                >
+                                    <ArrowLeft className="size-4 mr-2" />
+                                    Back
+                                </Button>
+                                <div>
+                                    <h1 className="text-3xl font-bold tracking-tight">Edit Post</h1>
+                                    <p className="text-muted-foreground mt-1">
+                                        Update post details
+                                    </p>
+                                </div>
                             </div>
+                            <Button variant="outline" onClick={() => setShowPreview(true)}>
+                                <Eye className="size-4 mr-2" />
+                                Preview
+                            </Button>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-6">
@@ -310,6 +368,19 @@ export default function EditPostPage() {
                                         </>
                                     )}
 
+                                    {/* Title for social platforms */}
+                                    {type && type !== 'EMAIL' && type !== 'SMS' && (
+                                        <div className="space-y-2">
+                                            <Label htmlFor="subject">Title</Label>
+                                            <Input
+                                                id="subject"
+                                                placeholder="Enter post title"
+                                                value={subject}
+                                                onChange={(e) => setSubject(e.target.value)}
+                                            />
+                                        </div>
+                                    )}
+
                                     {type && (
                                         <div className="space-y-2">
                                             <Label htmlFor="message">
@@ -334,65 +405,119 @@ export default function EditPostPage() {
                                     {/* Media Upload */}
                                     {['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'PINTEREST'].includes(type) && (
                                         <div className="space-y-2">
-                                            <Label>
-                                                {type === 'YOUTUBE' ? 'Video *' : 'Media (Photo/Video)'}
-                                                {['INSTAGRAM', 'PINTEREST'].includes(type) && ' *'}
-                                            </Label>
-                                            {!mediaUrl ? (
-                                                <div className="flex items-center justify-center w-full">
-                                                    <label htmlFor="media-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
-                                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                                            {uploadingMedia ? (
-                                                                <Loader2 className="size-8 mb-2 text-muted-foreground animate-spin" />
-                                                            ) : (
-                                                                <Upload className="size-8 mb-2 text-muted-foreground" />
-                                                            )}
-                                                            <p className="text-sm text-muted-foreground">
-                                                                {uploadingMedia ? 'Uploading...' : 'Click to upload photo or video'}
-                                                            </p>
-                                                        </div>
-                                                        <input 
-                                                            id="media-upload" 
-                                                            type="file" 
-                                                            className="hidden" 
+                                            <div className="flex items-center justify-between mb-2">
+                                                <Label>
+                                                    {type === 'YOUTUBE' ? 'Video *' : 'Media (Photo/Video)'}
+                                                    {['INSTAGRAM', 'PINTEREST'].includes(type) && ' *'}
+                                                </Label>
+                                                <span className="text-xs text-muted-foreground">{mediaUrls.length}/10 uploaded</span>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                                                {mediaUrls.map((url, index) => (
+                                                    <div key={index} className="relative rounded-lg overflow-hidden border bg-muted/50 aspect-square group">
+                                                        {isVideoUrl(url) ? (
+                                                            <div className="flex items-center justify-center h-full bg-black/10">
+                                                                <Video className="size-8 text-muted-foreground" />
+                                                                <p className="absolute bottom-2 left-2 text-xs bg-black/50 text-white px-2 py-1 rounded">Video</p>
+                                                            </div>
+                                                        ) : (
+                                                            <img
+                                                                src={url}
+                                                                alt={`Media ${index + 1}`}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        )}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeMedia(index)}
+                                                            className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                                            title="Remove media"
+                                                        >
+                                                            <Trash2 className="size-3" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+
+                                                {mediaUrls.length < 10 && (
+                                                    <label htmlFor="media-upload" className="flex flex-col items-center justify-center aspect-square border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                                                        {uploadingMedia ? (
+                                                            <Loader2 className="size-6 text-muted-foreground animate-spin" />
+                                                        ) : (
+                                                            <>
+                                                                <Upload className="size-6 text-muted-foreground mb-1" />
+                                                                <span className="text-xs text-muted-foreground">Add</span>
+                                                            </>
+                                                        )}
+                                                        <input
+                                                            id="media-upload"
+                                                            type="file"
+                                                            className="hidden"
                                                             accept={type === 'YOUTUBE' ? 'video/*' : 'image/*,video/*'}
                                                             onChange={handleFileUpload}
                                                             disabled={uploadingMedia}
+                                                            multiple
                                                         />
                                                     </label>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Reel Option for Facebook/Instagram */}
+                                    {(type === 'FACEBOOK' || type === 'INSTAGRAM') && 
+                                      mediaUrls.some(url => isVideoUrl(url)) && (
+                                          <div className="space-y-4 pt-4 border-t">
+                                            <br/>
+                                            <div className="flex items-center space-x-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id="isReel"
+                                                    checked={isReel}
+                                                    onChange={(e) => setIsReel(e.target.checked)}
+                                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                                />
+                                                <Label htmlFor="isReel" className="font-medium cursor-pointer">
+                                                    Post as Reel
+                                                </Label>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground pl-6">
+                                                Upload as a short-form video (Reel). Recommended for vertical videos (9:16) under 90 seconds.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* YouTube Specific Fields */}
+                                    {type === 'YOUTUBE' && (
+                                        <div className="space-y-4 pt-4 border-t">
+                                            <h3 className="font-medium flex items-center gap-2">
+                                                <Youtube className="size-4 text-red-600" />
+                                                YouTube Settings
+                                            </h3>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="youtubeTags">Tags (comma separated)</Label>
+                                                    <Input
+                                                        id="youtubeTags"
+                                                        placeholder="tutorial, tech, campzeo"
+                                                        value={youtubeTags}
+                                                        onChange={(e) => setYoutubeTags(e.target.value)}
+                                                    />
                                                 </div>
-                                            ) : (
-                                                <div className="relative rounded-lg overflow-hidden border bg-muted/50">
-                                                    <div className="p-4 flex items-center justify-between">
-                                                        <div className="flex items-center gap-2 truncate">
-                                                            <div className="size-10 bg-background rounded flex items-center justify-center border">
-                                                                {mediaUrl.match(/\.(mp4|mov|webm)$/i) ? (
-                                                                    <Youtube className="size-5 text-muted-foreground" />
-                                                                ) : (
-                                                                    <Image 
-                                                                        src={mediaUrl} 
-                                                                        alt="Preview" 
-                                                                        width={40} 
-                                                                        height={40} 
-                                                                        className="object-cover size-full"
-                                                                    />
-                                                                )}
-                                                            </div>
-                                                            <span className="text-sm text-muted-foreground truncate max-w-[200px]">
-                                                                {mediaUrl.split('/').pop()}
-                                                            </span>
-                                                        </div>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => setMediaUrl('')}
-                                                        >
-                                                            <X className="size-4" />
-                                                        </Button>
-                                                    </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="youtubePrivacy">Privacy Status</Label>
+                                                    <Select value={youtubePrivacy} onValueChange={setYoutubePrivacy}>
+                                                        <SelectTrigger id="youtubePrivacy">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="public">Public</SelectItem>
+                                                            <SelectItem value="private">Private</SelectItem>
+                                                            <SelectItem value="unlisted">Unlisted</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
                                                 </div>
-                                            )}
+                                            </div>
                                         </div>
                                     )}
 
@@ -488,6 +613,66 @@ export default function EditPostPage() {
                     </div>
                 </main>
             </div>
+
+            {/* Preview Dialog */}
+            <Dialog open={showPreview} onOpenChange={setShowPreview}>
+                <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Post Preview - {type}</DialogTitle>
+                        <DialogDescription>
+                            Preview how your post will look
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        {subject && (
+                            <div>
+                                <p className="text-sm font-medium mb-1">Title:</p>
+                                <p className="text-sm font-semibold">{subject}</p>
+                            </div>
+                        )}
+                        
+                        {mediaUrls.length > 0 && (
+                            <div>
+                                <p className="text-sm font-medium mb-2">Media:</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {mediaUrls.map((url, index) => (
+                                        <div key={index} className="relative aspect-video bg-muted rounded-lg overflow-hidden">
+                                            {isVideoUrl(url) ? (
+                                                <div className="flex items-center justify-center h-full bg-black/10">
+                                                    <div className="size-12 rounded-full bg-white/80 flex items-center justify-center shadow">
+                                                        <div className="ml-1 size-0 border-y-[8px] border-y-transparent border-l-[14px] border-l-primary" />
+                                                    </div>
+                                                    <p className="absolute bottom-2 left-2 text-xs bg-black/50 text-white px-2 py-1 rounded">Video</p>
+                                                </div>
+                                            ) : (
+                                                <img 
+                                                    src={url} 
+                                                    alt={`Media ${index + 1}`} 
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        
+                        <div>
+                            <p className="text-sm font-medium mb-1">Message:</p>
+                            <div className="p-4 border rounded-lg bg-muted/50 whitespace-pre-wrap">
+                                {message || <span className="text-muted-foreground italic">No message</span>}
+                            </div>
+                        </div>
+
+                        {isReel && (
+                            <div className="flex items-center gap-2 text-sm text-primary">
+                                <Video className="size-4" />
+                                <span>Will be posted as a Reel</span>
+                            </div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
