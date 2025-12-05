@@ -31,16 +31,16 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/components/ui/dialog';
-import { 
-    ArrowLeft, 
-    Loader2, 
-    Plus, 
-    Trash2, 
-    Edit, 
-    Calendar, 
-    Send, 
-    Mail, 
-    MessageSquare, 
+import {
+    ArrowLeft,
+    Loader2,
+    Plus,
+    Trash2,
+    Edit,
+    Calendar,
+    Send,
+    Mail,
+    MessageSquare,
     Phone,
     Copy,
     Filter,
@@ -55,8 +55,6 @@ import {
 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { Sidebar } from '@/components/Sidebar';
-import { Header } from '@/components/Header';
 
 interface Post {
     id: number;
@@ -92,7 +90,7 @@ export default function CampaignPostsPage() {
     const [filterPlatform, setFilterPlatform] = useState<string>('all');
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [organisationPlatforms, setOrganisationPlatforms] = useState<string[]>([]);
-    
+
     // Preview & Share State
     const [previewPost, setPreviewPost] = useState<Post | null>(null);
     const [sharePost, setSharePost] = useState<Post | null>(null);
@@ -147,7 +145,7 @@ export default function CampaignPostsPage() {
     // Filter posts
     const filteredPosts = posts.filter((post) => {
         const platformMatch = filterPlatform === 'all' || post.type === filterPlatform;
-        const statusMatch = filterStatus === 'all' || 
+        const statusMatch = filterStatus === 'all' ||
             (filterStatus === 'sent' && post.isPostSent) ||
             (filterStatus === 'pending' && !post.isPostSent) ||
             (filterStatus === 'scheduled' && post.scheduledPostTime && !post.isPostSent);
@@ -211,7 +209,7 @@ export default function CampaignPostsPage() {
     // Handle Share/Send
     const handleSendShare = async () => {
         const isSocialPlatform = ['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'PINTEREST'].includes(sharePost?.type || '');
-        
+
         if (!isSocialPlatform && selectedContacts.length === 0) {
             toast.error('Please select at least one contact');
             return;
@@ -221,7 +219,7 @@ export default function CampaignPostsPage() {
 
         try {
             setSendingShare(true);
-            
+
             const response = await fetch(`/api/campaigns/${campaignId}/posts/${sharePost.id}/send`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -234,11 +232,11 @@ export default function CampaignPostsPage() {
             }
 
             const data = await response.json();
-            
+
             toast.success(isSocialPlatform ? 'Post published successfully!' : `Post shared successfully! Sent: ${data.sent}, Failed: ${data.failed}`);
             setSharePost(null);
             setSelectedContacts([]);
-            
+
             // Refresh posts to update status
             const postsResponse = await fetch(`/api/campaigns/${campaignId}/posts`);
             if (postsResponse.ok) {
@@ -256,8 +254,8 @@ export default function CampaignPostsPage() {
 
     // Toggle contact selection
     const toggleContact = (contactId: string) => {
-        setSelectedContacts(prev => 
-            prev.includes(contactId) 
+        setSelectedContacts(prev =>
+            prev.includes(contactId)
                 ? prev.filter(id => id !== contactId)
                 : [...prev, contactId]
         );
@@ -266,7 +264,7 @@ export default function CampaignPostsPage() {
     // Select all contacts
     const toggleAllContacts = () => {
         if (!campaign?.contacts) return;
-        
+
         if (selectedContacts.length === campaign.contacts.length) {
             setSelectedContacts([]);
         } else {
@@ -327,10 +325,10 @@ export default function CampaignPostsPage() {
     // Get preview content with variables replaced
     const getPreviewContent = (content: string | null) => {
         if (!content) return '';
-        
+
         // Use first contact from campaign for preview, or fallback to placeholder
         const sampleContact = campaign?.contacts && campaign.contacts.length > 0 ? campaign.contacts[0] : null;
-        
+
         return content
             .replace(/{{name}}/g, sampleContact?.contactName || 'John Doe')
             .replace(/{{email}}/g, sampleContact?.contactEmail || 'john@example.com')
@@ -341,12 +339,12 @@ export default function CampaignPostsPage() {
     // Get share preview content
     const getSharePreviewContent = (content: string | null) => {
         if (!content) return '';
-        
+
         // If exactly one contact is selected, use their data
         if (selectedContacts.length === 1) {
             const contactId = selectedContacts[0];
             const contact = campaign?.contacts?.find((c: any) => c.id === contactId);
-            
+
             if (contact) {
                 return content
                     .replace(/{{name}}/g, contact.contactName || '{{name}}')
@@ -355,7 +353,7 @@ export default function CampaignPostsPage() {
                     .replace(/{{company}}/g, 'Acme Corp');
             }
         }
-        
+
         // Otherwise return raw content or generic preview
         return content;
     };
@@ -363,9 +361,9 @@ export default function CampaignPostsPage() {
     if (loading) {
         return (
             <div className="min-h-screen bg-background">
-                <Header />
+             
                 <div className="flex">
-                    <Sidebar />
+             
                     <main className="flex-1 p-6">
                         <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
                             <Loader2 className="size-8 animate-spin text-muted-foreground" />
@@ -380,9 +378,9 @@ export default function CampaignPostsPage() {
 
     return (
         <div className="min-h-screen bg-background">
-            <Header />
+          
             <div className="flex">
-                <Sidebar />
+       
                 <main className="flex-1 p-6">
                     <div className="max-w-7xl mx-auto space-y-6">
                         {/* Header */}
@@ -594,7 +592,7 @@ export default function CampaignPostsPage() {
                                     <p className="text-sm text-muted-foreground font-semibold">{previewPost.subject}</p>
                                 </div>
                             )}
-                            
+
                             {/* Media Preview */}
                             {((previewPost.mediaUrls && previewPost.mediaUrls.length > 0) || previewPost.videoUrl) && (
                                 <div>
@@ -610,9 +608,9 @@ export default function CampaignPostsPage() {
                                                         <p className="absolute bottom-2 left-2 text-xs bg-black/50 text-white px-2 py-1 rounded">Video</p>
                                                     </div>
                                                 ) : url ? (
-                                                    <img 
-                                                        src={url} 
-                                                        alt={`Media ${index + 1}`} 
+                                                    <img
+                                                        src={url}
+                                                        alt={`Media ${index + 1}`}
                                                         className="w-full h-full object-cover"
                                                     />
                                                 ) : null}
@@ -621,14 +619,14 @@ export default function CampaignPostsPage() {
                                     </div>
                                 </div>
                             )}
-                            
+
                             <div>
                                 <p className="text-sm font-medium mb-1">Message:</p>
                                 <div className="p-4 border rounded-lg bg-muted/50 whitespace-pre-wrap max-h-[200px] overflow-y-auto">
                                     {getPreviewContent(previewPost.message) || <span className="text-muted-foreground italic">No message</span>}
                                 </div>
                             </div>
-                            
+
                             {/* Status Info */}
                             <div className="flex items-center justify-between text-sm pt-2 border-t">
                                 <div className="flex items-center gap-2">
@@ -643,7 +641,7 @@ export default function CampaignPostsPage() {
                                     Created: {formatDate(previewPost.createdAt)}
                                 </span>
                             </div>
-                            
+
                             {!['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'PINTEREST'].includes(previewPost.type) && (
                                 <div className="text-xs text-muted-foreground italic">
                                     * Variables like {'{{name}}'} are replaced with actual contact data when sent.
@@ -660,7 +658,7 @@ export default function CampaignPostsPage() {
                     <DialogHeader>
                         <DialogTitle>{isSocialPlatform ? 'Publish Post' : 'Share Post'}</DialogTitle>
                         <DialogDescription>
-                            {isSocialPlatform 
+                            {isSocialPlatform
                                 ? `Publish this post to your ${sharePost?.type} page`
                                 : 'Select contacts to share this post with'
                             }

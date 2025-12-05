@@ -18,8 +18,6 @@ import {
 import { ArrowLeft, Loader2, Save, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Sidebar } from '@/components/Sidebar';
-import { Header } from '@/components/Header';
 
 interface Contact {
     id: number;
@@ -147,12 +145,8 @@ export default function NewCampaignPage() {
     const someSelected = selectedContacts.length > 0 && selectedContacts.length < filteredContacts.length;
 
     return (
-        <div className="min-h-screen bg-background">
-            <Header />
-            <div className="flex">
-                <Sidebar />
-                <main className="flex-1 p-6">
-                    <div className="max-w-5xl mx-auto space-y-6">
+        <div className="p-6">
+            <div className="max-w-5xl mx-auto space-y-6">
                         {/* Header */}
                         <div className="flex items-center gap-4">
                             <Button
@@ -330,8 +324,6 @@ export default function NewCampaignPage() {
                             </div>
                         </form>
                     </div>
-                </main>
-            </div>
-        </div>
+                </div>
     );
 }

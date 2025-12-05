@@ -23,8 +23,6 @@ import {
 import { ArrowLeft, Loader2, Save, Upload, X, Youtube, Eye, Video, Trash2 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { Sidebar } from '@/components/Sidebar';
-import { Header } from '@/components/Header';
 import Image from 'next/image';
 
 interface Post {
@@ -268,9 +266,9 @@ export default function EditPostPage() {
     if (loading) {
         return (
             <div className="min-h-screen bg-background">
-                <Header />
+ 
                 <div className="flex">
-                    <Sidebar />
+           
                     <main className="flex-1 p-6">
                         <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
                             <Loader2 className="size-8 animate-spin text-muted-foreground" />
@@ -283,9 +281,9 @@ export default function EditPostPage() {
 
     return (
         <div className="min-h-screen bg-background">
-            <Header />
+   
             <div className="flex">
-                <Sidebar />
+            
                 <main className="flex-1 p-6">
                     <div className="max-w-4xl mx-auto space-y-6">
                         {/* Header */}
