@@ -41,14 +41,60 @@ export async function POST(req: Request) {
         // Check if user already has an organisation
         const existingUser = await prisma.user.findUnique({
             where: { clerkId: user.id },
-            include: { organisation: true },
+            include: {
+                organisation: {
+                    include: {
+                        subscriptions: true
+                    }
+                }
+            },
         });
 
+        let organisation;
+        let subscription;
+        let isUpdating = false;
+
+        // If user already has an organisation (e.g., created by admin), update it
         if (existingUser?.organisation) {
-            return NextResponse.json(
-                { error: "User already has an organisation", organisation: existingUser.organisation },
-                { status: 400 }
-            );
+            isUpdating = true;
+            console.log("⚠️ Organisation already exists, updating instead of creating");
+
+            // Update existing organisation with onboarding data
+            organisation = await prisma.organisation.update({
+                where: { id: existingUser.organisation.id },
+                data: {
+                    phone,
+                    address,
+                    city,
+                    state,
+                    country,
+                    postalCode,
+                    taxNumber,
+                    isTrial: plan === 'FREE_TRIAL',
+                    trialStartDate: plan === 'FREE_TRIAL' ? new Date() : null,
+                    trialEndDate: plan === 'FREE_TRIAL' ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) : null,
+                }
+            });
+        } else {
+            // Create new organisation
+            organisation = await prisma.organisation.create({
+                data: {
+                    name: organizationName,
+                    ownerName: `${user.firstName} ${user.lastName}`.trim(),
+                    email: email || user.emailAddresses[0]?.emailAddress,
+                    phone,
+                    address,
+                    city,
+                    state,
+                    country,
+                    postalCode,
+                    taxNumber,
+                    isTrial: plan === 'FREE_TRIAL',
+                    trialStartDate: plan === 'FREE_TRIAL' ? new Date() : null,
+                    trialEndDate: plan === 'FREE_TRIAL' ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) : null,
+                    isApproved: true,
+                }
+            });
         }
 
         // Fetch Plan from DB
@@ -56,11 +102,8 @@ export async function POST(req: Request) {
             where: { name: plan }
         });
 
-        // If plan doesn't exist in DB, we might need to create it or error out.
-        // For now, let's assume plans are seeded or we create a default one if missing (for dev).
         let selectedPlan = dbPlan;
         if (!selectedPlan) {
-            // Fallback or error. For safety in dev, let's error if not found, or create if it's FREE_TRIAL
             if (plan === 'FREE_TRIAL') {
                 selectedPlan = await prisma.plan.create({
                     data: {
@@ -76,39 +119,32 @@ export async function POST(req: Request) {
             }
         }
 
-        // Create organisation
-        const organisation = await prisma.organisation.create({
-            data: {
-                name: organizationName,
-                ownerName: `${user.firstName} ${user.lastName}`.trim(),
-                email: email || user.emailAddresses[0]?.emailAddress,
-                phone,
-                address,
-                city,
-                state,
-                country,
-                postalCode,
-                taxNumber,
-                isTrial: plan === 'FREE_TRIAL',
-                trialStartDate: plan === 'FREE_TRIAL' ? new Date() : null,
-                trialEndDate: plan === 'FREE_TRIAL' ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) : null,
-                isApproved: true, // Auto-approve for now or based on policy
+        // Check if subscription already exists
+        const existingSubscription = await prisma.subscription.findFirst({
+            where: {
+                organisationId: organisation.id,
+                status: 'ACTIVE'
             }
         });
 
-        // Create Subscription
-        const subscription = await prisma.subscription.create({
-            data: {
-                organisationId: organisation.id,
-                planId: selectedPlan.id,
-                startDate: new Date(),
-                status: 'ACTIVE',
-                autoRenew: true,
-                isTrial: plan === 'FREE_TRIAL',
-                trialStartDate: plan === 'FREE_TRIAL' ? new Date() : null,
-                trialEndDate: plan === 'FREE_TRIAL' ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) : null,
-            }
-        });
+        if (!existingSubscription) {
+            // Create Subscription only if one doesn't exist
+            subscription = await prisma.subscription.create({
+                data: {
+                    organisationId: organisation.id,
+                    planId: selectedPlan.id,
+                    startDate: new Date(),
+                    status: 'ACTIVE',
+                    autoRenew: true,
+                    isTrial: plan === 'FREE_TRIAL',
+                    trialStartDate: plan === 'FREE_TRIAL' ? new Date() : null,
+                    trialEndDate: plan === 'FREE_TRIAL' ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) : null,
+                }
+            });
+        } else {
+            subscription = existingSubscription;
+            console.log("✅ Subscription already exists, using existing one");
+        }
 
         const updatedUser = await prisma.user.upsert({
             where: { clerkId: user.id },
@@ -150,10 +186,10 @@ export async function POST(req: Request) {
                     paidDate: new Date(),
                     status: "PAID",
                     amount: selectedPlan.price,
-                    taxAmount: 0, // Calculate tax if needed
+                    taxAmount: 0,
                     discountAmount: 0,
                     balance: 0,
-                    currency: "INR", // Or from plan
+                    currency: "INR",
                     invoiceNumber: `INV-${Date.now()}`,
                     paymentMethod: "RAZORPAY",
                     description: `Subscription for ${selectedPlan.name}`,
@@ -172,16 +208,19 @@ export async function POST(req: Request) {
             });
         }
 
-        // Log event (using LogEvents instead of Activity)
+        // Log event
         await prisma.logEvents.create({
             data: {
-                message: `Organisation created: ${organisation.name}`,
+                message: isUpdating
+                    ? `Organisation updated: ${organisation.name}`
+                    : `Organisation created: ${organisation.name}`,
                 level: 'Info',
                 timeStamp: new Date(),
                 properties: JSON.stringify({
                     userId: updatedUser.id,
                     organisationId: organisation.id,
-                    plan: selectedPlan.name
+                    plan: selectedPlan.name,
+                    isUpdating
                 })
             }
         });
@@ -190,6 +229,7 @@ export async function POST(req: Request) {
             success: true,
             organisation,
             user: updatedUser,
+            isUpdating,
         });
     } catch (error) {
         console.error("=== ERROR CREATING ORGANISATION ===");

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { SignUp } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Header } from "@/components/Header";
+import { Zap, Loader2 } from "lucide-react";
 
 export default function Page() {
   const { client } = useClerk();
@@ -68,13 +70,14 @@ export default function Page() {
   };
 
   return (
+
     <div className="min-h-screen flex flex-col">
       {/* Header */}
       <Header />
 
       {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center bg-background p-4">
-        <div className="w-full max-w-2xl">
+      <div className="flex-1 flex items-center justify-center bg-background p-4" >
+        <div className="w-full max-w-2xl" style={{ border: "1px solid #e5e7eb", padding: "10px", borderRadius: "20px" }}>
           <Card className="shadow-lg border-0 sm:border">
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl font-bold text-center">Start your Free Trial</CardTitle>
@@ -84,6 +87,28 @@ export default function Page() {
             </CardHeader>
             <CardContent>
               <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex justify-between">
+                  <div className="space-y-2">
+                    <Label htmlFor="organisationName">Organisation Name</Label>
+                    <Input
+                      id="organisationName"
+                      name="organisationName"
+                      placeholder="Acme Corp"
+                      value={form.organisationName}
+                      onChange={handleChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Owner Name</Label>
+                    <Input
+                      id="name"
+                      name="name"
+                      placeholder="John Doe"
+                      value={form.name}
+                      onChange={handleChange}
+                    />
+                  </div>
+                </div>
                 <div className="flex justify-between">
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
@@ -97,42 +122,6 @@ export default function Page() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      placeholder="Create a password"
-                      value={form.password}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-between">
-                  <div className="space-y-2">
-                    <Label htmlFor="organisationName">Business Name</Label>
-                    <Input
-                      id="organisationName"
-                      name="organisationName"
-                      placeholder="Acme Corp"
-                      value={form.organisationName}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Name</Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      placeholder="John Doe"
-                      value={form.name}
-                      onChange={handleChange}
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-between">
-                  <div className="space-y-2">
                     <Label htmlFor="mobile">Mobile</Label>
                     <Input
                       id="mobile"
@@ -142,6 +131,10 @@ export default function Page() {
                       onChange={handleChange}
                     />
                   </div>
+                </div>
+
+                <div className="flex justify-between">
+
                   <div className="space-y-2">
                     <Label htmlFor="address">Address</Label>
                     <Input
@@ -150,6 +143,18 @@ export default function Page() {
                       placeholder="123 Main St"
                       value={form.address}
                       onChange={handleChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      placeholder="Create a password"
+                      value={form.password}
+                      onChange={handleChange}
+                      required
                     />
                   </div>
                 </div>
@@ -227,7 +232,14 @@ export default function Page() {
                   className="w-full md:col-span-2 mt-2"
                   disabled={loading}
                 >
-                  {loading ? "Submitting..." : "Create Account & Submit Enquiry"}
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Submitting...
+                    </span>
+                  ) : (
+                    "Create Account & Submit Enquiry"
+                  )}
                 </Button>
                 <div id="clerk-captcha" />
               </form>
@@ -236,7 +248,64 @@ export default function Page() {
         </div>
       </div>
 
+      <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-8 mb-8">
+            {/* Brand Section */}
+            <div className="text-center md:text-left">
+              <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
+                <Zap className="size-6 text-primary" />
+                <span className="font-semibold text-foreground">Campzeo</span>
+              </div>
+              <p className="text-muted-foreground text-sm">
+                Streamline your social media management with powerful tools and insights.
+              </p>
+            </div>
 
+            {/* Quick Links */}
+            <div className="text-center">
+              <h3 className="font-semibold text-foreground mb-3">Quick Links</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>
+                  <a href="#features" className="hover:text-foreground transition-colors">
+                    Features
+                  </a>
+                </li>
+                <li>
+                  <a href="#pricing" className="hover:text-foreground transition-colors">
+                    Pricing
+                  </a>
+                </li>
+                <li>
+                  <Link href="/privacy-policy" className="hover:text-foreground transition-colors">
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/terms-of-service" className="hover:text-foreground transition-colors">
+                    Terms of Service
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Contact */}
+            <div className="text-center md:text-right">
+              <h3 className="font-semibold text-foreground mb-3">Contact</h3>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>support@campzeo.com</li>
+                <li>privacy@campzeo.com</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Bottom Bar */}
+          <div className="pt-8 border-t text-center text-muted-foreground text-sm">
+            <p>© 2025 Campzeo. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
+
   );
 }

@@ -47,7 +47,7 @@ import {
 } from "@/components/ui/select";
 import { SecretInput } from "@/components/ui/secret-input";
 import { useState, useEffect, useMemo } from "react";
-import { useUser , UserButton } from "@clerk/nextjs";
+import { useUser, UserButton } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -313,9 +313,9 @@ export default function AdminDashboard() {
     const hasUser = org.users && org.users.length > 0;
 
     if (hasUser) {
-        // User exists, just approve directly
-        handleApproveOrg(org.id);
-        return;
+      // User exists, just approve directly
+      handleApproveOrg(org.id);
+      return;
     }
 
     // No user exists, show modal to create one
@@ -332,17 +332,17 @@ export default function AdminDashboard() {
       lastName,
       username,
       email,
-      password: "" 
+      password: ""
     });
     setApprovalModalOpen(true);
   };
 
   const submitApproval = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!approvalData.firstName || !approvalData.email || !approvalData.password) {
-        toast.error("Please fill in all required fields");
-        return;
+      toast.error("Please fill in all required fields");
+      return;
     }
 
     try {
@@ -351,15 +351,15 @@ export default function AdminDashboard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            firstName: approvalData.firstName,
-            lastName: approvalData.lastName,
-            username: approvalData.username,
-            email: approvalData.email,
-            password: approvalData.password
+          firstName: approvalData.firstName,
+          lastName: approvalData.lastName,
+          username: approvalData.username,
+          email: approvalData.email,
+          password: approvalData.password
         })
       });
       const data = await res.json();
-      
+
       toast.dismiss(); // Dismiss loading toast
 
       if (res.ok && data.isSuccess) {
@@ -447,12 +447,12 @@ export default function AdminDashboard() {
       if (res.ok && data.isSuccess) {
         toast.success("Configuration updated");
         setPlatformConfigs(prev => {
-            const existing = prev.find(p => p.key === key);
-            if (existing) {
-                return prev.map(p => p.key === key ? { ...p, value } : p);
-            } else {
-                return [...prev, { key, value, platform }]; // Optimistic update might need more fields but this is fine for now
-            }
+          const existing = prev.find(p => p.key === key);
+          if (existing) {
+            return prev.map(p => p.key === key ? { ...p, value } : p);
+          } else {
+            return [...prev, { key, value, platform }]; // Optimistic update might need more fields but this is fine for now
+          }
         });
       } else {
         throw new Error(data.message);
@@ -499,6 +499,9 @@ export default function AdminDashboard() {
 
       const data = await res.json();
 
+      // Dismiss the loading toast first
+      toast.dismiss();
+
       if (!res.ok || !data.isSuccess) {
         throw new Error(data.error || data.details || "Failed to convert enquiry");
       }
@@ -512,6 +515,7 @@ export default function AdminDashboard() {
       fetchOrganisations(); // Refresh organisations list
     } catch (error: any) {
       console.error("Error converting enquiry to organisation:", error);
+      toast.dismiss(); // Dismiss loading toast on error too
       toast.error(error.message || "Failed to create organisation");
     }
   }
@@ -704,53 +708,53 @@ export default function AdminDashboard() {
                       <form onSubmit={handleCreateOrg} className=" space-y-8">
                         <div className="  gap-4">
                           <div className="row flex space-y-4 ">
-                          <div className="space-y-2 "  style={{marginInline:"10px"}}>
-                            <Label htmlFor="orgName">Organisation Name*</Label>
-                            <Input id="orgName"  className="w-1/2 border border-red-500 "  value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required placeholder="e.g. Mobile team" />
-                          </div>
-                          
-                          <div className="space-y-2"  style={{marginInline:"10px"}}>
-                            <Label htmlFor="ownerName">Owner Name*</Label>
-                            <Input id="ownerName"  className="w-1/2 border border-red-500 "  value={formData.ownerName} onChange={(e) => setFormData({...formData, ownerName: e.target.value})} required placeholder="e.g. John Doe" />
-                          </div>
-                          <div className="space-y-2"  style={{marginInline:"10px"}}>
-                            <Label htmlFor="phone">Phone*</Label>
-                            <Input id="phone"   className="w-1/2 border border-red-500 " value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} required placeholder="e.g. 7807271261" />
-                          </div>
-                          <div className="space-y-2 "  style={{marginInline:"10px"}}>
-                            <Label htmlFor="email">Email address*</Label>
-                            <Input id="email"  className="w-1/2 border border-red-500 "  type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} required placeholder="e.g. contact@example.com" />
-                          </div>
-                          <div className="space-y-2 "  style={{marginInline:"10px"}}>
-                            <Label htmlFor="taxNumber">Tax Number*</Label>
-                            <Input id="taxNumber"  className="w-1/2 border border-red-500 "  value={formData.taxNumber} onChange={(e) => setFormData({...formData, taxNumber: e.target.value})} required placeholder="e.g. TEMP123" />
-                          </div>
+                            <div className="space-y-2 " style={{ marginInline: "10px" }}>
+                              <Label htmlFor="orgName">Organisation Name*</Label>
+                              <Input id="orgName" className="w-1/2 border border-red-500 " value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required placeholder="e.g. Mobile team" />
+                            </div>
+
+                            <div className="space-y-2" style={{ marginInline: "10px" }}>
+                              <Label htmlFor="ownerName">Owner Name*</Label>
+                              <Input id="ownerName" className="w-1/2 border border-red-500 " value={formData.ownerName} onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })} required placeholder="e.g. John Doe" />
+                            </div>
+                            <div className="space-y-2" style={{ marginInline: "10px" }}>
+                              <Label htmlFor="phone">Phone*</Label>
+                              <Input id="phone" className="w-1/2 border border-red-500 " value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} required placeholder="e.g. 7807271261" />
+                            </div>
+                            <div className="space-y-2 " style={{ marginInline: "10px" }}>
+                              <Label htmlFor="email">Email address*</Label>
+                              <Input id="email" className="w-1/2 border border-red-500 " type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required placeholder="e.g. contact@example.com" />
+                            </div>
+                            <div className="space-y-2 " style={{ marginInline: "10px" }}>
+                              <Label htmlFor="taxNumber">Tax Number*</Label>
+                              <Input id="taxNumber" className="w-1/2 border border-red-500 " value={formData.taxNumber} onChange={(e) => setFormData({ ...formData, taxNumber: e.target.value })} required placeholder="e.g. TEMP123" />
+                            </div>
                           </div>
 
-                              <div className="row flex space-y-4">
-                          
-                          <div className="space-y-2 "  style={{marginInline:"10px"}}>
-                            <Label htmlFor="address">Address*</Label>
-                            <Input id="address"  className="w-1/2 border border-red-500 "  value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} required placeholder="e.g. Village Karehari" />
-                          </div>
-                          
-                          
-                              <div className="space-y-2 "  style={{marginInline:"10px"}}>
-                            <Label htmlFor="postalCode">Postal Code*</Label>
-                            <Input id="postalCode"  className="w-1/2 border border-red-500 "  value={formData.postalCode} onChange={(e) => setFormData({...formData, postalCode: e.target.value})} required placeholder="e.g. 175021" />
-                          </div>
-                          <div className="space-y-2 "  style={{marginInline:"10px"}}>
-                            <Label htmlFor="city">City*</Label>
-                            <Input id="city"  className="w-1/2 border border-red-500 "  value={formData.city} onChange={(e) => setFormData({...formData, city: e.target.value})} required placeholder="e.g. Mandi" />
-                          </div>
-                          <div className="space-y-2 "  style={{marginInline:"10px"}}>
-                            <Label htmlFor="state">State*</Label>
-                            <Input id="state"  className="w-1/2 border border-red-500 "  value={formData.state} onChange={(e) => setFormData({...formData, state: e.target.value})} required placeholder="e.g. Himachal Pradesh" />
-                          </div>
-                          <div className="space-y-2 "  style={{marginInline:"10px"}}>
-                            <Label htmlFor="country">Country*</Label>
-                            <Input id="country"  className="w-1/2 border border-red-500 "  value={formData.country} onChange={(e) => setFormData({...formData, country: e.target.value})} required placeholder="e.g. India" />
-                          </div>
+                          <div className="row flex space-y-4">
+
+                            <div className="space-y-2 " style={{ marginInline: "10px" }}>
+                              <Label htmlFor="address">Address*</Label>
+                              <Input id="address" className="w-1/2 border border-red-500 " value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} required placeholder="e.g. Village Karehari" />
+                            </div>
+
+
+                            <div className="space-y-2 " style={{ marginInline: "10px" }}>
+                              <Label htmlFor="postalCode">Postal Code*</Label>
+                              <Input id="postalCode" className="w-1/2 border border-red-500 " value={formData.postalCode} onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })} required placeholder="e.g. 175021" />
+                            </div>
+                            <div className="space-y-2 " style={{ marginInline: "10px" }}>
+                              <Label htmlFor="city">City*</Label>
+                              <Input id="city" className="w-1/2 border border-red-500 " value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} required placeholder="e.g. Mandi" />
+                            </div>
+                            <div className="space-y-2 " style={{ marginInline: "10px" }}>
+                              <Label htmlFor="state">State*</Label>
+                              <Input id="state" className="w-1/2 border border-red-500 " value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })} required placeholder="e.g. Himachal Pradesh" />
+                            </div>
+                            <div className="space-y-2 " style={{ marginInline: "10px" }}>
+                              <Label htmlFor="country">Country*</Label>
+                              <Input id="country" className="w-1/2 border border-red-500 " value={formData.country} onChange={(e) => setFormData({ ...formData, country: e.target.value })} required placeholder="e.g. India" />
+                            </div>
                           </div>
                           <div className="flex items-center ">
                             <Switch id="free-trial" checked={formData.isFreeTrial} onCheckedChange={(checked) => setFormData({ ...formData, isFreeTrial: checked })} />
@@ -885,79 +889,79 @@ export default function AdminDashboard() {
                       </Table>
 
 
-              {/* Approval Modal */}
-              <Dialog open={approvalModalOpen} onOpenChange={setApprovalModalOpen}>
-                <DialogContent className="w-1/2">
-                  <DialogHeader>
-                    <DialogTitle>Approve Organisation</DialogTitle>
-                    <DialogDescription>
-                      Create an admin user for this organisation to grant them access.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={submitApproval} className="space-y-4 py-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="firstName">First Name</Label>
-                            <Input 
-                                id="firstName" 
-                                value={approvalData.firstName} 
-                                onChange={(e) => setApprovalData({...approvalData, firstName: e.target.value})}
-                                required 
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="lastName">Last Name</Label>
-                            <Input 
-                                id="lastName" 
-                                value={approvalData.lastName} 
-                                onChange={(e) => setApprovalData({...approvalData, lastName: e.target.value})}
-                            />
-                        </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                        <Label htmlFor="username">Username</Label>
-                        <Input 
-                            id="username" 
-                            value={approvalData.username} 
-                            onChange={(e) => setApprovalData({...approvalData, username: e.target.value})}
-                            required 
-                        />
-                    </div>
+                      {/* Approval Modal */}
+                      <Dialog open={approvalModalOpen} onOpenChange={setApprovalModalOpen}>
+                        <DialogContent className="w-1/2">
+                          <DialogHeader>
+                            <DialogTitle>Approve Organisation</DialogTitle>
+                            <DialogDescription>
+                              Create an admin user for this organisation to grant them access.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <form onSubmit={submitApproval} className="space-y-4 py-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="firstName">First Name</Label>
+                                <Input
+                                  id="firstName"
+                                  value={approvalData.firstName}
+                                  onChange={(e) => setApprovalData({ ...approvalData, firstName: e.target.value })}
+                                  required
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="lastName">Last Name</Label>
+                                <Input
+                                  id="lastName"
+                                  value={approvalData.lastName}
+                                  onChange={(e) => setApprovalData({ ...approvalData, lastName: e.target.value })}
+                                />
+                              </div>
+                            </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input 
-                            id="email" 
-                            type="email"
-                            value={approvalData.email} 
-                            onChange={(e) => setApprovalData({...approvalData, email: e.target.value})}
-                            required 
-                        />
-                    </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="username">Username</Label>
+                              <Input
+                                id="username"
+                                value={approvalData.username}
+                                onChange={(e) => setApprovalData({ ...approvalData, username: e.target.value })}
+                                required
+                              />
+                            </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="password">Password</Label>
-                        <Input 
-                            id="password" 
-                            type="text" // Visible so admin can copy/see it
-                            value={approvalData.password} 
-                            onChange={(e) => setApprovalData({...approvalData, password: e.target.value})}
-                            placeholder="Enter password"
-                            required 
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            Enter a secure password for the user.
-                        </p>
-                    </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="email">Email</Label>
+                              <Input
+                                id="email"
+                                type="email"
+                                value={approvalData.email}
+                                onChange={(e) => setApprovalData({ ...approvalData, email: e.target.value })}
+                                required
+                              />
+                            </div>
 
-                    <div className="flex justify-end gap-3 pt-4">
-                        <Button type="button" variant="outline" onClick={() => setApprovalModalOpen(false)}>Cancel</Button>
-                        <Button type="submit">Approve & Create User</Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
+                            <div className="space-y-2">
+                              <Label htmlFor="password">Password</Label>
+                              <Input
+                                id="password"
+                                type="text" // Visible so admin can copy/see it
+                                value={approvalData.password}
+                                onChange={(e) => setApprovalData({ ...approvalData, password: e.target.value })}
+                                placeholder="Enter password"
+                                required
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Enter a secure password for the user.
+                              </p>
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-4">
+                              <Button type="button" variant="outline" onClick={() => setApprovalModalOpen(false)}>Cancel</Button>
+                              <Button type="submit">Approve & Create User</Button>
+                            </div>
+                          </form>
+                        </DialogContent>
+                      </Dialog>
 
                       {/* Pagination Controls */}
                       <div className="flex items-center justify-between px-4 py-4 border-t  space-y-6">
@@ -1181,144 +1185,144 @@ export default function AdminDashboard() {
               </Card>
             </TabsContent>
 
- {/* 3. Platform Configuration */}
- {/* 3. Platform Configuration */}
- <TabsContent value="platform" className="m-0 focus-visible:outline-none">
-   <div className="mb-6">
-     <h2 className="text-2xl font-bold tracking-tight text-slate-900">Platform Configuration</h2>
-     <p className="text-muted-foreground">Manage global API keys and secrets.</p>
-   </div>
-   <Card className="border shadow-sm">
-     <CardContent className="p-6">
-        {!selectedPlatform ? (
-            <div className="grid grid-cols-4 md:grid-cols-4 lg:grid-cols-4 gap-4">
-                {[
-                  { name: "Facebook", platform: "FACEBOOK", icon: Facebook },
-                  { name: "Instagram", platform: "INSTAGRAM", icon: Instagram },
-                  { name: "LinkedIn", platform: "LINKEDIN", icon: Linkedin },
-                  { name: "YouTube", platform: "YOUTUBE", icon: Youtube },
-                  { name: "Pinterest", platform: "PINTEREST", icon: Settings },
-                  { name: "WhatsApp", platform: "WHATSAPP", icon: MessageSquare },
-                  { name: "SMS", platform: "SMS", icon: Smartphone },
-                  { name: "Email", platform: "EMAIL", icon: Mail }
-                ].map((p) => (
-                    <Button 
-                        key={p.platform} 
-                        variant="outline" 
-                        className="h-24 flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5"
-                        onClick={() => setSelectedPlatform(p.platform)}
-                    >
-                        <p.icon className="size-8 text-muted-foreground" />
-                        <span className="font-semibold">{p.name}</span>
-                    </Button>
-                ))}
-            </div>
-        ) : (
-            <div className="space-y-6">
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedPlatform(null)}>
-                        <ArrowLeft className="mr-2 size-4" /> Back
-                    </Button>
-                    <h3 className="text-lg font-semibold">
-                        {[
-                          { name: "Facebook", platform: "FACEBOOK" },
-                          { name: "Instagram", platform: "INSTAGRAM" },
-                          { name: "LinkedIn", platform: "LINKEDIN" },
-                          { name: "YouTube", platform: "YOUTUBE" },
-                          { name: "Pinterest", platform: "PINTEREST" },
-                          { name: "WhatsApp", platform: "WHATSAPP" },
-                          { name: "SMS", platform: "SMS" },
-                          { name: "Email", platform: "EMAIL" }
-                        ].find(p => p.platform === selectedPlatform)?.name}
-                    </h3>
-                </div>
-                
-                <div className="grid gap-6 max-w-2xl">
-                    {[
-                      {
-                        platform: "FACEBOOK",
-                        keys: [
-                            { key: "FACEBOOK_CLIENT_ID", label: "App ID" },
-                            { key: "FACEBOOK_CLIENT_SECRET", label: "App Secret" }
-                        ]
-                      },
-                      {
-                        platform: "INSTAGRAM",
-                        keys: [
-                            { key: "INSTAGRAM_CLIENT_ID", label: "App ID" },
-                            { key: "INSTAGRAM_CLIENT_SECRET", label: "App Secret" }
-                        ]
-                      },
-                      {
-                        platform: "LINKEDIN",
-                        keys: [
-                            { key: "LINKEDIN_CLIENT_ID", label: "Client ID" },
-                            { key: "LINKEDIN_CLIENT_SECRET", label: "Client Secret" }
-                        ]
-                      },
-                      {
-                        platform: "YOUTUBE",
-                        keys: [
-                            { key: "YOUTUBE_CLIENT_ID", label: "Client ID" },
-                            { key: "YOUTUBE_CLIENT_SECRET", label: "Client Secret" }
-                        ]
-                      },
-                      {
-                        platform: "PINTEREST",
-                        keys: [
-                            { key: "PINTEREST_CLIENT_ID", label: "App ID" },
-                            { key: "PINTEREST_CLIENT_SECRET", label: "Client Secret" },
-                            { key: "PINTEREST_AUTH_TOKEN", label: "Auth Token" }
-                        ]
-                      },
-                      {
-                        platform: "WHATSAPP",
-                        keys: [
-                            { key: "WHATSAPP_ACCOUNT_SID", label: "Account SID" },
-                            { key: "WHATSAPP_AUTH_TOKEN", label: "Auth Token" },
-                            { key: "WHATSAPP_NUMBER", label: "WhatsApp Number" }
-                        ]
-                      },
-                      {
-                        platform: "SMS",
-                        keys: [
-                            { key: "SMS_ACCOUNT_SID", label: "Account SID" },
-                            { key: "SMS_AUTH_TOKEN", label: "Auth Token" },
-                            { key: "SMS_NUMBER", label: "Twilio Number" }
-                        ]
-                      },
-                      {
-                        platform: "EMAIL",
-                        keys: [
-                            { key: "MAILGUN_API_KEY", label: "Mailgun API Key" },
-                            { key: "MAILGUN_DOMAIN", label: "Mailgun Domain" },
-                            { key: "MAILGUN_FROM_EMAIL", label: "From Email" }
-                        ]
-                      },
+            {/* 3. Platform Configuration */}
+            {/* 3. Platform Configuration */}
+            <TabsContent value="platform" className="m-0 focus-visible:outline-none">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold tracking-tight text-slate-900">Platform Configuration</h2>
+                <p className="text-muted-foreground">Manage global API keys and secrets.</p>
+              </div>
+              <Card className="border shadow-sm">
+                <CardContent className="p-6">
+                  {!selectedPlatform ? (
+                    <div className="grid grid-cols-4 md:grid-cols-4 lg:grid-cols-4 gap-4">
+                      {[
+                        { name: "Facebook", platform: "FACEBOOK", icon: Facebook },
+                        { name: "Instagram", platform: "INSTAGRAM", icon: Instagram },
+                        { name: "LinkedIn", platform: "LINKEDIN", icon: Linkedin },
+                        { name: "YouTube", platform: "YOUTUBE", icon: Youtube },
+                        { name: "Pinterest", platform: "PINTEREST", icon: Settings },
+                        { name: "WhatsApp", platform: "WHATSAPP", icon: MessageSquare },
+                        { name: "SMS", platform: "SMS", icon: Smartphone },
+                        { name: "Email", platform: "EMAIL", icon: Mail }
+                      ].map((p) => (
+                        <Button
+                          key={p.platform}
+                          variant="outline"
+                          className="h-24 flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5"
+                          onClick={() => setSelectedPlatform(p.platform)}
+                        >
+                          <p.icon className="size-8 text-muted-foreground" />
+                          <span className="font-semibold">{p.name}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-4">
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedPlatform(null)}>
+                          <ArrowLeft className="mr-2 size-4" /> Back
+                        </Button>
+                        <h3 className="text-lg font-semibold">
+                          {[
+                            { name: "Facebook", platform: "FACEBOOK" },
+                            { name: "Instagram", platform: "INSTAGRAM" },
+                            { name: "LinkedIn", platform: "LINKEDIN" },
+                            { name: "YouTube", platform: "YOUTUBE" },
+                            { name: "Pinterest", platform: "PINTEREST" },
+                            { name: "WhatsApp", platform: "WHATSAPP" },
+                            { name: "SMS", platform: "SMS" },
+                            { name: "Email", platform: "EMAIL" }
+                          ].find(p => p.platform === selectedPlatform)?.name}
+                        </h3>
+                      </div>
 
-                    ].find(p => p.platform === selectedPlatform)?.keys.map((item) => {
-                        const config = platformConfigs.find(c => c.key === item.key);
-                        return (
+                      <div className="grid gap-6 max-w-2xl">
+                        {[
+                          {
+                            platform: "FACEBOOK",
+                            keys: [
+                              { key: "FACEBOOK_CLIENT_ID", label: "App ID" },
+                              { key: "FACEBOOK_CLIENT_SECRET", label: "App Secret" }
+                            ]
+                          },
+                          {
+                            platform: "INSTAGRAM",
+                            keys: [
+                              { key: "INSTAGRAM_CLIENT_ID", label: "App ID" },
+                              { key: "INSTAGRAM_CLIENT_SECRET", label: "App Secret" }
+                            ]
+                          },
+                          {
+                            platform: "LINKEDIN",
+                            keys: [
+                              { key: "LINKEDIN_CLIENT_ID", label: "Client ID" },
+                              { key: "LINKEDIN_CLIENT_SECRET", label: "Client Secret" }
+                            ]
+                          },
+                          {
+                            platform: "YOUTUBE",
+                            keys: [
+                              { key: "YOUTUBE_CLIENT_ID", label: "Client ID" },
+                              { key: "YOUTUBE_CLIENT_SECRET", label: "Client Secret" }
+                            ]
+                          },
+                          {
+                            platform: "PINTEREST",
+                            keys: [
+                              { key: "PINTEREST_CLIENT_ID", label: "App ID" },
+                              { key: "PINTEREST_CLIENT_SECRET", label: "Client Secret" },
+                              { key: "PINTEREST_AUTH_TOKEN", label: "Auth Token" }
+                            ]
+                          },
+                          {
+                            platform: "WHATSAPP",
+                            keys: [
+                              { key: "WHATSAPP_ACCOUNT_SID", label: "Account SID" },
+                              { key: "WHATSAPP_AUTH_TOKEN", label: "Auth Token" },
+                              { key: "WHATSAPP_NUMBER", label: "WhatsApp Number" }
+                            ]
+                          },
+                          {
+                            platform: "SMS",
+                            keys: [
+                              { key: "SMS_ACCOUNT_SID", label: "Account SID" },
+                              { key: "SMS_AUTH_TOKEN", label: "Auth Token" },
+                              { key: "SMS_NUMBER", label: "Twilio Number" }
+                            ]
+                          },
+                          {
+                            platform: "EMAIL",
+                            keys: [
+                              { key: "MAILGUN_API_KEY", label: "Mailgun API Key" },
+                              { key: "MAILGUN_DOMAIN", label: "Mailgun Domain" },
+                              { key: "MAILGUN_FROM_EMAIL", label: "From Email" }
+                            ]
+                          },
+
+                        ].find(p => p.platform === selectedPlatform)?.keys.map((item) => {
+                          const config = platformConfigs.find(c => c.key === item.key);
+                          return (
                             <div key={item.key} className="grid gap-2">
-                                <Label htmlFor={`input-${item.key}`}>{item.label}</Label>
-                                <div className="relative">
-                                    <SecretInput 
-                                        defaultValue={config?.value || ''}
-                                        placeholder={`Enter ${item.label}`}
-                                      
-                                        id={`input-${item.key}`}
-                                        onBlur={(e) => handleUpdateConfig(item.key, e.target.value, selectedPlatform)}
-                                    />
-                                </div>
+                              <Label htmlFor={`input-${item.key}`}>{item.label}</Label>
+                              <div className="relative">
+                                <SecretInput
+                                  defaultValue={config?.value || ''}
+                                  placeholder={`Enter ${item.label}`}
+
+                                  id={`input-${item.key}`}
+                                  onBlur={(e) => handleUpdateConfig(item.key, e.target.value, selectedPlatform)}
+                                />
+                              </div>
                             </div>
-                        );
-                    })}
-                </div>
-            </div>
-        )}
-     </CardContent>
-   </Card>
- </TabsContent>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
             {/* 4. System Administration */}
             <TabsContent value="system" className="m-0 space-y-4 focus-visible:outline-none">

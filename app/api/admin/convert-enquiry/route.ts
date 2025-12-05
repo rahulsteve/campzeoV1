@@ -124,7 +124,7 @@ export async function POST(req: Request) {
             data: {
                 name: enquiry.organisationName || enquiry.name,
                 ownerName: enquiry.name,
-                phone: enquiry.phone || undefined,
+                phone: enquiry.mobile || undefined,
                 email: enquiry.email,
                 taxNumber: enquiry.taxNumber || undefined,
                 address: enquiry.address || undefined,

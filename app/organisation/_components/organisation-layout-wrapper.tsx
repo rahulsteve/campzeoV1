@@ -28,6 +28,7 @@ const navItems = [
   { href: "/organisation/templates", label: "Templates", icon: FileStack },
   { href: "/organisation/settings", label: "Accounts", icon: UserCircle },
   { href: "/organisation/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/organisation/billing", label: "Billing", icon: BarChart3 },
 ];
 
 // Sidebar Navigation Component
@@ -58,11 +59,11 @@ const SidebarNav = ({ onItemClick }: { onItemClick?: () => void }) => {
   );
 };
 
-export function OrganisationLayoutWrapper({ 
-  children, 
-  isImpersonating 
-}: { 
-  children: React.ReactNode; 
+export function OrganisationLayoutWrapper({
+  children,
+  isImpersonating
+}: {
+  children: React.ReactNode;
   isImpersonating?: boolean;
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -79,8 +80,8 @@ export function OrganisationLayoutWrapper({
       {isImpersonating && (
         <div className="flex-shrink-0 bg-amber-100 text-amber-900 px-4 py-1.5 text-xs font-medium text-center border-b border-amber-200 flex items-center justify-center gap-2">
           <span>You are impersonating an organisation.</span>
-          <button 
-            onClick={handleExitImpersonation} 
+          <button
+            onClick={handleExitImpersonation}
             className="underline hover:text-amber-700 font-bold"
           >
             Back to Admin
