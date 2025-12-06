@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getImpersonatedOrganisationId } from "@/lib/admin-impersonation";
 
 export async function GET() {
     try {
@@ -15,14 +16,20 @@ export async function GET() {
             include: { organisation: true },
         });
 
-        if (!dbUser || !dbUser.organisationId) {
-            return NextResponse.json(
-                { error: "User not found or no organisation" },
-                { status: 404 }
-            );
-        }
+        // Handle Admin Impersonation
+        let organisation = dbUser?.organisation;
 
-        const organisation = dbUser.organisation;
+        if (dbUser?.role === 'ADMIN_USER') {
+            const impersonatedId = await getImpersonatedOrganisationId();
+            if (impersonatedId) {
+                const impersonatedOrg = await prisma.organisation.findUnique({
+                    where: { id: impersonatedId }
+                });
+                if (impersonatedOrg) {
+                    organisation = impersonatedOrg;
+                }
+            }
+        }
 
         if (!organisation) {
             return NextResponse.json(

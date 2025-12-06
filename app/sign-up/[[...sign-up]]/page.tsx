@@ -71,13 +71,13 @@ export default function Page() {
 
   return (
 
-    <div className="min-h-screen flex flex-col">
-      {/* Header */}
+    <div className="flex flex-col">
       <Header />
+      {/* Header */}
 
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center bg-background p-4" >
-        <div className="w-full max-w-2xl" style={{ border: "1px solid #e5e7eb", padding: "10px", borderRadius: "20px" }}>
+        <div className="w-full max-w-2xl" style={{ border: "1px solid #e5e7eb", padding: "10px", borderRadius: "20px"}}>
           <Card className="shadow-lg border-0 sm:border">
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl font-bold text-center">Start your Free Trial</CardTitle>
@@ -87,7 +87,7 @@ export default function Page() {
             </CardHeader>
             <CardContent>
               <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex justify-between">
+                <div className="flex justify-around" style={{justifyContent:"space-around"}} >
                   <div className="space-y-2">
                     <Label htmlFor="organisationName">Organisation Name</Label>
                     <Input
@@ -109,7 +109,7 @@ export default function Page() {
                     />
                   </div>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-around" style={{justifyContent:"space-around"}} >
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
                     <Input
@@ -133,7 +133,7 @@ export default function Page() {
                   </div>
                 </div>
 
-                <div className="flex justify-between">
+                <div className="flex justify-around" style={{justifyContent:"space-around"}} >
 
                   <div className="space-y-2">
                     <Label htmlFor="address">Address</Label>
@@ -158,7 +158,7 @@ export default function Page() {
                     />
                   </div>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-around" style={{justifyContent:"space-around"}} >
                   <div className="space-y-2">
                     <Label htmlFor="city">City</Label>
                     <Input
@@ -180,7 +180,7 @@ export default function Page() {
                     />
                   </div>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-around" style={{justifyContent:"space-around"}} >
                   <div className="space-y-2">
                     <Label htmlFor="country">Country</Label>
                     <Input
@@ -202,7 +202,7 @@ export default function Page() {
                     />
                   </div>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between" style={{marginInline:"40px"}}  >
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="taxNumber">GST / Tax Number</Label>
                     <Input
@@ -215,7 +215,7 @@ export default function Page() {
                   </div>
 
                 </div>
-                <div className="space-y-2 md:col-span-2">
+                <div className="space-y-2 md:col-span-2" style={{marginInline:"40px"}} >
                   <Label htmlFor="enquiryText">Enquiry</Label>
                   <Textarea
                     id="enquiryText"

@@ -129,6 +129,7 @@ export default function LandingPage() {
                     Sign Up
                   </button>
 
+
                   <SignInButton mode="modal">
 
                     <button className="px-3 py-2 text-red-500 border border-red-500 rounded-md" style={{ backgroundColor: "red", color: "white" }}>

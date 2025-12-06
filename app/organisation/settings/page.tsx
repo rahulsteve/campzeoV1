@@ -12,12 +12,12 @@ export default async function SettingsPage() {
 
   const dbUser = await prisma.user.findUnique({
     where: { clerkId: user.id },
-    include: { 
+    include: {
       organisation: {
         include: {
           organisationPlatforms: true
         }
-      } 
+      }
     },
   });
 
@@ -36,16 +36,16 @@ export default async function SettingsPage() {
     linkedInAuthUrn: dbUser.linkedInAuthUrn,
     youtubeConnected: !!dbUser.youtubeAccessToken,
     pinterestConnected: !!dbUser.pinterestAccessToken,
-    emailConnected: dbUser.organisation?.organisationPlatforms.some((p:any) => p.platform === 'EMAIL') ?? false,
-    smsConnected: dbUser.organisation?.organisationPlatforms.some((p:any) => p.platform === 'SMS') ?? false,
-    whatsappConnected: dbUser.organisation?.organisationPlatforms.some((p:any) => p.platform === 'WHATSAPP') ?? false,
+    emailConnected: dbUser.organisation?.organisationPlatforms.some((p: any) => p.platform === 'EMAIL') ?? false,
+    smsConnected: dbUser.organisation?.organisationPlatforms.some((p: any) => p.platform === 'SMS') ?? false,
+    whatsappConnected: dbUser.organisation?.organisationPlatforms.some((p: any) => p.platform === 'WHATSAPP') ?? false,
   };
 
-  const assignedPlatforms = dbUser.organisation?.organisationPlatforms.map((p:any) => p.platform) || [];
+  const assignedPlatforms = dbUser.organisation?.organisationPlatforms.map((p: any) => p.platform) || [];
 
   return (
     <div className="p-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto space-y-6">
         <SettingsClient userData={userData} assignedPlatforms={assignedPlatforms} />
       </div>
     </div>

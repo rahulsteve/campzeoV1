@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { getImpersonatedOrganisationId } from "@/lib/admin-impersonation";
 
 export async function GET() {
     try {
@@ -9,8 +10,20 @@ export async function GET() {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        let targetUserId = user.id;
+        const impersonatedOrgId = await getImpersonatedOrganisationId();
+
+        if (impersonatedOrgId) {
+            const orgUser = await prisma.user.findFirst({
+                where: { organisationId: impersonatedOrgId }
+            });
+            if (orgUser) {
+                targetUserId = orgUser.clerkId;
+            }
+        }
+
         const dbUser = await prisma.user.findUnique({
-            where: { clerkId: user.id },
+            where: { clerkId: targetUserId },
         });
 
         if (!dbUser) {

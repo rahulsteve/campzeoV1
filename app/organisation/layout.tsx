@@ -38,8 +38,8 @@ export default async function OrganisationLayout({
     redirect("/onboarding");
   }
 
-  // If user doesn't have an organisation, redirect to onboarding
-  if (!dbUser.organisationId) {
+  // If user doesn't have an organisation, redirect to onboarding (skip for admins)
+  if (!dbUser.organisationId && dbUser.role !== 'ADMIN_USER') {
     redirect("/onboarding");
   }
 

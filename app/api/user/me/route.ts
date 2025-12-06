@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getImpersonatedOrganisationId } from "@/lib/admin-impersonation";
 
 export async function GET() {
     try {
@@ -29,6 +30,31 @@ export async function GET() {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
         }
 
+        // Handle Admin Impersonation
+        let effectiveOrganisationId = dbUser.organisationId;
+        let effectiveOrganisation = dbUser.organisation;
+
+        if (dbUser.role === 'ADMIN_USER') {
+            const impersonatedId = await getImpersonatedOrganisationId();
+            if (impersonatedId) {
+                effectiveOrganisationId = impersonatedId;
+                // Fetch the impersonated organisation
+                const org = await prisma.organisation.findUnique({
+                    where: { id: impersonatedId },
+                    include: {
+                        subscriptions: {
+                            orderBy: { createdAt: 'desc' },
+                            take: 1,
+                            include: { plan: true }
+                        }
+                    }
+                });
+                if (org) {
+                    effectiveOrganisation = org;
+                }
+            }
+        }
+
         return NextResponse.json({
             id: dbUser.id,
             clerkId: dbUser.clerkId,
@@ -37,8 +63,8 @@ export async function GET() {
             lastName: dbUser.lastName,
             mobile: dbUser.mobile,
             role: dbUser.role,
-            organisationId: dbUser.organisationId,
-            organisation: dbUser.organisation,
+            organisationId: effectiveOrganisationId,
+            organisation: effectiveOrganisation,
 
             // Social tokens status
             facebookConnected: !!dbUser.facebookAccessToken,

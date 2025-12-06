@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { currentUser } from '@clerk/nextjs/server';
+import { getImpersonatedOrganisationId } from '@/lib/admin-impersonation';
 
 // GET - Fetch campaigns for the organisation with pagination
 export async function GET(request: NextRequest) {
@@ -16,7 +17,17 @@ export async function GET(request: NextRequest) {
             select: { organisationId: true, role: true }
         });
 
-        if (!dbUser?.organisationId) {
+        let effectiveOrganisationId = dbUser?.organisationId;
+
+        // Check for admin impersonation
+        if (dbUser?.role === 'ADMIN_USER') {
+            const impersonatedId = await getImpersonatedOrganisationId();
+            if (impersonatedId) {
+                effectiveOrganisationId = impersonatedId;
+            }
+        }
+
+        if (!effectiveOrganisationId) {
             return NextResponse.json({ error: 'Organisation not found' }, { status: 404 });
         }
 
@@ -30,7 +41,7 @@ export async function GET(request: NextRequest) {
 
         // Build where clause
         const where: any = {
-            organisationId: dbUser.organisationId,
+            organisationId: effectiveOrganisationId,
             isDeleted: false,
         };
 
@@ -97,7 +108,17 @@ export async function POST(request: NextRequest) {
             select: { organisationId: true, role: true }
         });
 
-        if (!dbUser?.organisationId) {
+        let effectiveOrganisationId = dbUser?.organisationId;
+
+        // Check for admin impersonation
+        if (dbUser?.role === 'ADMIN_USER') {
+            const impersonatedId = await getImpersonatedOrganisationId();
+            if (impersonatedId) {
+                effectiveOrganisationId = impersonatedId;
+            }
+        }
+
+        if (!effectiveOrganisationId) {
             return NextResponse.json({ error: 'Organisation not found' }, { status: 404 });
         }
 
@@ -119,7 +140,7 @@ export async function POST(request: NextRequest) {
                 description,
                 startDate: new Date(startDate),
                 endDate: new Date(endDate),
-                organisationId: dbUser.organisationId,
+                organisationId: effectiveOrganisationId,
                 contacts: contactIds && contactIds.length > 0 ? {
                     connect: contactIds.map((id: number) => ({ id })),
                 } : undefined,

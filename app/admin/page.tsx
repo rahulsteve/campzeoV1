@@ -423,7 +423,7 @@ export default function AdminDashboard() {
       if (res.ok && data.isSuccess) {
         toast.success("Opening organisation dashboard...");
         // Set a cookie to track impersonation state
-        document.cookie = "admin_impersonation=true; path=/; max-age=3600";
+        document.cookie = `admin_impersonation=${orgId}; path=/; max-age=3600`;
         // Open the sign-in URL in the same tab
         window.location.href = data.data.signInUrl;
       } else {
