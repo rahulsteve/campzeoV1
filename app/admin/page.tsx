@@ -591,12 +591,12 @@ export default function AdminDashboard() {
         <div className="flex items-center gap-4">
           {/* Mobile Menu Trigger */}
           <Sheet>
-            <SheetTrigger asChild>
+            {/* <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden text-muted-foreground">
                 <MoreVertical className="size-5" />
                 <span className="sr-only">Toggle Menu</span>
               </Button>
-            </SheetTrigger>
+            </SheetTrigger> */}
             <SheetContent side="left" className="p-0 w-72 bg-[#0f172a] text-white border-r-slate-800">
               {/* Mobile Menu Content */}
               <div className="p-6">
@@ -621,13 +621,15 @@ export default function AdminDashboard() {
               </div>
             </SheetContent>
           </Sheet>
-
-          <div className="flex items-center gap-2 font-bold text-xl tracking-wide text-primary">
+          <div className="flex items-center gap-2 font-semibold">
+            <img src="/logo-1.png" alt="CampZeo" className="h-10" />
+          </div>
+          {/* <div className="flex items-center gap-2 font-bold text-xl tracking-wide text-primary">
             <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center">
               <Shield className="size-5 text-primary" />
             </div>
             <span className="hidden md:inline-block">CampZeo</span>
-          </div>
+          </div> */}
         </div>
 
         <div className="flex items-center gap-4 w-1/3 justify-end md:justify-between md:w-auto lg:w-1/3">
@@ -650,13 +652,13 @@ export default function AdminDashboard() {
       </header>
 
       {/* Main Layout - Sidebar + Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} orientation="vertical" className="flex-1 flex flex-row overflow-hidden">
+      <Tabs value={activeTab} onValueChange={setActiveTab} orientation="vertical" className="flex-1 flex flex-row overflow-hidden" style={{minHeight: "87vh"}}>
         {/* Sidebar - Desktop */}
         <div className="hidden md:flex w-64 shrink-0 bg-[#0f172a] text-white flex-col border-r border-slate-800 overflow-y-auto">
           <div className="p-4 py-6">
-            <div className="mb-6 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            {/* <div className="mb-6 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
               Main Menu
-            </div>
+            </div> */}
             <TabsList className="flex flex-col h-auto items-stretch bg-transparent p-0 gap-1 text-slate-400">
               <TabsTrigger value="organisations" className="justify-start px-4 py-3 data-[state=active]:bg-primary data-[state=active]:text-white hover:bg-slate-800 hover:text-slate-200 transition-all rounded-md mx-2">
                 <Users className="mr-3 size-4" /> Organisation
@@ -1414,6 +1416,9 @@ export default function AdminDashboard() {
           </div>
         </main>
       </Tabs>
+      <footer className="flex-shrink-0 border-t bg-background p-4 text-center text-sm text-muted-foreground">
+        &copy; {new Date().getFullYear()} CampZeo. All rights reserved.
+      </footer>
     </div>
   );
 }

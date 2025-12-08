@@ -142,10 +142,16 @@ export function OrganisationLayoutWrapper({
         </aside>
 
         {/* Scrollable Main Content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto" style={{minHeight:"90vh"}}>
           {children}
         </main>
+        
       </div>
+      {/* Footer */}
+      <footer className="flex-shrink-0 border-t bg-background p-4 text-center text-sm text-muted-foreground">
+        &copy; {new Date().getFullYear()} CampZeo. All rights reserved.
+      </footer>
+
     </div>
   );
 }
