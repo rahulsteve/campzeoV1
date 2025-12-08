@@ -98,7 +98,7 @@ export default function TemplatesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [platformFilter, setPlatformFilter] = useState<string>("ALL");
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
-  
+
   // Modals
   const [previewTemplate, setPreviewTemplate] = useState<MessageTemplate | null>(null);
   const [editTemplate, setEditTemplate] = useState<MessageTemplate | null>(null);
@@ -129,7 +129,7 @@ export default function TemplatesPage() {
       setIsLoading(true);
       const response = await fetch("/api/templates");
       const data = await response.json();
-      
+
       if (data.success) {
         setTemplates(data.data);
       } else {
@@ -148,12 +148,12 @@ export default function TemplatesPage() {
 
     // Platform filter
     if (platformFilter !== "ALL") {
-      filtered = filtered.filter((t:any) => t.platform === platformFilter);
+      filtered = filtered.filter((t: any) => t.platform === platformFilter);
     }
 
     // Category filter
     if (categoryFilter !== "ALL") {
-      filtered = filtered.filter((t:any) => t.category === categoryFilter);
+      filtered = filtered.filter((t: any) => t.category === categoryFilter);
     }
 
     // Search filter
@@ -282,228 +282,58 @@ export default function TemplatesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Message Templates</h1>
-          <p className="text-muted-foreground">
-            Create and manage reusable message templates
-          </p>
-        </div>
-        <Button onClick={() => setIsCreateModalOpen(true)}>
-          <Plus className="mr-2 size-4" />
-          New Template
-        </Button>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
-              <Input
-                placeholder="Search templates..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-
-            <Select value={platformFilter} onValueChange={setPlatformFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by platform" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Platforms</SelectItem>
-                <SelectItem value="EMAIL">Email</SelectItem>
-                <SelectItem value="SMS">SMS</SelectItem>
-                <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
-                <SelectItem value="FACEBOOK">Facebook</SelectItem>
-                <SelectItem value="INSTAGRAM">Instagram</SelectItem>
-                <SelectItem value="LINKEDIN">LinkedIn</SelectItem>
-                <SelectItem value="YOUTUBE">YouTube</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Filter by category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Categories</SelectItem>
-                <SelectItem value="MARKETING">Marketing</SelectItem>
-                <SelectItem value="TRANSACTIONAL">Transactional</SelectItem>
-                <SelectItem value="NOTIFICATION">Notification</SelectItem>
-                <SelectItem value="CUSTOM">Custom</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Templates Grid */}
-      {filteredTemplates.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Filter className="size-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No templates found</h3>
-            <p className="text-muted-foreground text-center mb-4">
-              {searchQuery || platformFilter !== "ALL" || categoryFilter !== "ALL"
-                ? "Try adjusting your filters"
-                : "Create your first template to get started"}
+    <div className="p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Message Templates</h1>
+            <p className="text-muted-foreground">
+              Create and manage reusable message templates
             </p>
-            {!searchQuery && platformFilter === "ALL" && categoryFilter === "ALL" && (
-              <Button onClick={() => setIsCreateModalOpen(true)}>
-                <Plus className="mr-2 size-4" />
-                Create Template
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredTemplates.map((template) => (
-            <Card key={template.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className={`p-2 rounded-lg ${platformColors[template.platform]} text-white`}>
-                      {getPlatformIcon(template.platform)}
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{template.name}</CardTitle>
-                      <div className="flex gap-2 mt-1">
-                        <Badge variant="outline" className="text-xs">
-                          {template.category}
-                        </Badge>
-                        {!template.isActive && (
-                          <Badge variant="secondary" className="text-xs">
-                            Inactive
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                {template.description && (
-                  <CardDescription className="mt-2">
-                    {template.description}
-                  </CardDescription>
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {template.subject && (
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Subject:</p>
-                      <p className="text-sm truncate">{template.subject}</p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Content Preview:</p>
-                    <p className="text-sm line-clamp-2">{template.content}</p>
-                  </div>
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1"
-                      onClick={() => setPreviewTemplate(template)}
-                    >
-                      <Eye className="mr-2 size-4" />
-                      Preview
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => openEditModal(template)}
-                    >
-                      <Edit className="size-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setDeleteTemplate(template)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          </div>
+          <Button onClick={() => setIsCreateModalOpen(true)}>
+            <Plus className="mr-2 size-4" />
+            New Template
+          </Button>
         </div>
-      )}
 
-      {/* Create/Edit Modal */}
-      <Dialog
-        open={isCreateModalOpen || !!editTemplate}
-        onOpenChange={(open) => {
-          if (!open) {
-            setIsCreateModalOpen(false);
-            setEditTemplate(null);
-            resetForm();
-          }
-        }}
-      >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editTemplate ? "Edit Template" : "Create New Template"}
-            </DialogTitle>
-            <DialogDescription>
-              {editTemplate
-                ? "Update your message template"
-                : "Create a reusable message template"}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="name">Template Name *</Label>
+        {/* Filters */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 size-4 text-muted-foreground" />
                 <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Welcome Email"
+                  placeholder="Search templates..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="platform">Platform *</Label>
-                <Select
-                  value={formData.platform}
-                  onValueChange={(value) => setFormData({ ...formData, platform: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="EMAIL">Email</SelectItem>
-                    <SelectItem value="SMS">SMS</SelectItem>
-                    <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
-                    <SelectItem value="FACEBOOK">Facebook</SelectItem>
-                    <SelectItem value="INSTAGRAM">Instagram</SelectItem>
-                    <SelectItem value="LINKEDIN">LinkedIn</SelectItem>
-                    <SelectItem value="YOUTUBE">YouTube</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select
-                value={formData.category}
-                onValueChange={(value) => setFormData({ ...formData, category: value })}
-              >
+              <Select value={platformFilter} onValueChange={setPlatformFilter}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Filter by platform" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="ALL">All Platforms</SelectItem>
+                  <SelectItem value="EMAIL">Email</SelectItem>
+                  <SelectItem value="SMS">SMS</SelectItem>
+                  <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
+                  <SelectItem value="FACEBOOK">Facebook</SelectItem>
+                  <SelectItem value="INSTAGRAM">Instagram</SelectItem>
+                  <SelectItem value="LINKEDIN">LinkedIn</SelectItem>
+                  <SelectItem value="YOUTUBE">YouTube</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Categories</SelectItem>
                   <SelectItem value="MARKETING">Marketing</SelectItem>
                   <SelectItem value="TRANSACTIONAL">Transactional</SelectItem>
                   <SelectItem value="NOTIFICATION">Notification</SelectItem>
@@ -511,133 +341,305 @@ export default function TemplatesPage() {
                 </SelectContent>
               </Select>
             </div>
+          </CardContent>
+        </Card>
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Input
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Brief description of this template"
-              />
-            </div>
+        {/* Templates Grid */}
+        {filteredTemplates.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Filter className="size-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No templates found</h3>
+              <p className="text-muted-foreground text-center mb-4">
+                {searchQuery || platformFilter !== "ALL" || categoryFilter !== "ALL"
+                  ? "Try adjusting your filters"
+                  : "Create your first template to get started"}
+              </p>
+              {!searchQuery && platformFilter === "ALL" && categoryFilter === "ALL" && (
+                <Button onClick={() => setIsCreateModalOpen(true)}>
+                  <Plus className="mr-2 size-4" />
+                  Create Template
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredTemplates.map((template) => (
+              <Card key={template.id} className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`p-2 rounded-lg ${platformColors[template.platform]} text-white`}>
+                        {getPlatformIcon(template.platform)}
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">{template.name}</CardTitle>
+                        <div className="flex gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs">
+                            {template.category}
+                          </Badge>
+                          {!template.isActive && (
+                            <Badge variant="secondary" className="text-xs">
+                              Inactive
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {template.description && (
+                    <CardDescription className="mt-2">
+                      {template.description}
+                    </CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {template.subject && (
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Subject:</p>
+                        <p className="text-sm truncate">{template.subject}</p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Content Preview:</p>
+                      <p className="text-sm line-clamp-2">{template.content}</p>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => setPreviewTemplate(template)}
+                      >
+                        <Eye className="mr-2 size-4" />
+                        Preview
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openEditModal(template)}
+                      >
+                        <Edit className="size-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setDeleteTemplate(template)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
-            {(formData.platform === "EMAIL") && (
+        {/* Create/Edit Modal */}
+        <Dialog
+          open={isCreateModalOpen || !!editTemplate}
+          onOpenChange={(open) => {
+            if (!open) {
+              setIsCreateModalOpen(false);
+              setEditTemplate(null);
+              resetForm();
+            }
+          }}
+        >
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editTemplate ? "Edit Template" : "Create New Template"}
+              </DialogTitle>
+              <DialogDescription>
+                {editTemplate
+                  ? "Update your message template"
+                  : "Create a reusable message template"}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Template Name *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Welcome Email"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="platform">Platform *</Label>
+                  <Select
+                    value={formData.platform}
+                    onValueChange={(value) => setFormData({ ...formData, platform: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="EMAIL">Email</SelectItem>
+                      <SelectItem value="SMS">SMS</SelectItem>
+                      <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
+                      <SelectItem value="FACEBOOK">Facebook</SelectItem>
+                      <SelectItem value="INSTAGRAM">Instagram</SelectItem>
+                      <SelectItem value="LINKEDIN">LinkedIn</SelectItem>
+                      <SelectItem value="YOUTUBE">YouTube</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="subject">Subject</Label>
+                <Label htmlFor="category">Category</Label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) => setFormData({ ...formData, category: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MARKETING">Marketing</SelectItem>
+                    <SelectItem value="TRANSACTIONAL">Transactional</SelectItem>
+                    <SelectItem value="NOTIFICATION">Notification</SelectItem>
+                    <SelectItem value="CUSTOM">Custom</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
                 <Input
-                  id="subject"
-                  value={formData.subject}
-                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                  placeholder="Email subject line"
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Brief description of this template"
                 />
               </div>
-            )}
 
-            <div className="space-y-2">
-              <Label htmlFor="content">Content *</Label>
-              <Textarea
-                id="content"
-                value={formData.content}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                placeholder="Template content... Use {{variable_name}} for variables"
-                rows={8}
-              />
-              <p className="text-xs text-muted-foreground">
-                Use double curly braces for variables: {`{{firstName}}, {{companyName}}`}
-              </p>
-            </div>
+              {(formData.platform === "EMAIL") && (
+                <div className="space-y-2">
+                  <Label htmlFor="subject">Subject</Label>
+                  <Input
+                    id="subject"
+                    value={formData.subject}
+                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                    placeholder="Email subject line"
+                  />
+                </div>
+              )}
 
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="isActive"
-                checked={formData.isActive}
-                onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
-              />
-              <Label htmlFor="isActive">Active</Label>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsCreateModalOpen(false);
-                setEditTemplate(null);
-                resetForm();
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={editTemplate ? handleUpdate : handleCreate}>
-              {editTemplate ? "Update" : "Create"} Template
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Preview Modal */}
-      <Dialog open={!!previewTemplate} onOpenChange={() => setPreviewTemplate(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{previewTemplate?.name}</DialogTitle>
-            <DialogDescription asChild>
-              <div className="flex gap-2 mt-2">
-                <Badge>{previewTemplate?.platform}</Badge>
-                <Badge variant="outline">{previewTemplate?.category}</Badge>
+              <div className="space-y-2">
+                <Label htmlFor="content">Content *</Label>
+                <Textarea
+                  id="content"
+                  value={formData.content}
+                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                  placeholder="Template content... Use {{variable_name}} for variables"
+                  rows={8}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Use double curly braces for variables: {`{{firstName}}, {{companyName}}`}
+                </p>
               </div>
-            </DialogDescription>
-          </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            {previewTemplate?.description && (
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="isActive"
+                  checked={formData.isActive}
+                  onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
+                />
+                <Label htmlFor="isActive">Active</Label>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsCreateModalOpen(false);
+                  setEditTemplate(null);
+                  resetForm();
+                }}
+              >
+                Cancel
+              </Button>
+              <Button onClick={editTemplate ? handleUpdate : handleCreate}>
+                {editTemplate ? "Update" : "Create"} Template
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Preview Modal */}
+        <Dialog open={!!previewTemplate} onOpenChange={() => setPreviewTemplate(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{previewTemplate?.name}</DialogTitle>
+              <DialogDescription asChild>
+                <div className="flex gap-2 mt-2">
+                  <Badge>{previewTemplate?.platform}</Badge>
+                  <Badge variant="outline">{previewTemplate?.category}</Badge>
+                </div>
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              {previewTemplate?.description && (
+                <div>
+                  <p className="text-sm font-medium mb-1">Description:</p>
+                  <p className="text-sm text-muted-foreground">{previewTemplate.description}</p>
+                </div>
+              )}
+
+              {previewTemplate?.subject && (
+                <div>
+                  <p className="text-sm font-medium mb-1">Subject:</p>
+                  <p className="text-sm">{previewTemplate.subject}</p>
+                </div>
+              )}
+
               <div>
-                <p className="text-sm font-medium mb-1">Description:</p>
-                <p className="text-sm text-muted-foreground">{previewTemplate.description}</p>
-              </div>
-            )}
-
-            {previewTemplate?.subject && (
-              <div>
-                <p className="text-sm font-medium mb-1">Subject:</p>
-                <p className="text-sm">{previewTemplate.subject}</p>
-              </div>
-            )}
-
-            <div>
-              <p className="text-sm font-medium mb-1">Content:</p>
-              <div className="bg-muted p-4 rounded-lg whitespace-pre-wrap text-sm">
-                {previewTemplate?.content}
+                <p className="text-sm font-medium mb-1">Content:</p>
+                <div className="bg-muted p-4 rounded-lg whitespace-pre-wrap text-sm">
+                  {previewTemplate?.content}
+                </div>
               </div>
             </div>
-          </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPreviewTemplate(null)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPreviewTemplate(null)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-      {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteTemplate} onOpenChange={() => setDeleteTemplate(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Template</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{deleteTemplate?.name}"? This action cannot be
-              undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        {/* Delete Confirmation */}
+        <AlertDialog open={!!deleteTemplate} onOpenChange={() => setDeleteTemplate(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Template</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{deleteTemplate?.name}"? This action cannot be
+                undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </div>
   );
 }

@@ -1,13 +1,29 @@
 import { cookies } from "next/headers";
 
 /**
+ * Get the impersonated organisation ID from the cookie
+ * @returns Promise<number | null> - The ID of the organisation being impersonated, or null
+ */
+export async function getImpersonatedOrganisationId(): Promise<number | null> {
+    const cookieStore = await cookies();
+    const adminImpersonation = cookieStore.get("admin_impersonation");
+
+    if (!adminImpersonation?.value) return null;
+
+    // Handle the case where we might have legacy "true" value
+    if (adminImpersonation.value === "true") return null;
+
+    const id = parseInt(adminImpersonation.value);
+    return isNaN(id) ? null : id;
+}
+
+/**
  * Check if the current session is an admin impersonation session
  * @returns Promise<boolean> - true if admin is impersonating, false otherwise
  */
 export async function isAdminImpersonating(): Promise<boolean> {
-    const cookieStore = await cookies();
-    const adminImpersonation = cookieStore.get("admin_impersonation");
-    return adminImpersonation?.value === "true";
+    const orgId = await getImpersonatedOrganisationId();
+    return !!orgId;
 }
 
 /**

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { currentUser } from '@clerk/nextjs/server';
+import { getImpersonatedOrganisationId } from '@/lib/admin-impersonation';
 
 // GET - Fetch contacts with search, filter, and pagination
 export async function GET(request: NextRequest) {
@@ -16,7 +17,17 @@ export async function GET(request: NextRequest) {
             select: { organisationId: true, role: true }
         });
 
-        if (!dbUser?.organisationId) {
+        let effectiveOrganisationId = dbUser?.organisationId;
+
+        // Check for admin impersonation
+        if (dbUser?.role === 'ADMIN_USER') {
+            const impersonatedId = await getImpersonatedOrganisationId();
+            if (impersonatedId) {
+                effectiveOrganisationId = impersonatedId;
+            }
+        }
+
+        if (!effectiveOrganisationId) {
             return NextResponse.json({ error: 'Organisation not found' }, { status: 404 });
         }
 
@@ -32,7 +43,7 @@ export async function GET(request: NextRequest) {
 
         // Build where clause
         const where: any = {
-            organisationId: dbUser.organisationId,
+            organisationId: effectiveOrganisationId,
         };
 
         // Add search filter
@@ -99,10 +110,20 @@ export async function POST(request: NextRequest) {
 
         const dbUser = await prisma.user.findUnique({
             where: { clerkId: user.id },
-            select: { organisationId: true }
+            select: { organisationId: true, role: true }
         });
 
-        if (!dbUser?.organisationId) {
+        let effectiveOrganisationId = dbUser?.organisationId;
+
+        // Check for admin impersonation
+        if (dbUser?.role === 'ADMIN_USER') {
+            const impersonatedId = await getImpersonatedOrganisationId();
+            if (impersonatedId) {
+                effectiveOrganisationId = impersonatedId;
+            }
+        }
+
+        if (!effectiveOrganisationId) {
             return NextResponse.json({ error: 'Organisation not found' }, { status: 404 });
         }
 
@@ -145,7 +166,7 @@ export async function POST(request: NextRequest) {
         // Check for duplicates
         const existingContact = await prisma.contact.findFirst({
             where: {
-                organisationId: dbUser.organisationId,
+                organisationId: effectiveOrganisationId,
                 OR: [
                     ...(contactEmail ? [{ contactEmail: { equals: contactEmail, mode: 'insensitive' as any } }] : []),
                     ...(contactMobile ? [{ contactMobile }] : [])
@@ -174,7 +195,7 @@ export async function POST(request: NextRequest) {
                 contactEmail,
                 contactMobile,
                 contactWhatsApp,
-                organisationId: dbUser.organisationId,
+                organisationId: effectiveOrganisationId,
                 ...(campaignIds && campaignIds.length > 0 ? {
                     campaigns: {
                         connect: campaignIds.map((id: number) => ({ id }))
@@ -208,10 +229,20 @@ export async function DELETE(request: NextRequest) {
 
         const dbUser = await prisma.user.findUnique({
             where: { clerkId: user.id },
-            select: { organisationId: true }
+            select: { organisationId: true, role: true }
         });
 
-        if (!dbUser?.organisationId) {
+        let effectiveOrganisationId = dbUser?.organisationId;
+
+        // Check for admin impersonation
+        if (dbUser?.role === 'ADMIN_USER') {
+            const impersonatedId = await getImpersonatedOrganisationId();
+            if (impersonatedId) {
+                effectiveOrganisationId = impersonatedId;
+            }
+        }
+
+        if (!effectiveOrganisationId) {
             return NextResponse.json({ error: 'Organisation not found' }, { status: 404 });
         }
 
@@ -226,7 +257,7 @@ export async function DELETE(request: NextRequest) {
         const result = await prisma.contact.deleteMany({
             where: {
                 id: { in: contactIds },
-                organisationId: dbUser.organisationId
+                organisationId: effectiveOrganisationId
             }
         });
 

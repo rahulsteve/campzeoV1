@@ -95,6 +95,7 @@ export default function AdminDashboard() {
     platforms: [] as string[],
     isFreeTrial: false
   });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Approval Modal State
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
@@ -115,6 +116,8 @@ export default function AdminDashboard() {
         pageNumber: pageNumber.toString(),
         pageSize: pageSize.toString(),
         searchText: searchText,
+        sortBy: 'createdAt',
+        sortDesc: 'true'
       });
 
       // Only add isDeleted filter if not 'all'
@@ -212,23 +215,39 @@ export default function AdminDashboard() {
     e.preventDefault();
     setIsCreatingOrg(true);
     // Validation
-    if (!formData.name || !formData.ownerName || !formData.phone || !formData.email || !formData.taxNumber || !formData.address || !formData.postalCode || !formData.city || !formData.state || !formData.country) {
-      toast.error("Please fill in all required fields");
-      setIsCreatingOrg(false);
-      return;
+    setFormErrors({});
+    const errors: Record<string, string> = {};
+    let hasError = false;
+
+    if (!formData.name.trim()) { errors.name = "Organisation Name is required"; hasError = true; }
+    if (!formData.ownerName.trim()) { errors.ownerName = "Owner Name is required"; hasError = true; }
+
+    // Phone validation
+    const phoneRegex = /^\+?[0-9]{10,15}$/;
+    if (!formData.phone) {
+      errors.phone = "Phone number is required"; hasError = true;
+    } else if (!phoneRegex.test(formData.phone.replace(/\s/g, ''))) {
+      errors.phone = "Invalid phone number format"; hasError = true;
     }
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      toast.error("Please enter a valid email address");
-      setIsCreatingOrg(false);
-      return;
+    if (!formData.email) {
+      errors.email = "Email is required"; hasError = true;
+    } else if (!emailRegex.test(formData.email)) {
+      errors.email = "Invalid email address"; hasError = true;
     }
 
-    // Phone validation (simple check for now)
-    if (formData.phone.length < 10) {
-      toast.error("Please enter a valid phone number");
+    if (!formData.taxNumber.trim()) { errors.taxNumber = "Tax Number is required"; hasError = true; }
+    if (!formData.address.trim()) { errors.address = "Address is required"; hasError = true; }
+    if (!formData.postalCode.trim()) { errors.postalCode = "Postal Code is required"; hasError = true; }
+    if (!formData.city.trim()) { errors.city = "City is required"; hasError = true; }
+    if (!formData.state.trim()) { errors.state = "State is required"; hasError = true; }
+    if (!formData.country.trim()) { errors.country = "Country is required"; hasError = true; }
+
+    if (hasError) {
+      setFormErrors(errors);
+      toast.error("Please fill in all required fields marked in red.");
       setIsCreatingOrg(false);
       return;
     }
@@ -423,7 +442,7 @@ export default function AdminDashboard() {
       if (res.ok && data.isSuccess) {
         toast.success("Opening organisation dashboard...");
         // Set a cookie to track impersonation state
-        document.cookie = "admin_impersonation=true; path=/; max-age=3600";
+        document.cookie = `admin_impersonation=${orgId}; path=/; max-age=3600`;
         // Open the sign-in URL in the same tab
         window.location.href = data.data.signInUrl;
       } else {
@@ -591,12 +610,12 @@ export default function AdminDashboard() {
         <div className="flex items-center gap-4">
           {/* Mobile Menu Trigger */}
           <Sheet>
-            <SheetTrigger asChild>
+            {/* <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden text-muted-foreground">
                 <MoreVertical className="size-5" />
                 <span className="sr-only">Toggle Menu</span>
               </Button>
-            </SheetTrigger>
+            </SheetTrigger> */}
             <SheetContent side="left" className="p-0 w-72 bg-[#0f172a] text-white border-r-slate-800">
               {/* Mobile Menu Content */}
               <div className="p-6">
@@ -621,13 +640,15 @@ export default function AdminDashboard() {
               </div>
             </SheetContent>
           </Sheet>
-
-          <div className="flex items-center gap-2 font-bold text-xl tracking-wide text-primary">
+          <div className="flex items-center gap-2 font-semibold">
+            <img src="/logo-1.png" alt="CampZeo" className="h-10" />
+          </div>
+          {/* <div className="flex items-center gap-2 font-bold text-xl tracking-wide text-primary">
             <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center">
               <Shield className="size-5 text-primary" />
             </div>
             <span className="hidden md:inline-block">CampZeo</span>
-          </div>
+          </div> */}
         </div>
 
         <div className="flex items-center gap-4 w-1/3 justify-end md:justify-between md:w-auto lg:w-1/3">
@@ -650,13 +671,13 @@ export default function AdminDashboard() {
       </header>
 
       {/* Main Layout - Sidebar + Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} orientation="vertical" className="flex-1 flex flex-row overflow-hidden">
+      <Tabs value={activeTab} onValueChange={setActiveTab} orientation="vertical" className="flex-1 flex flex-row overflow-hidden" style={{ minHeight: "87vh" }}>
         {/* Sidebar - Desktop */}
         <div className="hidden md:flex w-64 shrink-0 bg-[#0f172a] text-white flex-col border-r border-slate-800 overflow-y-auto">
           <div className="p-4 py-6">
-            <div className="mb-6 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            {/* <div className="mb-6 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
               Main Menu
-            </div>
+            </div> */}
             <TabsList className="flex flex-col h-auto items-stretch bg-transparent p-0 gap-1 text-slate-400">
               <TabsTrigger value="organisations" className="justify-start px-4 py-3 data-[state=active]:bg-primary data-[state=active]:text-white hover:bg-slate-800 hover:text-slate-200 transition-all rounded-md mx-2">
                 <Users className="mr-3 size-4" /> Organisation
@@ -705,60 +726,164 @@ export default function AdminDashboard() {
                       </div>
                     </CardHeader>
                     <CardContent className="pt-6">
-                      <form onSubmit={handleCreateOrg} className=" space-y-8">
-                        <div className="  gap-4">
-                          <div className="row flex space-y-4 ">
-                            <div className="space-y-2 " style={{ marginInline: "10px" }}>
-                              <Label htmlFor="orgName">Organisation Name*</Label>
-                              <Input id="orgName" className="w-1/2 border border-red-500 " value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required placeholder="e.g. Mobile team" />
+                      <form onSubmit={handleCreateOrg} className="space-y-8">
+                        <div className="space-y-6">
+                          <div className="form-grid-2-col">
+                            <div className="space-y-2">
+                              <Label htmlFor="orgName">Organisation Name <span className="text-red-500">*</span></Label>
+                              <Input
+                                id="orgName"
+                                className={formErrors.name ? "border-red-500 ring-offset-red-100" : ""}
+                                value={formData.name}
+                                onChange={(e) => {
+                                  setFormData({ ...formData, name: e.target.value });
+                                  if (formErrors.name) setFormErrors({ ...formErrors, name: "" });
+                                }}
+                                placeholder="e.g. Mobile team"
+                              />
+                              {formErrors.name && <p className="text-xs text-red-500 font-medium">{formErrors.name}</p>}
                             </div>
 
-                            <div className="space-y-2" style={{ marginInline: "10px" }}>
-                              <Label htmlFor="ownerName">Owner Name*</Label>
-                              <Input id="ownerName" className="w-1/2 border border-red-500 " value={formData.ownerName} onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })} required placeholder="e.g. John Doe" />
+                            <div className="space-y-2">
+                              <Label htmlFor="ownerName">Owner Name <span className="text-red-500">*</span></Label>
+                              <Input
+                                id="ownerName"
+                                className={formErrors.ownerName ? "border-red-500 ring-offset-red-100" : ""}
+                                value={formData.ownerName}
+                                onChange={(e) => {
+                                  setFormData({ ...formData, ownerName: e.target.value });
+                                  if (formErrors.ownerName) setFormErrors({ ...formErrors, ownerName: "" });
+                                }}
+                                placeholder="e.g. John Doe"
+                              />
+                              {formErrors.ownerName && <p className="text-xs text-red-500 font-medium">{formErrors.ownerName}</p>}
                             </div>
-                            <div className="space-y-2" style={{ marginInline: "10px" }}>
-                              <Label htmlFor="phone">Phone*</Label>
-                              <Input id="phone" className="w-1/2 border border-red-500 " value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} required placeholder="e.g. 7807271261" />
+
+                            <div className="space-y-2">
+                              <Label htmlFor="phone">Phone <span className="text-red-500">*</span></Label>
+                              <Input
+                                id="phone"
+                                className={formErrors.phone ? "border-red-500 ring-offset-red-100" : ""}
+                                value={formData.phone}
+                                onChange={(e) => {
+                                  setFormData({ ...formData, phone: e.target.value });
+                                  if (formErrors.phone) setFormErrors({ ...formErrors, phone: "" });
+                                }}
+                                placeholder="e.g. 7807271261"
+                              />
+                              {formErrors.phone && <p className="text-xs text-red-500 font-medium">{formErrors.phone}</p>}
                             </div>
-                            <div className="space-y-2 " style={{ marginInline: "10px" }}>
-                              <Label htmlFor="email">Email address*</Label>
-                              <Input id="email" className="w-1/2 border border-red-500 " type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required placeholder="e.g. contact@example.com" />
+
+                            <div className="space-y-2">
+                              <Label htmlFor="email">Email address <span className="text-red-500">*</span></Label>
+                              <Input
+                                id="email"
+                                type="email"
+                                className={formErrors.email ? "border-red-500 ring-offset-red-100" : ""}
+                                value={formData.email}
+                                onChange={(e) => {
+                                  setFormData({ ...formData, email: e.target.value });
+                                  if (formErrors.email) setFormErrors({ ...formErrors, email: "" });
+                                }}
+                                placeholder="e.g. contact@example.com"
+                              />
+                              {formErrors.email && <p className="text-xs text-red-500 font-medium">{formErrors.email}</p>}
                             </div>
-                            <div className="space-y-2 " style={{ marginInline: "10px" }}>
-                              <Label htmlFor="taxNumber">Tax Number*</Label>
-                              <Input id="taxNumber" className="w-1/2 border border-red-500 " value={formData.taxNumber} onChange={(e) => setFormData({ ...formData, taxNumber: e.target.value })} required placeholder="e.g. TEMP123" />
+
+                            <div className="space-y-2">
+                              <Label htmlFor="taxNumber">Tax Number <span className="text-red-500">*</span></Label>
+                              <Input
+                                id="taxNumber"
+                                className={formErrors.taxNumber ? "border-red-500 ring-offset-red-100" : ""}
+                                value={formData.taxNumber}
+                                onChange={(e) => {
+                                  setFormData({ ...formData, taxNumber: e.target.value });
+                                  if (formErrors.taxNumber) setFormErrors({ ...formErrors, taxNumber: "" });
+                                }}
+                                placeholder="e.g. TEMP123"
+                              />
+                              {formErrors.taxNumber && <p className="text-xs text-red-500 font-medium">{formErrors.taxNumber}</p>}
                             </div>
                           </div>
 
-                          <div className="row flex space-y-4">
+                          <div className="border-t pt-4">
+                            <h4 className="text-sm font-medium mb-4 text-muted-foreground">Address Details</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                              <div className="space-y-2 md:col-span-2">
+                                <Label htmlFor="address">Address <span className="text-red-500">*</span></Label>
+                                <Input
+                                  id="address"
+                                  className={formErrors.address ? "border-red-500 ring-offset-red-100" : ""}
+                                  value={formData.address}
+                                  onChange={(e) => {
+                                    setFormData({ ...formData, address: e.target.value });
+                                    if (formErrors.address) setFormErrors({ ...formErrors, address: "" });
+                                  }}
+                                  placeholder="e.g. Village Karehari"
+                                />
+                                {formErrors.address && <p className="text-xs text-red-500 font-medium">{formErrors.address}</p>}
+                              </div>
 
-                            <div className="space-y-2 " style={{ marginInline: "10px" }}>
-                              <Label htmlFor="address">Address*</Label>
-                              <Input id="address" className="w-1/2 border border-red-500 " value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} required placeholder="e.g. Village Karehari" />
-                            </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="postalCode">Postal Code <span className="text-red-500">*</span></Label>
+                                <Input
+                                  id="postalCode"
+                                  className={formErrors.postalCode ? "border-red-500 ring-offset-red-100" : ""}
+                                  value={formData.postalCode}
+                                  onChange={(e) => {
+                                    setFormData({ ...formData, postalCode: e.target.value });
+                                    if (formErrors.postalCode) setFormErrors({ ...formErrors, postalCode: "" });
+                                  }}
+                                  placeholder="e.g. 175021"
+                                />
+                                {formErrors.postalCode && <p className="text-xs text-red-500 font-medium">{formErrors.postalCode}</p>}
+                              </div>
 
+                              <div className="space-y-2">
+                                <Label htmlFor="city">City <span className="text-red-500">*</span></Label>
+                                <Input
+                                  id="city"
+                                  className={formErrors.city ? "border-red-500 ring-offset-red-100" : ""}
+                                  value={formData.city}
+                                  onChange={(e) => {
+                                    setFormData({ ...formData, city: e.target.value });
+                                    if (formErrors.city) setFormErrors({ ...formErrors, city: "" });
+                                  }}
+                                  placeholder="e.g. Mandi"
+                                />
+                                {formErrors.city && <p className="text-xs text-red-500 font-medium">{formErrors.city}</p>}
+                              </div>
 
-                            <div className="space-y-2 " style={{ marginInline: "10px" }}>
-                              <Label htmlFor="postalCode">Postal Code*</Label>
-                              <Input id="postalCode" className="w-1/2 border border-red-500 " value={formData.postalCode} onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })} required placeholder="e.g. 175021" />
+                              <div className="space-y-2">
+                                <Label htmlFor="state">State <span className="text-red-500">*</span></Label>
+                                <Input
+                                  id="state"
+                                  className={formErrors.state ? "border-red-500 ring-offset-red-100" : ""}
+                                  value={formData.state}
+                                  onChange={(e) => {
+                                    setFormData({ ...formData, state: e.target.value });
+                                    if (formErrors.state) setFormErrors({ ...formErrors, state: "" });
+                                  }}
+                                  placeholder="e.g. Himachal Pradesh"
+                                />
+                                {formErrors.state && <p className="text-xs text-red-500 font-medium">{formErrors.state}</p>}
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>
+                                <Input
+                                  id="country"
+                                  className={formErrors.country ? "border-red-500 ring-offset-red-100" : ""}
+                                  value={formData.country}
+                                  onChange={(e) => {
+                                    setFormData({ ...formData, country: e.target.value });
+                                    if (formErrors.country) setFormErrors({ ...formErrors, country: "" });
+                                  }}
+                                  placeholder="e.g. India"
+                                />
+                                {formErrors.country && <p className="text-xs text-red-500 font-medium">{formErrors.country}</p>}
+                              </div>
                             </div>
-                            <div className="space-y-2 " style={{ marginInline: "10px" }}>
-                              <Label htmlFor="city">City*</Label>
-                              <Input id="city" className="w-1/2 border border-red-500 " value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} required placeholder="e.g. Mandi" />
-                            </div>
-                            <div className="space-y-2 " style={{ marginInline: "10px" }}>
-                              <Label htmlFor="state">State*</Label>
-                              <Input id="state" className="w-1/2 border border-red-500 " value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })} required placeholder="e.g. Himachal Pradesh" />
-                            </div>
-                            <div className="space-y-2 " style={{ marginInline: "10px" }}>
-                              <Label htmlFor="country">Country*</Label>
-                              <Input id="country" className="w-1/2 border border-red-500 " value={formData.country} onChange={(e) => setFormData({ ...formData, country: e.target.value })} required placeholder="e.g. India" />
-                            </div>
-                          </div>
-                          <div className="flex items-center ">
-                            <Switch id="free-trial" checked={formData.isFreeTrial} onCheckedChange={(checked) => setFormData({ ...formData, isFreeTrial: checked })} />
-                            <Label htmlFor="free-trial">Free Trial?</Label>
                           </div>
                         </div>
 
@@ -785,13 +910,13 @@ export default function AdminDashboard() {
                   </>
                 ) : (
                   <>
-                    <div className="p-4 border-b flex  items-center justify-between gap-4 bg-slate-50/50">
-                      <div className="flex gap-2 w-1/2 md:w-auto ">
-                        <div className="relative w-1/2 border border-red-500 rounded-xl md:max-w-sm">
-                          <Search className="absolute left-2 top-2.5 size-4 text-muted-foreground" style={{ top: "10px" }} />
+                    <div className="p-4 border-b flex items-center justify-between gap-4 bg-slate-50/50">
+                      <div className="flex gap-2 w-full md:w-auto flex-1 md:flex-none">
+                        <div className="relative w-full md:w-80">
+                          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
                           <Input
-                            placeholder="Search organisations..."
-                            className="pl-8 bg-white"
+                            placeholder="Search by name, email, or owner..."
+                            className="pl-9 bg-white"
                             value={searchText}
                             onChange={(e) => setSearchText(e.target.value)}
                             onKeyDown={handleSearch}
@@ -964,29 +1089,34 @@ export default function AdminDashboard() {
                       </Dialog>
 
                       {/* Pagination Controls */}
-                      <div className="flex items-center justify-between px-4 py-4 border-t  space-y-6">
+                      <div className="flex items-center justify-between px-4 py-4 border-t bg-slate-50/30">
                         <div className="text-sm text-muted-foreground">
-                          Showing {organisations.length} of {totalCount} results
+                          Showing {1 + ((pageNumber - 1) * pageSize)} to {Math.min(pageNumber * pageSize, totalCount)} of {totalCount} entries
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setPageNumber(p => Math.max(1, p - 1))}
-                            disabled={pageNumber === 1}
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                            Previous
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setPageNumber(p => p + 1)}
-                            disabled={organisations.length < pageSize} // Simple check, ideally check totalCount
-                          >
-                            Next
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
+                        <div className="flex items-center gap-4">
+                          <span className="text-sm font-medium">
+                            Page {pageNumber} of {Math.ceil(totalCount / pageSize)}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setPageNumber(p => Math.max(1, p - 1))}
+                              disabled={pageNumber === 1}
+                            >
+                              <ChevronLeft className="h-4 w-4 mr-1" />
+                              Previous
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setPageNumber(p => p + 1)}
+                              disabled={pageNumber >= Math.ceil(totalCount / pageSize)}
+                            >
+                              Next
+                              <ChevronRight className="h-4 w-4 ml-1" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
 
@@ -1018,14 +1148,14 @@ export default function AdminDashboard() {
                 <div className="p-4 border-b bg-slate-50/50">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="md:col-span-2">
-                      <Label htmlFor="enquiry-search" className="text-sm font-medium mb-2 block">
-                        Search by Name, Email, or Organisation
+                      < Label htmlFor="enquiry-search" className="text-sm font-medium mb-2 block" >
+                        Search Enquiries
                       </Label>
                       <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                        <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
                         <Input
                           id="enquiry-search"
-                          placeholder="Search enquiries..."
+                          placeholder="Search by name, email, or organisation..."
                           value={enquirySearch}
                           onChange={(e) => setEnquirySearch(e.target.value)}
                           className="pl-9"
@@ -1111,35 +1241,56 @@ export default function AdminDashboard() {
                                       View Details
                                     </Button>
                                   </DialogTrigger>
-                                  <DialogContent className="max-w-2xl">
+                                  <DialogContent className="max-w-3xl">
                                     <DialogHeader>
-                                      <DialogTitle>Enquiry Details</DialogTitle>
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
+                                          New Enquiry
+                                        </Badge>
+                                        <span className="text-xs text-muted-foreground">{new Date(enq.createdAt).toLocaleString()}</span>
+                                      </div>
+                                      <DialogTitle className="text-2xl">Enquiry Details</DialogTitle>
                                       <DialogDescription>
-                                        From: {enq.name || enq.organisationName} ({enq.email})
+                                        Details submitted by {enq.name} from {enq.organisationName}
                                       </DialogDescription>
                                     </DialogHeader>
-                                    <div className="mt-4 space-y-4">
-                                      <div className="rounded-lg border p-4 bg-slate-50">
-                                        <p className="text-sm text-slate-600 font-medium mb-2">Enquiry Message:</p>
-                                        <p className="text-sm whitespace-pre-wrap">{enq.enquiryText}</p>
+
+                                    <div className="grid gap-6 py-4">
+                                      <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+                                        <div className="space-y-1">
+                                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Contact Person</p>
+                                          <p className="font-medium text-lg">{enq.name || 'N/A'}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Email Address</p>
+                                          <p className="font-medium">{enq.email}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Phone Number</p>
+                                          <p className="font-medium">{enq.phone || enq.mobile || 'N/A'}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Business Name</p>
+                                          <p className="font-medium">{enq.organisationName || 'N/A'}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Location</p>
+                                          <p className="font-medium">{[enq.city, enq.state, enq.country].filter(Boolean).join(", ") || 'N/A'}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Tax / VAT Number</p>
+                                          <p className="font-medium">{enq.taxNumber || 'N/A'}</p>
+                                        </div>
                                       </div>
-                                      <div className="grid grid-cols-2 gap-4 text-sm">
-                                        <div>
-                                          <p className="text-slate-600 font-medium">Name:</p>
-                                          <p>{enq.name || 'N/A'}</p>
+
+                                      <div className="space-y-2 bg-slate-50 p-6 rounded-lg border">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <MessageSquare className="size-4 text-muted-foreground" />
+                                          <p className="text-sm font-semibold text-slate-700">Enquiry Message</p>
                                         </div>
-                                        <div>
-                                          <p className="text-slate-600 font-medium">Phone:</p>
-                                          <p>{enq.phone || enq.mobile || 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                          <p className="text-slate-600 font-medium">Location:</p>
-                                          <p>{enq.city}, {enq.state}, {enq.country}</p>
-                                        </div>
-                                        <div>
-                                          <p className="text-slate-600 font-medium">Tax Number:</p>
-                                          <p>{enq.taxNumber || 'N/A'}</p>
-                                        </div>
+                                        <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
+                                          {enq.enquiryText}
+                                        </p>
                                       </div>
                                     </div>
                                   </DialogContent>
@@ -1414,6 +1565,9 @@ export default function AdminDashboard() {
           </div>
         </main>
       </Tabs>
+      <footer className="flex-shrink-0 border-t bg-background p-4 text-center text-sm text-muted-foreground">
+        &copy; {new Date().getFullYear()} CampZeo. All rights reserved.
+      </footer>
     </div>
   );
 }

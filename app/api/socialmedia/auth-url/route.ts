@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { getImpersonatedOrganisationId } from "@/lib/admin-impersonation";
 
 export async function GET(request: NextRequest) {
     try {
@@ -14,6 +15,25 @@ export async function GET(request: NextRequest) {
 
         if (!platform) {
             return NextResponse.json({ error: "Platform is required" }, { status: 400 });
+        }
+
+        // Determine target user ID (Handling Impersonation)
+        let targetUserId = userId;
+        const impersonatedOrgId = await getImpersonatedOrganisationId();
+
+        if (impersonatedOrgId) {
+            // If impersonating, find the primary user for the organisation
+            // We select the first user found for this organisation
+            const orgUser = await prisma.user.findFirst({
+                where: { organisationId: impersonatedOrgId }
+            });
+
+            if (orgUser) {
+                targetUserId = orgUser.clerkId;
+                console.log("🔵 Generating OAuth URL for Impersonated User:", targetUserId);
+            } else {
+                console.warn("⚠️ Impersonating organisation but no user found within it.");
+            }
         }
 
         // Get config from DB
@@ -33,7 +53,7 @@ export async function GET(request: NextRequest) {
         }
 
         let authUrl = "";
-        const state = `${platform}_${userId}`; // Simple state to pass platform and user. In production, sign this.
+        const state = `${platform}_${targetUserId}`; // Simple state to pass platform and user. In production, sign this.
 
         switch (platform) {
             case "FACEBOOK":

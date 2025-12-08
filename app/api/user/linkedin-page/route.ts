@@ -1,12 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { getImpersonatedOrganisationId } from "@/lib/admin-impersonation";
 
 export async function PUT(request: NextRequest) {
     try {
-        const { userId } = await auth();
-        if (!userId) {
+        const { userId: currentUserId } = await auth();
+        if (!currentUserId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        let targetUserId = currentUserId;
+        const impersonatedOrgId = await getImpersonatedOrganisationId();
+
+        if (impersonatedOrgId) {
+            const orgUser = await prisma.user.findFirst({
+                where: { organisationId: impersonatedOrgId }
+            });
+            if (orgUser) {
+                targetUserId = orgUser.clerkId;
+            }
         }
 
         const body = await request.json();
@@ -17,7 +30,7 @@ export async function PUT(request: NextRequest) {
         }
 
         await prisma.user.update({
-            where: { clerkId: userId },
+            where: { clerkId: targetUserId },
             data: { linkedInAuthUrn: urn }
         });
 

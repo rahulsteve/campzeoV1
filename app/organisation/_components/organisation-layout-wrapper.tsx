@@ -93,24 +93,24 @@ export function OrganisationLayoutWrapper({
       <header className="flex-shrink-0 h-16 border-b bg-background z-40">
         <div className="flex h-full items-center gap-4 px-6">
           {/* Mobile Menu Trigger */}
-          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            <SheetTrigger asChild className="md:hidden">
+          {/* <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild className="lg:hidden">
               <Button variant="ghost" size="icon">
                 <Menu className="size-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64 p-0">
+            <SheetContent side="left" className="w-64 p-0 bg-background pb-10">
               <SheetTitle>
                 <VisuallyHidden>Navigation Menu</VisuallyHidden>
               </SheetTitle>
               <div className="p-4 border-b">
                 <img src="/logo-1.png" alt="CampZeo" className="h-8" />
               </div>
-              <div className="py-4">
+              <div className="py-4 h-full overflow-y-auto">
                 <SidebarNav onItemClick={() => setMobileMenuOpen(false)} />
               </div>
             </SheetContent>
-          </Sheet>
+          </Sheet> */}
 
           {/* Logo */}
           <div className="flex items-center gap-2 font-semibold">
@@ -142,10 +142,16 @@ export function OrganisationLayoutWrapper({
         </aside>
 
         {/* Scrollable Main Content */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto" style={{minHeight:"90vh"}}>
           {children}
         </main>
+        
       </div>
+      {/* Footer */}
+      <footer className="flex-shrink-0 border-t bg-background p-4 text-center text-sm text-muted-foreground">
+        &copy; {new Date().getFullYear()} CampZeo. All rights reserved.
+      </footer>
+
     </div>
   );
 }

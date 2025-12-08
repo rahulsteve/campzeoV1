@@ -158,7 +158,7 @@ export default function AnalyticsPage() {
 
     return (
         <div className="p-6">
-            <div className="max-w-6xl mx-auto space-y-6">
+            <div className="max-w-7xl mx-auto space-y-6">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
                     <p className="text-muted-foreground mt-1">
@@ -191,8 +191,8 @@ export default function AnalyticsPage() {
                                             key={platform}
                                             onClick={() => setSelectedPlatform(platform)}
                                             className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all min-w-[100px] ${isSelected
-                                                    ? 'border-primary bg-primary/10 shadow-sm'
-                                                    : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                                                ? 'border-primary bg-primary/10 shadow-sm'
+                                                : 'border-border hover:border-primary/50 hover:bg-muted/50'
                                                 }`}
                                         >
                                             <Icon className={`size-6 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />

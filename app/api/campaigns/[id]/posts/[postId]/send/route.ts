@@ -122,9 +122,12 @@ export async function POST(
                         postData: linkedInResponse // Return LinkedIn response details
                     });
 
-                } catch (error) {
+                } catch (error: any) {
                     console.error('LinkedIn post error:', error);
-                    return NextResponse.json({ error: 'Failed to post to LinkedIn' }, { status: 500 });
+                    return NextResponse.json({
+                        error: error.message || 'Failed to post to LinkedIn',
+                        details: error.stack
+                    }, { status: 500 });
                 }
             } else if (post.type === 'FACEBOOK') {
                 // Use Page access token if available, otherwise fallback to user token

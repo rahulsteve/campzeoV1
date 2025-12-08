@@ -121,6 +121,7 @@ export default function LandingPage() {
             <div className="flex items-center gap-4">
               <SignedOut>
                 <div className="flex items-center gap-3">
+
                   <button
                     className="px-3 py-2 text-red-500 border border-red-500 rounded-md"
                     onClick={() => router.push("/sign-up")}
@@ -128,7 +129,9 @@ export default function LandingPage() {
                     Sign Up
                   </button>
 
+
                   <SignInButton mode="modal">
+
                     <button className="px-3 py-2 text-red-500 border border-red-500 rounded-md" style={{ backgroundColor: "red", color: "white" }}>
                       Sign In
                     </button>

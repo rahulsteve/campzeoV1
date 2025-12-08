@@ -196,7 +196,7 @@ export default function BillingPage() {
   if (isLoading) {
     return (
       <div className="p-6">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-muted rounded w-1/4"></div>
             <div className="h-32 bg-muted rounded"></div>
@@ -216,7 +216,7 @@ export default function BillingPage() {
 
   return (
     <div className="p-6">
-      <div className="max-w-6xl mx-auto space-y-8">
+      <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>

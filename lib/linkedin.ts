@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Buffer } from 'buffer';
 
 interface LinkedInCredentials {
     accessToken: string;
