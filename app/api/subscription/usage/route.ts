@@ -1,12 +1,14 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { logError, logWarning } from "@/lib/audit-logger";
 
 export async function GET() {
     try {
         const user = await currentUser();
 
         if (!user) {
+            await logWarning("Unauthorized access attempt to fetch usage metrics", { action: "fetch-usage-metrics" });
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -110,8 +112,9 @@ export async function GET() {
         };
 
         return NextResponse.json({ usage });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error calculating usage:", error);
+        await logError("Failed to calculate usage metrics", { userId: "unknown" }, error);
         return NextResponse.json(
             { error: "Failed to calculate usage metrics" },
             { status: 500 }

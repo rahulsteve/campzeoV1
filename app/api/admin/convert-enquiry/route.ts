@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { createClerkUser } from "@/lib/clerk-admin";
 import { sendOrganisationInvite } from "@/lib/email";
+import { logError, logWarning } from "@/lib/audit-logger";
 
 /**
  * POST /api/admin/convert-enquiry
@@ -14,6 +15,7 @@ export async function POST(req: Request) {
 
         // Verify admin user
         if (!user) {
+            await logWarning("Unauthorized access attempt to convert-enquiry", { action: "convert-enquiry" });
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -23,6 +25,11 @@ export async function POST(req: Request) {
         });
 
         if (!dbUser || dbUser.role !== 'ADMIN_USER') {
+            await logWarning("Forbidden access attempt to convert-enquiry", {
+                userId: user.id,
+                role: dbUser?.role,
+                action: "convert-enquiry"
+            });
             return NextResponse.json({ error: "Unauthorized - Admin access required" }, { status: 403 });
         }
 
@@ -114,8 +121,13 @@ export async function POST(req: Request) {
                 username: username,
             });
             console.log('Clerk user created successfully:', clerkUser.id);
-        } catch (clerkError) {
+        } catch (clerkError: any) {
             console.error('Detailed Clerk error:', clerkError);
+            await logError("Failed to create Clerk user during conversion", {
+                enquiryId,
+                email: enquiry.email,
+                action: "convert-enquiry"
+            }, clerkError);
             throw clerkError; // Re-throw to be caught by outer try-catch
         }
 
@@ -192,8 +204,12 @@ export async function POST(req: Request) {
             },
             message: "Organisation created and user invited successfully"
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error converting enquiry to organisation:", error);
+        await logError("Failed to convert enquiry to organisation", {
+            action: "convert-enquiry",
+            error: error.message
+        }, error);
         return NextResponse.json(
             {
                 isSuccess: false,

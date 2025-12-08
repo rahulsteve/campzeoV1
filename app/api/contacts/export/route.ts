@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { currentUser } from '@clerk/nextjs/server';
+import { logError, logWarning, logInfo } from '@/lib/audit-logger';
 
 // GET - Export contacts to CSV
 export async function GET(request: NextRequest) {
     try {
         const user = await currentUser();
         if (!user) {
+            await logWarning("Unauthorized access attempt to export contacts", { action: "export-contacts" });
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -94,6 +96,7 @@ export async function GET(request: NextRequest) {
             )
         ].join('\n');
 
+        await logInfo("Contacts exported", { count: contacts.length, exportedBy: user.id });
         // Return CSV file
         return new NextResponse(csvContent, {
             status: 200,
@@ -102,8 +105,9 @@ export async function GET(request: NextRequest) {
                 'Content-Disposition': `attachment; filename="contacts-${new Date().toISOString().split('T')[0]}.csv"`,
             },
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error exporting contacts:', error);
+        await logError("Failed to export contacts", { userId: "unknown" }, error);
         return NextResponse.json({ error: 'Failed to export contacts' }, { status: 500 });
     }
 }

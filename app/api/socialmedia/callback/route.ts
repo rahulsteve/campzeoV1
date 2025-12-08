@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { logError, logInfo } from '@/lib/audit-logger';
 
 export async function GET(request: NextRequest) {
     try {
@@ -197,9 +198,11 @@ export async function GET(request: NextRequest) {
             data: updateData,
         });
 
+        await logInfo("Social media platform connected", { userId: stateUserId, platform });
         return NextResponse.redirect(new URL("/organisation/settings?success=connected", request.url));
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error in callback:", error);
+        await logError("Failed to connect social media platform", { userId: "Unknown" }, error);
         return NextResponse.redirect(new URL("/organisation/settings?error=connection_failed", request.url));
     }
 }

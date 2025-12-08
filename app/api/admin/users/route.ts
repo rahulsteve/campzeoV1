@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { logError, logWarning } from "@/lib/audit-logger";
 
 /**
  * POST /api/admin/users
@@ -12,6 +13,7 @@ export async function POST(req: Request) {
 
         // Verify admin user
         if (!user) {
+            await logWarning("Unauthorized access attempt to create/update user", { action: "create-update-user" });
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -21,6 +23,7 @@ export async function POST(req: Request) {
         });
 
         if (!dbUser || dbUser.role !== 'ADMIN_USER') {
+            await logWarning("Forbidden access attempt to create/update user", { userId: user.id, role: dbUser?.role });
             return NextResponse.json({ error: "Unauthorized - Admin access required" }, { status: 403 });
         }
 
@@ -78,6 +81,7 @@ export async function POST(req: Request) {
         });
     } catch (error) {
         console.error("Error creating/updating user:", error);
+        await logError("Failed to create/update user", { action: "create-update-user" }, error as Error);
         return NextResponse.json(
             {
                 isSuccess: false,

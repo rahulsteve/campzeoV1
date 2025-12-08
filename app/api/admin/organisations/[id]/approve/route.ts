@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { generatePassword, sendOrganisationInvite } from "@/lib/email";
 import { createClerkUser } from "@/lib/clerk-admin";
+import { logError, logWarning, logInfo } from '@/lib/audit-logger';
 
 export async function POST(
     request: NextRequest,
@@ -14,13 +15,14 @@ export async function POST(
             return NextResponse.json({ isSuccess: false, message: 'Unauthorized' }, { status: 401 });
         }
 
+        const { id } = await params;
+        const organisationId = parseInt(id);
+
         const user = await prisma.user.findUnique({ where: { clerkId: userId } });
         if (!user || user.role !== 'ADMIN_USER') {
+            await logWarning("Forbidden access attempt to approve organisation", { userId, organisationId });
             return NextResponse.json({ isSuccess: false, message: 'Forbidden' }, { status: 403 });
         }
-
-       const { id } = await params;
-        const organisationId = parseInt(id);
 
         if (isNaN(organisationId)) {
             return NextResponse.json({ isSuccess: false, message: 'Invalid organisation ID' }, { status: 400 });
@@ -119,6 +121,7 @@ export async function POST(
             }
         }
 
+        await logInfo("Organisation approved", { organisationId, approvedBy: userId, message });
         return NextResponse.json({
             isSuccess: true,
             message,
@@ -126,6 +129,7 @@ export async function POST(
         });
     } catch (error: any) {
         console.error('Suspend/Recover error:', error);
+        await logError("Failed to approve organisation", { userId: "Unknown" }, error);
         return NextResponse.json({
             isSuccess: false,
             message: error.message || 'Failed to update organisation status'

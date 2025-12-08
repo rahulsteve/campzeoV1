@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { currentUser } from '@clerk/nextjs/server';
+import { logError, logWarning, logInfo } from '@/lib/audit-logger';
 
 // GET - Fetch single contact
 export async function GET(
@@ -45,8 +46,9 @@ export async function GET(
         }
 
         return NextResponse.json(contact);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching contact:', error);
+        await logError("Failed to fetch contact", { userId: "unknown" }, error);
         return NextResponse.json({ error: 'Failed to fetch contact' }, { status: 500 });
     }
 }
@@ -111,9 +113,11 @@ export async function PATCH(
             }
         });
 
+        await logInfo("Contact updated", { contactId: contact.id, updatedBy: user.id });
         return NextResponse.json(contact);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error updating contact:', error);
+        await logError("Failed to update contact", { userId: "unknown" }, error);
         return NextResponse.json({ error: 'Failed to update contact' }, { status: 500 });
     }
 }
@@ -151,9 +155,11 @@ export async function DELETE(
             return NextResponse.json({ error: 'Contact not found' }, { status: 404 });
         }
 
+        await logInfo("Contact deleted", { contactId: parseInt(id), deletedBy: user.id });
         return NextResponse.json({ message: 'Contact deleted successfully' });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error deleting contact:', error);
+        await logError("Failed to delete contact", { userId: "unknown" }, error);
         return NextResponse.json({ error: 'Failed to delete contact' }, { status: 500 });
     }
 }

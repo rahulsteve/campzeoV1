@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { logError, logWarning, logInfo } from '@/lib/audit-logger';
 
 export async function GET(request: NextRequest) {
     try {
@@ -9,37 +10,33 @@ export async function GET(request: NextRequest) {
 
         const user = await prisma.user.findUnique({ where: { clerkId: userId } });
         if (!user || user.role !== 'ADMIN_USER') {
+            await logWarning("Forbidden access attempt to fetch platform config", { userId });
             return NextResponse.json({ isSuccess: false, message: 'Forbidden' }, { status: 403 });
         }
 
         const configs = await prisma.adminPlatformConfiguration.findMany();
         return NextResponse.json({ isSuccess: true, data: configs });
     } catch (error: any) {
+        await logError("Failed to fetch platform config", { userId: request.headers.get('x-user-id') || undefined }, error);
         return NextResponse.json({ isSuccess: false, message: error.message }, { status: 500 });
     }
 }
 
 export async function POST(request: NextRequest) {
+    let key: string | undefined;
     try {
         const { userId } = await auth();
         if (!userId) return NextResponse.json({ isSuccess: false, message: 'Unauthorized' }, { status: 401 });
 
         const user = await prisma.user.findUnique({ where: { clerkId: userId } });
         if (!user || user.role !== 'ADMIN_USER') {
+            await logWarning("Forbidden access attempt to update platform config", { userId });
             return NextResponse.json({ isSuccess: false, message: 'Forbidden' }, { status: 403 });
         }
 
-        const { key, value, platform } = await request.json();
-
-        // We need to handle the upsert logic carefully since 'key' is not unique in the schema
-        // The schema has: id (PK), key, value, platform
-        // We probably want to find by key AND platform, or just key if key is unique enough.
-        // Looking at schema: key String?, value String?, platform PlatformType
-        // No unique constraint on key.
-        // But usually config is key-value.
-        // Let's assume for now we want to update if exists by key, or create.
-        // Since there is no unique constraint, upsert won't work with 'key' alone if it's not @unique.
-        // We should check if it exists first.
+        const body = await request.json();
+        key = body.key;
+        const { value, platform } = body;
 
         const existingConfig = await prisma.adminPlatformConfiguration.findFirst({
             where: { key }
@@ -57,8 +54,10 @@ export async function POST(request: NextRequest) {
             });
         }
 
+        await logInfo("Platform config updated", { key, platform, updatedBy: userId });
         return NextResponse.json({ isSuccess: true, data: config });
     } catch (error: any) {
+        await logError("Failed to update platform config", { userId: request.headers.get('x-user-id') || undefined, key }, error);
         return NextResponse.json({ isSuccess: false, message: error.message }, { status: 500 });
     }
 }

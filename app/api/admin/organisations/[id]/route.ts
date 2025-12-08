@@ -1,6 +1,7 @@
 import { currentUser, clerkClient } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { logError, logWarning, logInfo } from '@/lib/audit-logger';
 
 export async function GET(
     req: Request,
@@ -33,8 +34,9 @@ export async function GET(
             message: null,
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error fetching organisation:", error);
+        await logError("Failed to fetch organisation detail", { userId: "Unknown" }, error);
         return NextResponse.json(
             { isSuccess: false, message: "Internal server error", error: error instanceof Error ? error.message : "Unknown error" },
             { status: 500 }
@@ -129,14 +131,16 @@ export async function PUT(
             }
         }
 
+        await logInfo("Organisation updated", { organisationId: parseInt(id), updatedBy: user.id });
         return NextResponse.json({
             data: updatedOrganisation,
             isSuccess: true,
             message: "Organisation updated successfully.",
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error updating organisation:", error);
+        await logError("Failed to update organisation", { userId: "Unknown" }, error);
         return NextResponse.json(
             { isSuccess: false, message: "Internal server error", error: error instanceof Error ? error.message : "Unknown error" },
             { status: 500 }

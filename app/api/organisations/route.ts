@@ -2,12 +2,14 @@ import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { sendPaymentReceipt } from "@/lib/email";
+import { logError, logWarning, logInfo } from '@/lib/audit-logger';
 
 export async function POST(req: Request) {
     try {
         const user = await currentUser();
 
         if (!user) {
+            await logWarning("Unauthorized access attempt to create organisation", { action: "create-organisation" });
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 

@@ -82,6 +82,12 @@ export default function AdminDashboard() {
   const [logsTotalCount, setLogsTotalCount] = useState(0);
   const [logsTotalPages, setLogsTotalPages] = useState(0);
 
+  // Logs Filter State
+  const [logsKeyword, setLogsKeyword] = useState("");
+  const [logsLevel, setLogsLevel] = useState("all"); // 'all', 'Info', 'Warning', 'Error'
+  const [logsDateFrom, setLogsDateFrom] = useState("");
+  const [logsDateTo, setLogsDateTo] = useState("");
+
   // Add/Edit Org Form State
   const [isAddingOrg, setIsAddingOrg] = useState(false);
   const [isCreatingOrg, setIsCreatingOrg] = useState(false);
@@ -150,11 +156,22 @@ export default function AdminDashboard() {
 
   const fetchOtherData = async () => {
     try {
+      // Build logs query parameters
+      const logsParams = new URLSearchParams({
+        page: logsPage.toString(),
+        pageSize: logsPageSize.toString()
+      });
+
+      if (logsKeyword) logsParams.append('keyword', logsKeyword);
+      if (logsLevel !== 'all') logsParams.append('level', logsLevel);
+      if (logsDateFrom) logsParams.append('dateFrom', logsDateFrom);
+      if (logsDateTo) logsParams.append('dateTo', logsDateTo);
+
       const [enqRes, confRes, jobsRes, logsRes] = await Promise.all([
         fetch('/api/admin/enquiries'),
         fetch('/api/admin/platform-config'),
         fetch('/api/admin/job-settings'),
-        fetch(`/api/admin/logs?page=${logsPage}&pageSize=${logsPageSize}`)
+        fetch(`/api/admin/logs?${logsParams}`)
       ]);
 
       if (enqRes.ok) {
@@ -190,7 +207,7 @@ export default function AdminDashboard() {
     } else {
       fetchOtherData();
     }
-  }, [activeTab, pageNumber, pageSize, statusFilter, logsPage]); // Search text handled separately with debounce ideally, or on enter
+  }, [activeTab, pageNumber, pageSize, statusFilter, logsPage, logsKeyword, logsLevel, logsDateFrom, logsDateTo]); // Search text handled separately with debounce ideally, or on enter
 
   // Handle Search Enter
   const handleSearch = (e: React.KeyboardEvent) => {
@@ -1547,6 +1564,94 @@ export default function AdminDashboard() {
                 <h2 className="text-2xl font-bold tracking-tight text-slate-900">Audit Logs</h2>
                 <p className="text-muted-foreground">View system activity and audit trail</p>
               </div>
+
+              {/* Filter Controls */}
+              <Card className="border shadow-sm mb-4">
+                <CardContent className="p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {/* Keyword Search */}
+                    <div className="space-y-2">
+                      <Label htmlFor="logsKeyword">Search</Label>
+                      <Input
+                        id="logsKeyword"
+                        placeholder="Search in message..."
+                        value={logsKeyword}
+                        onChange={(e) => {
+                          setLogsKeyword(e.target.value);
+                          setLogsPage(1); // Reset to first page
+                        }}
+                      />
+                    </div>
+
+                    {/* Log Level Filter */}
+                    <div className="space-y-2">
+                      <Label htmlFor="logsLevel">Log Level</Label>
+                      <Select value={logsLevel} onValueChange={(value) => {
+                        setLogsLevel(value);
+                        setLogsPage(1);
+                      }}>
+                        <SelectTrigger id="logsLevel">
+                          <SelectValue placeholder="All Levels" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Levels</SelectItem>
+                          <SelectItem value="Info">Info</SelectItem>
+                          <SelectItem value="Warning">Warning</SelectItem>
+                          <SelectItem value="Error">Error</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Date From */}
+                    <div className="space-y-2">
+                      <Label htmlFor="logsDateFrom">Date From</Label>
+                      <Input
+                        id="logsDateFrom"
+                        type="date"
+                        value={logsDateFrom}
+                        onChange={(e) => {
+                          setLogsDateFrom(e.target.value);
+                          setLogsPage(1);
+                        }}
+                      />
+                    </div>
+
+                    {/* Date To */}
+                    <div className="space-y-2">
+                      <Label htmlFor="logsDateTo">Date To</Label>
+                      <Input
+                        id="logsDateTo"
+                        type="date"
+                        value={logsDateTo}
+                        onChange={(e) => {
+                          setLogsDateTo(e.target.value);
+                          setLogsPage(1);
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Clear Filters Button */}
+                  {(logsKeyword || logsLevel !== 'all' || logsDateFrom || logsDateTo) && (
+                    <div className="mt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setLogsKeyword("");
+                          setLogsLevel("all");
+                          setLogsDateFrom("");
+                          setLogsDateTo("");
+                          setLogsPage(1);
+                        }}
+                      >
+                        Clear Filters
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               <Card className="border shadow-sm">
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">

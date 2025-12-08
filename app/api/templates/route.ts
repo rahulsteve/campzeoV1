@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { logError, logWarning, logInfo } from '@/lib/audit-logger';
 
 // GET: List all templates for the organization
 export async function GET(req: Request) {
@@ -59,8 +60,9 @@ export async function GET(req: Request) {
             data: templates
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error fetching templates:", error);
+        await logError("Failed to fetch templates", { userId: "unknown" }, error);
         return NextResponse.json(
             { error: "Failed to fetch templates" },
             { status: 500 }
@@ -109,14 +111,16 @@ export async function POST(req: Request) {
             }
         });
 
+        await logInfo("Template created", { templateId: template.id, name: template.name, createdBy: user.id });
         return NextResponse.json({
             success: true,
             data: template,
             message: "Template created successfully"
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error creating template:", error);
+        await logError("Failed to create template", { userId: "unknown" }, error);
         return NextResponse.json(
             { error: "Failed to create template" },
             { status: 500 }

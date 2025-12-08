@@ -1,13 +1,14 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { logInfo } from "@/lib/audit-logger";
+import { logInfo, logError, logWarning } from "@/lib/audit-logger";
 
 export async function POST(req: Request) {
     try {
         const user = await currentUser();
 
         if (!user) {
+            await logWarning("Unauthorized access attempt to cancel subscription", { action: "cancel-subscription" });
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -76,8 +77,9 @@ export async function POST(req: Request) {
                 autoRenew: updatedSubscription.autoRenew,
             },
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error cancelling subscription:", error);
+        await logError("Failed to cancel subscription", { userId: "unknown" }, error);
         return NextResponse.json(
             { error: "Failed to cancel subscription" },
             { status: 500 }

@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { currentUser } from '@clerk/nextjs/server';
 import { getImpersonatedOrganisationId } from '@/lib/admin-impersonation';
+import { logError, logWarning, logInfo } from '@/lib/audit-logger';
 
 // GET - Fetch campaigns for the organisation with pagination
 export async function GET(request: NextRequest) {
     try {
         const user = await currentUser();
         if (!user) {
+            await logWarning("Unauthorized access attempt to fetch campaigns", { action: "fetch-campaigns" });
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -88,8 +90,9 @@ export async function GET(request: NextRequest) {
                 totalPages: Math.ceil(total / limit),
             },
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching campaigns:', error);
+        await logError("Failed to fetch campaigns", { userId: "unknown" }, error);
         return NextResponse.json({ error: 'Failed to fetch campaigns' }, { status: 500 });
     }
 }
@@ -99,6 +102,7 @@ export async function POST(request: NextRequest) {
     try {
         const user = await currentUser();
         if (!user) {
+            await logWarning("Unauthorized access attempt to create campaign", { action: "create-campaign" });
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -156,9 +160,11 @@ export async function POST(request: NextRequest) {
             },
         });
 
+        await logInfo("Campaign created", { campaignId: campaign.id, name: campaign.name, createdBy: user.id });
         return NextResponse.json({ campaign }, { status: 201 });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error creating campaign:', error);
+        await logError("Failed to create campaign", { userId: "unknown" }, error);
         return NextResponse.json({ error: 'Failed to create campaign' }, { status: 500 });
     }
 }

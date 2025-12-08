@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { logError, logInfo } from '@/lib/audit-logger';
 
 // Email validation regex
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -161,9 +162,11 @@ export async function POST(req: Request) {
             },
         });
 
+        await logInfo("Enquiry created", { email: data.email, organisationName: data.organisationName });
         return NextResponse.json({ success: true, enquiry });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Enquiry creation error:", error);
+        await logError("Failed to create enquiry", { userId: "Unknown" }, error);
         return NextResponse.json({
             success: false,
             error: error instanceof Error ? error.message : "Failed to create enquiry",

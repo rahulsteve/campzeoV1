@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { logError, logWarning } from '@/lib/audit-logger';
 
 export async function GET(request: NextRequest) {
     try {
@@ -21,6 +22,7 @@ export async function GET(request: NextRequest) {
         }
 
         if (user.role !== 'ADMIN_USER') {
+            await logWarning("Forbidden access attempt to list enquiries", { userId, role: user.role });
             return NextResponse.json({ isSuccess: false, message: `Access denied. Your role is: ${user.role}. Admin access required.` }, { status: 403 });
         }
 
@@ -30,6 +32,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ isSuccess: true, data: enquiries });
     } catch (error: any) {
+        await logError("Failed to fetch enquiries", { userId: "Unknown" }, error);
         return NextResponse.json({ isSuccess: false, message: error.message }, { status: 500 });
     }
 }

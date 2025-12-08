@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { currentUser } from '@clerk/nextjs/server';
 import { getImpersonatedOrganisationId } from '@/lib/admin-impersonation';
+import { logError, logWarning, logInfo } from '@/lib/audit-logger';
 
 // GET - Fetch contacts with search, filter, and pagination
 export async function GET(request: NextRequest) {
@@ -94,8 +95,9 @@ export async function GET(request: NextRequest) {
                 totalPages: Math.ceil(total / limit)
             }
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching contacts:', error);
+        await logError("Failed to fetch contacts", { userId: "unknown" }, error);
         return NextResponse.json({ error: 'Failed to fetch contacts' }, { status: 500 });
     }
 }
@@ -212,9 +214,11 @@ export async function POST(request: NextRequest) {
             }
         });
 
+        await logInfo("Contact created", { contactId: contact.id, contactName: contact.contactName, createdBy: user.id });
         return NextResponse.json(contact, { status: 201 });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error creating contact:', error);
+        await logError("Failed to create contact", { userId: "unknown" }, error);
         return NextResponse.json({ error: 'Failed to create contact' }, { status: 500 });
     }
 }
@@ -261,12 +265,14 @@ export async function DELETE(request: NextRequest) {
             }
         });
 
+        await logInfo("Contacts deleted", { count: result.count, deletedBy: user.id });
         return NextResponse.json({
             message: `Successfully deleted ${result.count} contact(s)`,
             count: result.count
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error deleting contacts:', error);
+        await logError("Failed to delete contacts", { userId: "unknown" }, error);
         return NextResponse.json({ error: 'Failed to delete contacts' }, { status: 500 });
     }
 }

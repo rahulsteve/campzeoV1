@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { currentUser } from '@clerk/nextjs/server';
+import { logError, logWarning, logInfo } from '@/lib/audit-logger';
 
 interface CSVRow {
     contactName?: string;
@@ -76,6 +77,7 @@ export async function POST(request: NextRequest) {
     try {
         const user = await currentUser();
         if (!user) {
+            await logWarning("Unauthorized access attempt to import contacts", { action: "import-contacts" });
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -227,9 +229,11 @@ export async function POST(request: NextRequest) {
             result.success = validContacts.length;
         }
 
+        await logInfo("Contacts imported", { success: result.success, failed: result.failed, duplicates: result.duplicates, importedBy: user.id });
         return NextResponse.json(result);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error importing contacts:', error);
+        await logError("Failed to import contacts", { userId: "unknown" }, error);
         return NextResponse.json(
             { error: 'Failed to import contacts' },
             { status: 500 }
