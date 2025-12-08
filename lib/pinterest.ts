@@ -2,6 +2,13 @@ interface PinterestCredentials {
     accessToken: string;
 }
 
+interface PinterestBoard {
+    id: string;
+    name: string;
+    description: string;
+    privacy: string;
+}
+
 export async function postToPinterest(
     credentials: PinterestCredentials,
     title: string,
@@ -9,7 +16,6 @@ export async function postToPinterest(
     mediaUrl: string,
     metadata?: {
         boardId?: string;
-        link?: string;
     }
 ) {
     const { accessToken } = credentials;
@@ -21,7 +27,7 @@ export async function postToPinterest(
     }
 
     try {
-        // Create a Pin
+        // Create a Pin - Production URL
         const response = await fetch('https://api.pinterest.com/v5/pins', {
             method: 'POST',
             headers: {
@@ -31,7 +37,6 @@ export async function postToPinterest(
             body: JSON.stringify({
                 title,
                 description,
-                link: metadata?.link || undefined,
                 board_id: metadata?.boardId || undefined,
                 media_source: {
                     source_type: 'image_url',
@@ -56,11 +61,10 @@ export async function postToPinterest(
     }
 }
 
-// Get user's boards
-export async function getPinterestBoards(accessToken: string) {
+export async function getPinterestBoards(accessToken: string): Promise<PinterestBoard[]> {
     try {
+        // Production URL
         const response = await fetch('https://api.pinterest.com/v5/boards', {
-            method: 'GET',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
             },
@@ -72,10 +76,47 @@ export async function getPinterestBoards(accessToken: string) {
         }
 
         const data = await response.json();
-        return data.items || [];
-
+        return data.items.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            description: item.description,
+            privacy: item.privacy,
+        }));
     } catch (error) {
-        console.error('Pinterest boards fetch error:', error);
+        console.error('Error fetching Pinterest boards:', error);
+        return [];
+    }
+}
+
+export async function createPinterestBoard(accessToken: string, name: string, description?: string, privacy: 'PUBLIC' | 'SECRET' = 'PUBLIC'): Promise<PinterestBoard> {
+    try {
+        const response = await fetch('https://api.pinterest.com/v5/boards', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name,
+                description: description || undefined,
+                privacy
+            }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(`Pinterest API error: ${JSON.stringify(error)}`);
+        }
+
+        const data = await response.json();
+        return {
+            id: data.id,
+            name: data.name,
+            description: data.description,
+            privacy: data.privacy,
+        };
+    } catch (error) {
+        console.error('Error creating Pinterest board:', error);
         throw error;
     }
 }

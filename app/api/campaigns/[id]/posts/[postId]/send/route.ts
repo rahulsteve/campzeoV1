@@ -336,7 +336,6 @@ export async function POST(
                     imageUrl,
                     {
                         boardId: metadata?.boardId,
-                        link: metadata?.link,
                     }
                 );
 

@@ -929,7 +929,7 @@ export default function AdminDashboard() {
                     <div className="p-4 border-b flex items-center justify-between gap-4 bg-slate-50/50">
                       <div className="flex gap-2 w-full md:w-auto flex-1 md:flex-none">
                         <div className="relative w-1/2 md:w-80">
-                          <Search className="absolute   size-4 text-muted-foreground" style={{top: "10px" , left:"10px"}} />
+                          <Search className="absolute   size-4 text-muted-foreground" style={{ top: "10px", left: "10px" }} />
                           <Input
                             placeholder="Search by name, email..."
                             className="pl-9 bg-white"
@@ -1105,7 +1105,7 @@ export default function AdminDashboard() {
                       </Dialog>
 
                       {/* Pagination Controls */}
-                      <div className="flex items-center justify-between px-4 py-4 border-t bg-slate-50/30">
+                      <div className="flex items-center justify-between px-4 py-4 border-t bg-slate-50/30" style={{ paddingTop: "10px" }}>
                         <div className="text-sm text-muted-foreground">
                           Showing {1 + ((pageNumber - 1) * pageSize)} to {Math.min(pageNumber * pageSize, totalCount)} of {totalCount} entries
                         </div>
@@ -1141,8 +1141,7 @@ export default function AdminDashboard() {
                 )}
               </Card>
             </TabsContent>
-
-            {/* Other Tabs (Enquiry, Platform, System, Logs) - Simplified Placeholders or reusing existing logic */}
+            {/* Enquiry */}
             <TabsContent value="enquiry" className="m-0 focus-visible:outline-none">
               <div className="mb-6 flex items-center justify-between">
                 <div>

@@ -57,13 +57,13 @@ export default function EditPostPage() {
     const [youtubePrivacy, setYoutubePrivacy] = useState('public');
     const [isReel, setIsReel] = useState(false);
     const [uploadingMedia, setUploadingMedia] = useState(false);
-    
+
     // Pinterest Boards
     const [pinterestBoards, setPinterestBoards] = useState<any[]>([]);
     const [loadingPinterestBoards, setLoadingPinterestBoards] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    
+
     // Preview state
     const [showPreview, setShowPreview] = useState(false);
 
@@ -88,14 +88,14 @@ export default function EditPostPage() {
                 setMessage(post.message || '');
                 setType(post.type);
                 setSenderEmail(post.senderEmail || '');
-                
+
                 // Load media URLs
                 if (post.mediaUrls && post.mediaUrls.length > 0) {
                     setMediaUrls(post.mediaUrls);
                 } else if (post.videoUrl) {
                     setMediaUrls([post.videoUrl]);
                 }
-                
+
                 // Load metadata
                 const metadata = post.metadata || {};
                 setPinterestBoardId(metadata.boardId || '');
@@ -103,7 +103,7 @@ export default function EditPostPage() {
                 setYoutubeTags(metadata.tags ? (Array.isArray(metadata.tags) ? metadata.tags.join(', ') : metadata.tags) : '');
                 setYoutubePrivacy(metadata.privacy || 'public');
                 setIsReel(metadata.isReel || false);
-                
+
                 if (post.scheduledPostTime) {
                     const date = new Date(post.scheduledPostTime);
                     const year = date.getFullYear();
@@ -266,9 +266,9 @@ export default function EditPostPage() {
     if (loading) {
         return (
             <div className="min-h-screen bg-background">
- 
+
                 <div className="flex">
-           
+
                     <main className="flex-1 p-6">
                         <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
                             <Loader2 className="size-8 animate-spin text-muted-foreground" />
@@ -281,9 +281,9 @@ export default function EditPostPage() {
 
     return (
         <div className="min-h-screen bg-background">
-   
+
             <div className="flex">
-            
+
                 <main className="flex-1 p-6">
                     <div className="max-w-4xl mx-auto space-y-6">
                         {/* Header */}
@@ -463,27 +463,27 @@ export default function EditPostPage() {
                                     )}
 
                                     {/* Reel Option for Facebook/Instagram */}
-                                    {(type === 'FACEBOOK' || type === 'INSTAGRAM') && 
-                                      mediaUrls.some(url => isVideoUrl(url)) && (
-                                          <div className="space-y-4 pt-4 border-t">
-                                            <br/>
-                                            <div className="flex items-center space-x-2">
-                                                <input
-                                                    type="checkbox"
-                                                    id="isReel"
-                                                    checked={isReel}
-                                                    onChange={(e) => setIsReel(e.target.checked)}
-                                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                                />
-                                                <Label htmlFor="isReel" className="font-medium cursor-pointer">
-                                                    Post as Reel
-                                                </Label>
+                                    {(type === 'FACEBOOK' || type === 'INSTAGRAM') &&
+                                        mediaUrls.some(url => isVideoUrl(url)) && (
+                                            <div className="space-y-4 pt-4 border-t">
+                                                <br />
+                                                <div className="flex items-center space-x-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        id="isReel"
+                                                        checked={isReel}
+                                                        onChange={(e) => setIsReel(e.target.checked)}
+                                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                                    />
+                                                    <Label htmlFor="isReel" className="font-medium cursor-pointer">
+                                                        Post as Reel
+                                                    </Label>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground pl-6">
+                                                    Upload as a short-form video (Reel). Recommended for vertical videos (9:16) under 90 seconds.
+                                                </p>
                                             </div>
-                                            <p className="text-xs text-muted-foreground pl-6">
-                                                Upload as a short-form video (Reel). Recommended for vertical videos (9:16) under 90 seconds.
-                                            </p>
-                                        </div>
-                                    )}
+                                        )}
 
                                     {/* YouTube Specific Fields */}
                                     {type === 'YOUTUBE' && (
@@ -568,15 +568,7 @@ export default function EditPostPage() {
                                                         </Select>
                                                     )}
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="pinterestLink">Destination Link</Label>
-                                                    <Input
-                                                        id="pinterestLink"
-                                                        placeholder="https://yourwebsite.com"
-                                                        value={pinterestLink}
-                                                        onChange={(e) => setPinterestLink(e.target.value)}
-                                                    />
-                                                </div>
+
                                             </div>
                                         </div>
                                     )}
@@ -628,7 +620,7 @@ export default function EditPostPage() {
                                 <p className="text-sm font-semibold">{subject}</p>
                             </div>
                         )}
-                        
+
                         {mediaUrls.length > 0 && (
                             <div>
                                 <p className="text-sm font-medium mb-2">Media:</p>
@@ -643,9 +635,9 @@ export default function EditPostPage() {
                                                     <p className="absolute bottom-2 left-2 text-xs bg-black/50 text-white px-2 py-1 rounded">Video</p>
                                                 </div>
                                             ) : (
-                                                <img 
-                                                    src={url} 
-                                                    alt={`Media ${index + 1}`} 
+                                                <img
+                                                    src={url}
+                                                    alt={`Media ${index + 1}`}
                                                     className="w-full h-full object-cover"
                                                 />
                                             )}
@@ -654,7 +646,7 @@ export default function EditPostPage() {
                                 </div>
                             </div>
                         )}
-                        
+
                         <div>
                             <p className="text-sm font-medium mb-1">Message:</p>
                             <div className="p-4 border rounded-lg bg-muted/50 whitespace-pre-wrap">

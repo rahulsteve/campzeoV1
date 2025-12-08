@@ -32,7 +32,8 @@ import {
     X,
     FileText,
     Image as ImageIcon,
-    Video
+    Video,
+    Plus
 } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import { PostPreview } from './_components/post-preview';
@@ -73,18 +74,6 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
     const [campaignContacts, setCampaignContacts] = useState<any[]>([]);
     const [loadingContacts, setLoadingContacts] = useState(true);
     // const [loadingContacts, setLoadingContacts] = useState(true); // Duplicate declaration removed
-    // const [mediaUrl, setMediaUrl] = useState(''); // Replaced by mediaUrls
-    const [uploadingMedia, setUploadingMedia] = useState(false);
-    
-    // Pinterest Boards
-    const [pinterestBoards, setPinterestBoards] = useState<any[]>([]);
-    const [loadingPinterestBoards, setLoadingPinterestBoards] = useState(false);
-    
-    // Reel state
-    const [isReel, setIsReel] = useState(false);
-
-    // Template state
-    const [templates, setTemplates] = useState<any[]>([]);
     const [loadingTemplates, setLoadingTemplates] = useState(false);
     const [selectedTemplateId, setSelectedTemplateId] = useState<string>('none');
 
@@ -109,6 +98,39 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
 
         fetchCampaignContacts();
     }, [campaignId]);
+
+    const [isReel, setIsReel] = useState(false);
+    const [uploadingMedia, setUploadingMedia] = useState(false);
+    const [templates, setTemplates] = useState<any[]>([]);
+    const [pinterestBoards, setPinterestBoards] = useState<{ id: string; name: string }[]>([]);
+    const [loadingPinterestBoards, setLoadingPinterestBoards] = useState(false);
+
+    // New Board State
+    const [isCreatingBoard, setIsCreatingBoard] = useState(false);
+    const [newBoardName, setNewBoardName] = useState('');
+    const [newBoardDescription, setNewBoardDescription] = useState('');
+    const [creatingBoard, setCreatingBoard] = useState(false);
+
+    // Helper for inserting variables
+    const insertVariable = (variable: string) => {
+        const textarea = document.getElementById('message') as HTMLTextAreaElement;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const before = text.substring(0, start);
+        const after = text.substring(end);
+        const newText = before + `{{${variable}}}` + after;
+
+        setMessage(newText);
+
+        // Reset cursor position
+        setTimeout(() => {
+            textarea.selectionStart = textarea.selectionEnd = start + variable.length + 4;
+            textarea.focus();
+        }, 0);
+    };
 
     // Fetch organisation platforms
     useEffect(() => {
@@ -142,6 +164,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
     }, []);
 
     // Fetch Pinterest boards
+    // Fetch Pinterest boards
     useEffect(() => {
         if (selectedPlatform === 'PINTEREST') {
             const fetchBoards = async () => {
@@ -163,14 +186,10 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                     setLoadingPinterestBoards(false);
                 }
             };
+
             fetchBoards();
         }
     }, [selectedPlatform]);
-
-    // Insert variable placeholder
-    const insertVariable = (variable: string) => {
-        setMessage(message + `{{${variable}}}`);
-    };
 
     // Get preview content with variables replaced
     const getPreviewContent = () => {
@@ -251,6 +270,51 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
         setMediaUrls(prev => prev.filter((_, i) => i !== index));
     };
 
+    // Create new Pinterest board
+    const handleCreateBoard = async () => {
+        if (!newBoardName.trim()) {
+            toast.error('Board name is required');
+            return;
+        }
+
+        try {
+            setCreatingBoard(true);
+            const response = await fetch('/api/socialmedia/pinterest/boards', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: newBoardName,
+                    description: newBoardDescription,
+                    privacy: 'PUBLIC' // Default to public
+                }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to create board');
+            }
+
+            const data = await response.json();
+            const newBoard = data.board;
+
+            // Add new board to list and select it
+            setPinterestBoards(prev => [...prev, newBoard]);
+            setPinterestBoardId(newBoard.id);
+
+            // Reset and close modal
+            setNewBoardName('');
+            setNewBoardDescription('');
+            setIsCreatingBoard(false);
+
+            toast.success('Board created successfully');
+        } catch (error) {
+            console.error('Error creating board:', error);
+            toast.error(error instanceof Error ? error.message : 'Failed to create board');
+        } finally {
+            setCreatingBoard(false);
+        }
+    };
+
     // Handle form submit
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -304,8 +368,8 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
 
             // YouTube specific validation
             if (selectedPlatform === 'YOUTUBE' && mediaUrls.length > 0 && !mediaUrls[0].match(/\.(mp4|mov|webm)$/i)) {
-                 toast.error('YouTube requires a video file');
-                 return;
+                toast.error('YouTube requires a video file');
+                return;
             }
         }
 
@@ -390,9 +454,9 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
 
     return (
         <div className="min-h-screen bg-background">
-    
+
             <div className="flex">
-        
+
                 <main className="flex-1 p-6">
                     <div className="max-w-5xl mx-auto space-y-6">
                         {/* Header */}
@@ -445,11 +509,10 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                                         key={platform}
                                                                         type="button"
                                                                         onClick={() => togglePlatform(platform)}
-                                                                        className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all min-w-[100px] ${
-                                                                            isSelected
-                                                                                ? 'border-primary bg-primary/10 shadow-sm'
-                                                                                : 'border-border hover:border-primary/50 hover:bg-muted/50'
-                                                                        }`}
+                                                                        className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all min-w-[100px] ${isSelected
+                                                                            ? 'border-primary bg-primary/10 shadow-sm'
+                                                                            : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                                                                            }`}
                                                                     >
                                                                         <Icon className={`size-6 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
                                                                         <span className={`text-xs font-medium ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
@@ -713,26 +776,26 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                         </div>
                                                     )}
                                                     {/* Reel Option for Facebook/Instagram */}
-                                                    {(selectedPlatform === 'FACEBOOK' || selectedPlatform === 'INSTAGRAM') && 
-                                                      mediaUrls.some(url => url.match(/\.(mp4|mov|webm)$/i)) && (
-                                                        <div className="space-y-4 pt-4 border-t">
-                                                            <div className="flex items-center space-x-2">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    id="isReel"
-                                                                    checked={isReel}
-                                                                    onChange={(e) => setIsReel(e.target.checked)}
-                                                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                                                />
-                                                                <Label htmlFor="isReel" className="font-medium cursor-pointer">
-                                                                    Post as Reel
-                                                                </Label>
+                                                    {(selectedPlatform === 'FACEBOOK' || selectedPlatform === 'INSTAGRAM') &&
+                                                        mediaUrls.some(url => url.match(/\.(mp4|mov|webm)$/i)) && (
+                                                            <div className="space-y-4 pt-4 border-t">
+                                                                <div className="flex items-center space-x-2">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        id="isReel"
+                                                                        checked={isReel}
+                                                                        onChange={(e) => setIsReel(e.target.checked)}
+                                                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                                                    />
+                                                                    <Label htmlFor="isReel" className="font-medium cursor-pointer">
+                                                                        Post as Reel
+                                                                    </Label>
+                                                                </div>
+                                                                <p className="text-xs text-muted-foreground pl-6">
+                                                                    Upload as a short-form video (Reel). Recommended for vertical videos (9:16) under 90 seconds.
+                                                                </p>
                                                             </div>
-                                                            <p className="text-xs text-muted-foreground pl-6">
-                                                                Upload as a short-form video (Reel). Recommended for vertical videos (9:16) under 90 seconds.
-                                                            </p>
-                                                        </div>
-                                                    )}
+                                                        )}
 
                                                     {/* YouTube Specific Fields */}
                                                     {selectedPlatform === 'YOUTUBE' && (
@@ -777,38 +840,89 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                                 </div>
                                                                 Pinterest Settings
                                                             </h3>
-                                                            <div className="grid grid-cols-2 gap-4">
+                                                            <div className="grid grid-cols-1 gap-4">
                                                                 <div className="space-y-2">
-                                                                    <Label htmlFor="pinterestBoardId">Board *</Label>
+                                                                    <Label htmlFor="pinterestBoard">Select Board</Label>
                                                                     {loadingPinterestBoards ? (
-                                                                        <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-muted/50">
-                                                                            <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                                                                            <span className="text-sm text-muted-foreground">Loading boards...</span>
+                                                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                                            <Loader2 className="size-3 animate-spin" />
+                                                                            Loading boards...
                                                                         </div>
                                                                     ) : (
-                                                                        <Select value={pinterestBoardId} onValueChange={setPinterestBoardId}>
-                                                                            <SelectTrigger id="pinterestBoardId">
-                                                                                <SelectValue placeholder="Select a board" />
-                                                                            </SelectTrigger>
-                                                                            <SelectContent>
-                                                                                {pinterestBoards.length === 0 ? (
-                                                                                    <SelectItem value="none" disabled>No boards found</SelectItem>
-                                                                                ) : (
-                                                                                    pinterestBoards.map((board) => (
+                                                                        <>
+                                                                            <Select
+                                                                                value={pinterestBoardId}
+                                                                                onValueChange={(val) => {
+                                                                                    if (val === 'create_new') {
+                                                                                        setIsCreatingBoard(true);
+                                                                                        return;
+                                                                                    }
+                                                                                    setPinterestBoardId(val);
+                                                                                }}
+                                                                            >
+                                                                                <SelectTrigger id="pinterestBoard">
+                                                                                    <SelectValue placeholder="Select a board" />
+                                                                                </SelectTrigger>
+                                                                                <SelectContent>
+                                                                                    <SelectItem value="create_new" className="text-primary font-medium cursor-pointer bg-primary/5 focus:bg-primary/10">
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <Plus className="size-4" />
+                                                                                            Create New Board
+                                                                                        </div>
+                                                                                    </SelectItem>
+                                                                                    {pinterestBoards.map(board => (
                                                                                         <SelectItem key={board.id} value={board.id}>
                                                                                             {board.name}
                                                                                         </SelectItem>
-                                                                                    ))
-                                                                                )}
-                                                                            </SelectContent>
-                                                                        </Select>
+                                                                                    ))}
+                                                                                </SelectContent>
+                                                                            </Select>
+
+                                                                            <Dialog open={isCreatingBoard} onOpenChange={setIsCreatingBoard}>
+                                                                                <DialogContent>
+                                                                                    <DialogHeader>
+                                                                                        <DialogTitle>Create New Pinterest Board</DialogTitle>
+                                                                                        <DialogDescription>
+                                                                                            Create a new board to organize your pins.
+                                                                                        </DialogDescription>
+                                                                                    </DialogHeader>
+                                                                                    <div className="space-y-4 py-4">
+                                                                                        <div className="space-y-2">
+                                                                                            <Label htmlFor="boardName">Board Name</Label>
+                                                                                            <Input
+                                                                                                id="boardName"
+                                                                                                value={newBoardName}
+                                                                                                onChange={(e) => setNewBoardName(e.target.value)}
+                                                                                                placeholder="e.g., Summer Inspiration"
+                                                                                            />
+                                                                                        </div>
+                                                                                        <div className="space-y-2">
+                                                                                            <Label htmlFor="boardDesc">Description (Optional)</Label>
+                                                                                            <Textarea
+                                                                                                id="boardDesc"
+                                                                                                value={newBoardDescription}
+                                                                                                onChange={(e) => setNewBoardDescription(e.target.value)}
+                                                                                                placeholder="What's this board about?"
+                                                                                            />
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <div className="flex justify-end gap-3">
+                                                                                        <Button variant="outline" onClick={() => setIsCreatingBoard(false)}>Cancel</Button>
+                                                                                        <Button onClick={handleCreateBoard} disabled={creatingBoard || !newBoardName.trim()}>
+                                                                                            {creatingBoard && <Loader2 className="size-4 mr-2 animate-spin" />}
+                                                                                            Create Board
+                                                                                        </Button>
+                                                                                    </div>
+                                                                                </DialogContent>
+                                                                            </Dialog>
+                                                                        </>
                                                                     )}
                                                                 </div>
                                                                 <div className="space-y-2">
-                                                                    <Label htmlFor="pinterestLink">Destination Link</Label>
+                                                                    <Label htmlFor="pinterestLink">Destination Link (Optional)</Label>
                                                                     <Input
                                                                         id="pinterestLink"
-                                                                        placeholder="https://yourwebsite.com"
+                                                                        placeholder="https://example.com"
                                                                         value={pinterestLink}
                                                                         onChange={(e) => setPinterestLink(e.target.value)}
                                                                     />
@@ -816,22 +930,22 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                             </div>
                                                         </div>
                                                     )}
-                                                </div>
-                                            )}
 
-                                            {/* Schedule Field */}
-                                            {selectedPlatform && (
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="scheduledPostTime">Schedule Post (Optional)</Label>
-                                                    <Input
-                                                        id="scheduledPostTime"
-                                                        type="datetime-local"
-                                                        value={scheduledPostTime}
-                                                        onChange={(e) => setScheduledPostTime(e.target.value)}
-                                                    />
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Leave empty to send immediately
-                                                    </p>
+                                                    {/* Schedule Field */}
+                                                    {selectedPlatform && (
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="scheduledPostTime">Schedule Post (Optional)</Label>
+                                                            <Input
+                                                                id="scheduledPostTime"
+                                                                type="datetime-local"
+                                                                value={scheduledPostTime}
+                                                                onChange={(e) => setScheduledPostTime(e.target.value)}
+                                                            />
+                                                            <p className="text-xs text-muted-foreground">
+                                                                Leave empty to send immediately
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </CardContent>
@@ -860,7 +974,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                 </>
                                             )}
                                         </Button>
-                                        
+
                                         {/* Preview Button - Opens Modal */}
                                         <Dialog>
                                             <DialogTrigger asChild>
@@ -883,7 +997,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                     </DialogDescription>
                                                 </DialogHeader>
                                                 <div className="mt-4">
-                                                    <PostPreview 
+                                                    <PostPreview
                                                         platforms={selectedPlatform ? [selectedPlatform] : []}
                                                         subject={subject}
                                                         message={message}
@@ -906,4 +1020,5 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
         </div>
     );
 }
+
 
