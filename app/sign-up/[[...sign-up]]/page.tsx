@@ -77,7 +77,7 @@ export default function Page() {
 
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center bg-background p-4" >
-        <div className="w-full max-w-2xl" style={{ border: "1px solid #e5e7eb", padding: "10px", borderRadius: "20px"}}>
+        <div className="w-full max-w-2xl" style={{  padding: "10px", borderRadius: "20px"}}>
           <Card className="shadow-lg border-0 sm:border">
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl font-bold text-center">Start your Free Trial</CardTitle>
