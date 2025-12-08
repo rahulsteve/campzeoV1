@@ -39,6 +39,58 @@ export default function Page() {
 
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // Validation
+    const requiredFields = {
+      email: "Email",
+      password: "Password",
+      name: "Owner Name",
+      organisationName: "Organisation Name",
+      mobile: "Mobile Number",
+      address: "Address",
+      city: "City",
+      state: "State",
+      country: "Country",
+      postalCode: "Postal Code",
+      taxNumber: "Tax Number"
+    };
+
+    // Check for missing required fields
+    for (const [field, label] of Object.entries(requiredFields)) {
+      if (!form[field as keyof typeof form] || form[field as keyof typeof form].trim() === "") {
+        toast.error("Missing Required Field", {
+          description: `${label} is required. Please fill in all fields.`,
+        });
+        return;
+      }
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email)) {
+      toast.error("Invalid Email", {
+        description: "Please enter a valid email address.",
+      });
+      return;
+    }
+
+    // Password validation
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!passwordRegex.test(form.password)) {
+      toast.error("Weak Password", {
+        description: "Password must be at least 8 characters with 1 uppercase, 1 lowercase, and 1 number.",
+      });
+      return;
+    }
+
+    // Mobile validation
+    if (form.mobile.length < 10) {
+      toast.error("Invalid Mobile Number", {
+        description: "Mobile number must be at least 10 digits.",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -47,8 +99,21 @@ export default function Page() {
         body: JSON.stringify(form),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error("Failed to submit enquiry");
+        // Show specific error from API if available
+        if (data.errors && Array.isArray(data.errors)) {
+          toast.error("Validation Failed", {
+            description: data.errors.join(", "),
+          });
+        } else {
+          toast.error("Submission Failed", {
+            description: data.message || "Failed to submit enquiry",
+          });
+        }
+        setLoading(false);
+        return;
       }
 
       toast.success("Success!", {
@@ -87,9 +152,9 @@ export default function Page() {
             </CardHeader>
             <CardContent>
               <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex justify-around" style={{justifyContent:"space-around"}} >
+                <div className="flex justify-between flex-wrap">
                   <div className="space-y-2">
-                    <Label htmlFor="organisationName">Organisation Name</Label>
+                    <Label htmlFor="organisationName">Organisation Name <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
                     <Input
                       id="organisationName"
                       name="organisationName"
@@ -99,7 +164,7 @@ export default function Page() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="name">Owner Name</Label>
+                    <Label htmlFor="name">Owner Name <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
                     <Input
                       id="name"
                       name="name"
@@ -109,9 +174,9 @@ export default function Page() {
                     />
                   </div>
                 </div>
-                <div className="flex justify-around" style={{justifyContent:"space-around"}} >
+                <div className="flex justify-between flex-wrap">
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">Email <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
                     <Input
                       id="email"
                       name="email"
@@ -122,7 +187,7 @@ export default function Page() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="mobile">Mobile</Label>
+                    <Label htmlFor="mobile">Mobile <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
                     <Input
                       id="mobile"
                       name="mobile"
@@ -133,10 +198,10 @@ export default function Page() {
                   </div>
                 </div>
 
-                <div className="flex justify-around" style={{justifyContent:"space-around"}} >
+                <div className="flex justify-between flex-wrap">
 
                   <div className="space-y-2">
-                    <Label htmlFor="address">Address</Label>
+                    <Label htmlFor="address">Address <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
                     <Input
                       id="address"
                       name="address"
@@ -146,7 +211,7 @@ export default function Page() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="password">Password <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
                     <Input
                       id="password"
                       name="password"
@@ -158,9 +223,9 @@ export default function Page() {
                     />
                   </div>
                 </div>
-                <div className="flex justify-around" style={{justifyContent:"space-around"}} >
+                <div className="flex justify-between flex-wrap">
                   <div className="space-y-2">
-                    <Label htmlFor="city">City</Label>
+                    <Label htmlFor="city">City <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
                     <Input
                       id="city"
                       name="city"
@@ -170,7 +235,7 @@ export default function Page() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="state">State</Label>
+                    <Label htmlFor="state">State <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
                     <Input
                       id="state"
                       name="state"
@@ -180,9 +245,9 @@ export default function Page() {
                     />
                   </div>
                 </div>
-                <div className="flex justify-around" style={{justifyContent:"space-around"}} >
+                <div className="flex justify-between flex-wrap">
                   <div className="space-y-2">
-                    <Label htmlFor="country">Country</Label>
+                    <Label htmlFor="country">Country <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
                     <Input
                       id="country"
                       name="country"
@@ -192,7 +257,7 @@ export default function Page() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="postalCode">Postal Code</Label>
+                    <Label htmlFor="postalCode">Postal Code <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
                     <Input
                       id="postalCode"
                       name="postalCode"
@@ -202,9 +267,9 @@ export default function Page() {
                     />
                   </div>
                 </div>
-                <div className="flex justify-between" style={{marginInline:"40px"}}  >
+                <div className="flex justify-between flex-wrap">
                   <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="taxNumber">GST / Tax Number</Label>
+                    <Label htmlFor="taxNumber">GST / Tax Number <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
                     <Input
                       id="taxNumber"
                       name="taxNumber"
@@ -215,8 +280,8 @@ export default function Page() {
                   </div>
 
                 </div>
-                <div className="space-y-2 md:col-span-2" style={{marginInline:"40px"}} >
-                  <Label htmlFor="enquiryText">Enquiry</Label>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="enquiryText">Enquiry<span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
                   <Textarea
                     id="enquiryText"
                     name="enquiryText"
