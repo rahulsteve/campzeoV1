@@ -30,10 +30,11 @@ export async function postToLinkedIn(
         // Upload all media files
         for (const mediaUrl of mediaList) {
             // Determine if image or video
-            const isVideo = !!mediaUrl.match(/\.(mp4|mov|webm)$/i);
+            // Improved regex to handle URLs with query parameters (e.g. ?token=...)
+            const isVideo = !!mediaUrl.match(/\.(mp4|mov|webm)(\?.*)?$/i);
 
             // 1. Register Upload
-            console.log(`[LinkedIn] Registering upload for ${mediaUrl}...`);
+            console.log(`[LinkedIn] Registering upload for ${mediaUrl} (Is Video: ${isVideo})...`);
             const registerResponse = await fetch("https://api.linkedin.com/v2/assets?action=registerUpload", {
                 method: "POST",
                 headers: {
@@ -56,8 +57,9 @@ export async function postToLinkedIn(
 
             if (!registerResponse.ok) {
                 const errorText = await registerResponse.text();
-                console.error(`[LinkedIn] Register Upload Failed: ${registerResponse.status} ${registerResponse.statusText}`, errorText);
-                throw new Error(`Failed to register upload: ${errorText}`);
+                console.error(`[LinkedIn] Register Upload Failed: ${registerResponse.status} ${registerResponse.statusText}`);
+                console.error(`[LinkedIn] Error Body: ${errorText}`);
+                throw new Error(`Failed to register upload (${registerResponse.status}): ${errorText}`);
             }
 
             const registerData = await registerResponse.json();
@@ -80,7 +82,14 @@ export async function postToLinkedIn(
             }
 
             console.log(`[LinkedIn] Fetching from URL: ${fetchUrl}`);
-            const mediaResponse = await fetch(fetchUrl);
+
+            const fetchOptions: RequestInit = {};
+            // If fetching from Vercel Blob and token is available, include it (User request)
+            if (process.env.BLOB_READ_WRITE_TOKEN && fetchUrl.includes('vercel-storage.com')) {
+                fetchOptions.headers = { 'Authorization': `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` };
+            }
+
+            const mediaResponse = await fetch(fetchUrl, fetchOptions);
 
             if (!mediaResponse.ok) {
                 throw new Error(`Failed to fetch media file: ${mediaResponse.status} ${mediaResponse.statusText}`);

@@ -945,10 +945,10 @@ export default function AdminDashboard() {
                   <>
                     <div className="p-4 border-b flex items-center justify-between gap-4 bg-slate-50/50">
                       <div className="flex gap-2 w-full md:w-auto flex-1 md:flex-none">
-                        <div className="relative w-full md:w-80">
-                          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+                        <div className="relative w-1/2 md:w-80">
+                          <Search className="absolute   size-4 text-muted-foreground" style={{top: "10px" , left:"10px"}} />
                           <Input
-                            placeholder="Search by name, email, or owner..."
+                            placeholder="Search by name, email..."
                             className="pl-9 bg-white"
                             value={searchText}
                             onChange={(e) => setSearchText(e.target.value)}
