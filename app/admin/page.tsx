@@ -76,6 +76,12 @@ export default function AdminDashboard() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
+  // Logs Pagination State
+  const [logsPage, setLogsPage] = useState(1);
+  const [logsPageSize] = useState(10);
+  const [logsTotalCount, setLogsTotalCount] = useState(0);
+  const [logsTotalPages, setLogsTotalPages] = useState(0);
+
   // Add/Edit Org Form State
   const [isAddingOrg, setIsAddingOrg] = useState(false);
   const [isCreatingOrg, setIsCreatingOrg] = useState(false);
@@ -148,7 +154,7 @@ export default function AdminDashboard() {
         fetch('/api/admin/enquiries'),
         fetch('/api/admin/platform-config'),
         fetch('/api/admin/job-settings'),
-        fetch('/api/admin/logs')
+        fetch(`/api/admin/logs?page=${logsPage}&pageSize=${logsPageSize}`)
       ]);
 
       if (enqRes.ok) {
@@ -161,7 +167,15 @@ export default function AdminDashboard() {
 
       if (confRes.ok) setPlatformConfigs((await confRes.json()).data || []);
       if (jobsRes.ok) setJobSettings((await jobsRes.json()).data || []);
-      if (logsRes.ok) setLogs((await logsRes.json()).data || []);
+
+      if (logsRes.ok) {
+        const logsData = await logsRes.json();
+        if (logsData.isSuccess && logsData.data) {
+          setLogs(logsData.data.logs || []);
+          setLogsTotalCount(logsData.data.totalCount || 0);
+          setLogsTotalPages(logsData.data.totalPages || 0);
+        }
+      }
     } catch (error) {
       console.error("Failed to fetch other data", error);
       toast.error("Failed to load admin data");
@@ -171,10 +185,12 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (activeTab === 'organisations') {
       fetchOrganisations();
+    } else if (activeTab === 'logs') {
+      fetchOtherData();
     } else {
       fetchOtherData();
     }
-  }, [activeTab, pageNumber, pageSize, statusFilter]); // Search text handled separately with debounce ideally, or on enter
+  }, [activeTab, pageNumber, pageSize, statusFilter, logsPage]); // Search text handled separately with debounce ideally, or on enter
 
   // Handle Search Enter
   const handleSearch = (e: React.KeyboardEvent) => {
@@ -1529,35 +1545,92 @@ export default function AdminDashboard() {
             <TabsContent value="logs" className="m-0 focus-visible:outline-none">
               <div className="mb-6">
                 <h2 className="text-2xl font-bold tracking-tight text-slate-900">Audit Logs</h2>
+                <p className="text-muted-foreground">View system activity and audit trail</p>
               </div>
               <Card className="border shadow-sm">
                 <CardContent className="p-0">
-                  <div className="max-h-[600px] overflow-y-auto">
+                  <div className="overflow-x-auto">
                     <Table>
-                      <TableHeader className="bg-slate-50 sticky top-0">
+                      <TableHeader className="bg-slate-50">
                         <TableRow>
-                          <TableHead>Action</TableHead>
-                          <TableHead>Description</TableHead>
-                          <TableHead>User</TableHead>
-                          <TableHead>Tenant</TableHead>
-                          <TableHead>Date</TableHead>
+                          <TableHead className="w-[100px]">Level</TableHead>
+                          <TableHead>Message</TableHead>
+                          <TableHead className="w-[200px]">Timestamp</TableHead>
+                          <TableHead className="w-[150px]">Properties</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {logs.map((log) => (
-                          <TableRow key={log.id}>
-                            <TableCell className="font-medium">{log.action}</TableCell>
-                            <TableCell>{log.description}</TableCell>
-                            <TableCell>{log.user?.email || 'System'}</TableCell>
-                            <TableCell>{log.tenant?.name || 'System'}</TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {new Date(log.createdAt).toLocaleString()}
+                        {logs.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                              No logs found
                             </TableCell>
                           </TableRow>
-                        ))}
+                        ) : (
+                          logs.map((log) => (
+                            <TableRow key={log.id}>
+                              <TableCell>
+                                <Badge
+                                  variant={
+                                    log.level === 'Error' ? 'destructive' :
+                                      log.level === 'Warning' ? 'outline' :
+                                        'secondary'
+                                  }
+                                >
+                                  {log.level}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="font-medium">{log.message}</TableCell>
+                              <TableCell className="text-muted-foreground text-sm">
+                                {new Date(log.timeStamp).toLocaleString()}
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground truncate max-w-[150px]">
+                                {log.properties ? (
+                                  <span title={log.properties}>{log.properties}</span>
+                                ) : (
+                                  '-'
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
                       </TableBody>
                     </Table>
                   </div>
+
+                  {/* Pagination Controls */}
+                  {logsTotalPages > 1 && (
+                    <div className="flex items-center justify-between px-4 py-4 border-t bg-slate-50/30">
+                      <div className="text-sm text-muted-foreground">
+                        Showing {1 + ((logsPage - 1) * logsPageSize)} to {Math.min(logsPage * logsPageSize, logsTotalCount)} of {logsTotalCount} entries
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm font-medium">
+                          Page {logsPage} of {logsTotalPages}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setLogsPage(p => Math.max(1, p - 1))}
+                            disabled={logsPage === 1}
+                          >
+                            <ChevronLeft className="h-4 w-4 mr-1" />
+                            Previous
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setLogsPage(p => Math.min(logsTotalPages, p + 1))}
+                            disabled={logsPage >= logsTotalPages}
+                          >
+                            Next
+                            <ChevronRight className="h-4 w-4 ml-1" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
