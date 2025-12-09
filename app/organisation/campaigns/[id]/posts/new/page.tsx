@@ -32,7 +32,8 @@ import {
     X,
     FileText,
     Image as ImageIcon,
-    Video
+    Video,
+    Plus
 } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import { PostPreview } from './_components/post-preview';
@@ -59,6 +60,8 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
     const [message, setMessage] = useState('');
     const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
     const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+    const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+    const [isReel, setIsReel] = useState(false);
 
     // Platform specific fields
     const [youtubeTags, setYoutubeTags] = useState('');
@@ -73,18 +76,6 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
     const [campaignContacts, setCampaignContacts] = useState<any[]>([]);
     const [loadingContacts, setLoadingContacts] = useState(true);
     // const [loadingContacts, setLoadingContacts] = useState(true); // Duplicate declaration removed
-    // const [mediaUrl, setMediaUrl] = useState(''); // Replaced by mediaUrls
-    const [uploadingMedia, setUploadingMedia] = useState(false);
-    
-    // Pinterest Boards
-    const [pinterestBoards, setPinterestBoards] = useState<any[]>([]);
-    const [loadingPinterestBoards, setLoadingPinterestBoards] = useState(false);
-    
-    // Reel state
-    const [isReel, setIsReel] = useState(false);
-
-    // Template state
-    const [templates, setTemplates] = useState<any[]>([]);
     const [loadingTemplates, setLoadingTemplates] = useState(false);
     const [selectedTemplateId, setSelectedTemplateId] = useState<string>('none');
 
@@ -109,6 +100,39 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
 
         fetchCampaignContacts();
     }, [campaignId]);
+
+
+    const [uploadingMedia, setUploadingMedia] = useState(false);
+    const [templates, setTemplates] = useState<any[]>([]);
+    const [pinterestBoards, setPinterestBoards] = useState<{ id: string; name: string }[]>([]);
+    const [loadingPinterestBoards, setLoadingPinterestBoards] = useState(false);
+
+    // New Board State
+    const [isCreatingBoard, setIsCreatingBoard] = useState(false);
+    const [newBoardName, setNewBoardName] = useState('');
+    const [newBoardDescription, setNewBoardDescription] = useState('');
+    const [creatingBoard, setCreatingBoard] = useState(false);
+
+    // Helper for inserting variables
+    const insertVariable = (variable: string) => {
+        const textarea = document.getElementById('message') as HTMLTextAreaElement;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const before = text.substring(0, start);
+        const after = text.substring(end);
+        const newText = before + `{{${variable}}}` + after;
+
+        setMessage(newText);
+
+        // Reset cursor position
+        setTimeout(() => {
+            textarea.selectionStart = textarea.selectionEnd = start + variable.length + 4;
+            textarea.focus();
+        }, 0);
+    };
 
     // Fetch organisation platforms
     useEffect(() => {
@@ -142,6 +166,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
     }, []);
 
     // Fetch Pinterest boards
+    // Fetch Pinterest boards
     useEffect(() => {
         if (selectedPlatform === 'PINTEREST') {
             const fetchBoards = async () => {
@@ -163,14 +188,10 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                     setLoadingPinterestBoards(false);
                 }
             };
+
             fetchBoards();
         }
     }, [selectedPlatform]);
-
-    // Insert variable placeholder
-    const insertVariable = (variable: string) => {
-        setMessage(message + `{{${variable}}}`);
-    };
 
     // Get preview content with variables replaced
     const getPreviewContent = () => {
@@ -247,8 +268,81 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
         }
     };
 
+    const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        try {
+            setUploadingMedia(true);
+            const file = files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/api/socialmedia/upload-media-file', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) throw new Error('Upload failed');
+
+            const data = await response.json();
+            setThumbnailUrl(data.url);
+            toast.success('Thumbnail uploaded successfully');
+        } catch (error) {
+            console.error('Error uploading thumbnail:', error);
+            toast.error('Failed to upload thumbnail');
+        } finally {
+            setUploadingMedia(false);
+        }
+    };
+
     const removeMedia = (index: number) => {
         setMediaUrls(prev => prev.filter((_, i) => i !== index));
+    };
+
+    // Create new Pinterest board
+    const handleCreateBoard = async () => {
+        if (!newBoardName.trim()) {
+            toast.error('Board name is required');
+            return;
+        }
+
+        try {
+            setCreatingBoard(true);
+            const response = await fetch('/api/socialmedia/pinterest/boards', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: newBoardName,
+                    description: newBoardDescription,
+                    privacy: 'PUBLIC' // Default to public
+                }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to create board');
+            }
+
+            const data = await response.json();
+            const newBoard = data.board;
+
+            // Add new board to list and select it
+            setPinterestBoards(prev => [...prev, newBoard]);
+            setPinterestBoardId(newBoard.id);
+
+            // Reset and close modal
+            setNewBoardName('');
+            setNewBoardDescription('');
+            setIsCreatingBoard(false);
+
+            toast.success('Board created successfully');
+        } catch (error) {
+            console.error('Error creating board:', error);
+            toast.error(error instanceof Error ? error.message : 'Failed to create board');
+        } finally {
+            setCreatingBoard(false);
+        }
     };
 
     // Handle form submit
@@ -304,8 +398,8 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
 
             // YouTube specific validation
             if (selectedPlatform === 'YOUTUBE' && mediaUrls.length > 0 && !mediaUrls[0].match(/\.(mp4|mov|webm)$/i)) {
-                 toast.error('YouTube requires a video file');
-                 return;
+                toast.error('YouTube requires a video file');
+                return;
             }
         }
 
@@ -326,7 +420,10 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                     youtubePrivacy,
                     pinterestBoardId,
                     pinterestLink,
-                    isReel // Send isReel flag
+                    pinterestBoardId,
+                    pinterestLink,
+                    isReel, // Send isReel flag
+                    thumbnailUrl // Send thumbnail
                 }),
             });
 
@@ -370,6 +467,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
     };
 
     // Handle template selection
+    // Handle template selection
     const handleTemplateSelect = (templateId: string) => {
         setSelectedTemplateId(templateId);
 
@@ -385,14 +483,46 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
         setSubject(template.subject || '');
         setMessage(template.content || '');
 
+        // Prefill media
+        if (template.mediaUrls && Array.isArray(template.mediaUrls)) {
+            setMediaUrls(template.mediaUrls);
+        }
+
+        // Handle metadata settings
+        if (template.metadata && typeof template.metadata === 'object') {
+            const meta = template.metadata as any;
+
+            // Map Reel/Short setting
+            if (['SHORT', 'REEL'].includes(meta.postType)) {
+                setIsReel(true);
+            } else {
+                setIsReel(false);
+            }
+
+            // Map YouTube Privacy
+            if (meta.youtubePrivacy) {
+                setYoutubePrivacy(meta.youtubePrivacy);
+            }
+
+            // Map YouTube Tags
+            if (meta.youtubeTags) {
+                setYoutubeTags(meta.youtubeTags);
+            }
+
+            // Map Thumbnail
+            if (meta.thumbnailUrl) {
+                setThumbnailUrl(meta.thumbnailUrl);
+            }
+        }
+
         toast.success('Template loaded! You can now edit the content.');
     };
 
     return (
         <div className="min-h-screen bg-background">
-    
+
             <div className="flex">
-        
+
                 <main className="flex-1 p-6">
                     <div className="max-w-5xl mx-auto space-y-6">
                         {/* Header */}
@@ -445,11 +575,10 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                                         key={platform}
                                                                         type="button"
                                                                         onClick={() => togglePlatform(platform)}
-                                                                        className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all min-w-[100px] ${
-                                                                            isSelected
-                                                                                ? 'border-primary bg-primary/10 shadow-sm'
-                                                                                : 'border-border hover:border-primary/50 hover:bg-muted/50'
-                                                                        }`}
+                                                                        className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all min-w-[100px] ${isSelected
+                                                                            ? 'border-primary bg-primary/10 shadow-sm'
+                                                                            : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                                                                            }`}
                                                                     >
                                                                         <Icon className={`size-6 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
                                                                         <span className={`text-xs font-medium ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
@@ -713,26 +842,64 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                         </div>
                                                     )}
                                                     {/* Reel Option for Facebook/Instagram */}
-                                                    {(selectedPlatform === 'FACEBOOK' || selectedPlatform === 'INSTAGRAM') && 
-                                                      mediaUrls.some(url => url.match(/\.(mp4|mov|webm)$/i)) && (
-                                                        <div className="space-y-4 pt-4 border-t">
-                                                            <div className="flex items-center space-x-2">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    id="isReel"
-                                                                    checked={isReel}
-                                                                    onChange={(e) => setIsReel(e.target.checked)}
-                                                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                                                />
-                                                                <Label htmlFor="isReel" className="font-medium cursor-pointer">
-                                                                    Post as Reel
-                                                                </Label>
+                                                    {(selectedPlatform === 'FACEBOOK' || selectedPlatform === 'INSTAGRAM') &&
+                                                        mediaUrls.some(url => url.match(/\.(mp4|mov|webm)$/i)) && (
+                                                            <div className="space-y-4 pt-4 border-t">
+                                                                <div className="flex items-center space-x-2">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        id="isReel"
+                                                                        checked={isReel}
+                                                                        onChange={(e) => setIsReel(e.target.checked)}
+                                                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                                                    />
+                                                                    <Label htmlFor="isReel" className="font-medium cursor-pointer">
+                                                                        Post as Reel
+                                                                    </Label>
+                                                                </div>
+                                                                <p className="text-xs text-muted-foreground pl-6">
+                                                                    Upload as a short-form video (Reel). Recommended for vertical videos (9:16) under 90 seconds.
+                                                                </p>
+
+                                                                {isReel && (
+                                                                    <div className="pl-6 pt-2">
+                                                                        <Label className="text-sm font-medium mb-2 block">Cover Image (Optional)</Label>
+                                                                        <div className="flex items-center gap-3">
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="outline"
+                                                                                size="sm"
+                                                                                onClick={() => document.getElementById('cover-upload')?.click()}
+                                                                                disabled={uploadingMedia}
+                                                                                className="gap-2"
+                                                                            >
+                                                                                <ImageIcon className="size-4" />
+                                                                                {uploadingMedia ? "Uploading..." : "Upload Cover"}
+                                                                            </Button>
+                                                                            <input
+                                                                                id="cover-upload"
+                                                                                type="file"
+                                                                                accept="image/*"
+                                                                                onChange={handleThumbnailUpload}
+                                                                                className="hidden"
+                                                                            />
+                                                                            {thumbnailUrl && (
+                                                                                <div className="relative h-10 w-10 overflow-hidden rounded border bg-muted group">
+                                                                                    <Image src={thumbnailUrl} alt="Cover" fill className="object-cover" unoptimized />
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => setThumbnailUrl(null)}
+                                                                                        className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                                    >
+                                                                                        <X className="size-3 text-white" />
+                                                                                    </button>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                            <p className="text-xs text-muted-foreground pl-6">
-                                                                Upload as a short-form video (Reel). Recommended for vertical videos (9:16) under 90 seconds.
-                                                            </p>
-                                                        </div>
-                                                    )}
+                                                        )}
 
                                                     {/* YouTube Specific Fields */}
                                                     {selectedPlatform === 'YOUTUBE' && (
@@ -765,6 +932,40 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                                     </Select>
                                                                 </div>
                                                             </div>
+                                                            <div className="space-y-2 pt-2">
+                                                                <Label className="text-sm font-medium">Custom Thumbnail</Label>
+                                                                <div className="flex items-center gap-3">
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        onClick={() => document.getElementById('yt-thumbnail-upload')?.click()}
+                                                                        disabled={uploadingMedia}
+                                                                        className="gap-2"
+                                                                    >
+                                                                        <ImageIcon className="size-4" />
+                                                                        {uploadingMedia ? "Uploading..." : "Upload Thumbnail"}
+                                                                    </Button>
+                                                                    <input
+                                                                        id="yt-thumbnail-upload"
+                                                                        type="file"
+                                                                        accept="image/*"
+                                                                        onChange={handleThumbnailUpload}
+                                                                        className="hidden"
+                                                                    />
+                                                                    {thumbnailUrl && (
+                                                                        <div className="relative aspect-video w-32 overflow-hidden rounded border bg-muted group">
+                                                                            <Image src={thumbnailUrl} alt="Thumbnail" fill className="object-cover" unoptimized />
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => setThumbnailUrl(null)}
+                                                                                className="absolute right-1 top-1 rounded-full bg-black/50 p-1 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                            >
+                                                                                <X className="size-3" />
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     )}
 
@@ -777,38 +978,89 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                                 </div>
                                                                 Pinterest Settings
                                                             </h3>
-                                                            <div className="grid grid-cols-2 gap-4">
+                                                            <div className="grid grid-cols-1 gap-4">
                                                                 <div className="space-y-2">
-                                                                    <Label htmlFor="pinterestBoardId">Board *</Label>
+                                                                    <Label htmlFor="pinterestBoard">Select Board</Label>
                                                                     {loadingPinterestBoards ? (
-                                                                        <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-muted/50">
-                                                                            <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                                                                            <span className="text-sm text-muted-foreground">Loading boards...</span>
+                                                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                                            <Loader2 className="size-3 animate-spin" />
+                                                                            Loading boards...
                                                                         </div>
                                                                     ) : (
-                                                                        <Select value={pinterestBoardId} onValueChange={setPinterestBoardId}>
-                                                                            <SelectTrigger id="pinterestBoardId">
-                                                                                <SelectValue placeholder="Select a board" />
-                                                                            </SelectTrigger>
-                                                                            <SelectContent>
-                                                                                {pinterestBoards.length === 0 ? (
-                                                                                    <SelectItem value="none" disabled>No boards found</SelectItem>
-                                                                                ) : (
-                                                                                    pinterestBoards.map((board) => (
+                                                                        <>
+                                                                            <Select
+                                                                                value={pinterestBoardId}
+                                                                                onValueChange={(val) => {
+                                                                                    if (val === 'create_new') {
+                                                                                        setIsCreatingBoard(true);
+                                                                                        return;
+                                                                                    }
+                                                                                    setPinterestBoardId(val);
+                                                                                }}
+                                                                            >
+                                                                                <SelectTrigger id="pinterestBoard">
+                                                                                    <SelectValue placeholder="Select a board" />
+                                                                                </SelectTrigger>
+                                                                                <SelectContent>
+                                                                                    <SelectItem value="create_new" className="text-primary font-medium cursor-pointer bg-primary/5 focus:bg-primary/10">
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <Plus className="size-4" />
+                                                                                            Create New Board
+                                                                                        </div>
+                                                                                    </SelectItem>
+                                                                                    {pinterestBoards.map(board => (
                                                                                         <SelectItem key={board.id} value={board.id}>
                                                                                             {board.name}
                                                                                         </SelectItem>
-                                                                                    ))
-                                                                                )}
-                                                                            </SelectContent>
-                                                                        </Select>
+                                                                                    ))}
+                                                                                </SelectContent>
+                                                                            </Select>
+
+                                                                            <Dialog open={isCreatingBoard} onOpenChange={setIsCreatingBoard}>
+                                                                                <DialogContent>
+                                                                                    <DialogHeader>
+                                                                                        <DialogTitle>Create New Pinterest Board</DialogTitle>
+                                                                                        <DialogDescription>
+                                                                                            Create a new board to organize your pins.
+                                                                                        </DialogDescription>
+                                                                                    </DialogHeader>
+                                                                                    <div className="space-y-4 py-4">
+                                                                                        <div className="space-y-2">
+                                                                                            <Label htmlFor="boardName">Board Name</Label>
+                                                                                            <Input
+                                                                                                id="boardName"
+                                                                                                value={newBoardName}
+                                                                                                onChange={(e) => setNewBoardName(e.target.value)}
+                                                                                                placeholder="e.g., Summer Inspiration"
+                                                                                            />
+                                                                                        </div>
+                                                                                        <div className="space-y-2">
+                                                                                            <Label htmlFor="boardDesc">Description (Optional)</Label>
+                                                                                            <Textarea
+                                                                                                id="boardDesc"
+                                                                                                value={newBoardDescription}
+                                                                                                onChange={(e) => setNewBoardDescription(e.target.value)}
+                                                                                                placeholder="What's this board about?"
+                                                                                            />
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <div className="flex justify-end gap-3">
+                                                                                        <Button variant="outline" onClick={() => setIsCreatingBoard(false)}>Cancel</Button>
+                                                                                        <Button onClick={handleCreateBoard} disabled={creatingBoard || !newBoardName.trim()}>
+                                                                                            {creatingBoard && <Loader2 className="size-4 mr-2 animate-spin" />}
+                                                                                            Create Board
+                                                                                        </Button>
+                                                                                    </div>
+                                                                                </DialogContent>
+                                                                            </Dialog>
+                                                                        </>
                                                                     )}
                                                                 </div>
                                                                 <div className="space-y-2">
-                                                                    <Label htmlFor="pinterestLink">Destination Link</Label>
+                                                                    <Label htmlFor="pinterestLink">Destination Link (Optional)</Label>
                                                                     <Input
                                                                         id="pinterestLink"
-                                                                        placeholder="https://yourwebsite.com"
+                                                                        placeholder="https://example.com"
                                                                         value={pinterestLink}
                                                                         onChange={(e) => setPinterestLink(e.target.value)}
                                                                     />
@@ -816,28 +1068,27 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                             </div>
                                                         </div>
                                                     )}
-                                                </div>
-                                            )}
 
-                                            {/* Schedule Field */}
-                                            {selectedPlatform && (
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="scheduledPostTime">Schedule Post (Optional)</Label>
-                                                    <Input
-                                                        id="scheduledPostTime"
-                                                        type="datetime-local"
-                                                        value={scheduledPostTime}
-                                                        onChange={(e) => setScheduledPostTime(e.target.value)}
-                                                    />
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Leave empty to send immediately
-                                                    </p>
+                                                    {/* Schedule Field */}
+                                                    {selectedPlatform && (
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="scheduledPostTime">Schedule Post (Optional)</Label>
+                                                            <Input
+                                                                id="scheduledPostTime"
+                                                                type="datetime-local"
+                                                                value={scheduledPostTime}
+                                                                onChange={(e) => setScheduledPostTime(e.target.value)}
+                                                            />
+                                                            <p className="text-xs text-muted-foreground">
+                                                                Leave empty to send immediately
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </CardContent>
                                     </Card>
 
-                                    {/* Actions */}
                                     <div className="flex justify-end gap-4">
                                         <Button
                                             type="button"
@@ -860,7 +1111,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                 </>
                                             )}
                                         </Button>
-                                        
+
                                         {/* Preview Button - Opens Modal */}
                                         <Dialog>
                                             <DialogTrigger asChild>
@@ -883,11 +1134,13 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                     </DialogDescription>
                                                 </DialogHeader>
                                                 <div className="mt-4">
-                                                    <PostPreview 
+                                                    <PostPreview
                                                         platforms={selectedPlatform ? [selectedPlatform] : []}
                                                         subject={subject}
                                                         message={message}
                                                         mediaUrls={mediaUrls}
+                                                        thumbnailUrl={thumbnailUrl}
+                                                        isReel={isReel}
                                                         user={{
                                                             name: user?.fullName || user?.firstName || 'User',
                                                             image: user?.imageUrl
@@ -906,4 +1159,5 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
         </div>
     );
 }
+
 

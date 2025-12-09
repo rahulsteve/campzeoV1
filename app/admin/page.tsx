@@ -1106,7 +1106,7 @@ export default function AdminDashboard() {
                       </Dialog>
 
                       {/* Pagination Controls */}
-                      <div className="flex items-center justify-between px-4 py-4 border-t bg-slate-50/30">
+                      <div className="flex items-center justify-between px-4 py-4 border-t bg-slate-50/30" style={{ paddingTop: "10px" }}>
                         <div className="text-sm text-muted-foreground">
                           Showing {1 + ((pageNumber - 1) * pageSize)} to {Math.min(pageNumber * pageSize, totalCount)} of {totalCount} entries
                         </div>
@@ -1142,8 +1142,7 @@ export default function AdminDashboard() {
                 )}
               </Card>
             </TabsContent>
-
-            {/* Other Tabs (Enquiry, Platform, System, Logs) - Simplified Placeholders or reusing existing logic */}
+            {/* Enquiry */}
             <TabsContent value="enquiry" className="m-0 focus-visible:outline-none">
               <div className="mb-6 flex items-center justify-between">
                 <div>

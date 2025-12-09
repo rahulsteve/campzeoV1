@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 import { PLANS, formatPrice, type PlanType } from "@/lib/plans";
-import { Check, CreditCard, Calendar, TrendingUp, XCircle, GitCompare } from "lucide-react";
+import { Check, CreditCard, Calendar, TrendingUp, XCircle, GitCompare, FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { RazorpayButton } from "@/components/razorpay-button";
 import { TrialCountdown } from "@/components/trial-countdown";
@@ -225,13 +225,16 @@ export default function BillingPage() {
               Manage your subscription and view payment history
             </p>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => setShowComparisonModal(true)}
-          >
-            <GitCompare className="size-4 mr-2" />
-            Compare Plans
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => router.push("/organisation/billing/invoices")}>
+              <FileText className="size-4 mr-2" />
+              Invoices
+            </Button>
+            <Button variant="outline" onClick={() => setShowComparisonModal(true)}>
+              <GitCompare className="size-4 mr-2" />
+              Compare Plans
+            </Button>
+          </div>
         </div>
 
         {/* Trial Countdown */}

@@ -16,6 +16,7 @@ export async function GET() {
             include: {
                 organisation: {
                     include: {
+                        organisationPlatforms: true,
                         subscriptions: {
                             orderBy: { createdAt: 'desc' },
                             take: 1,
@@ -42,6 +43,7 @@ export async function GET() {
                 const org = await prisma.organisation.findUnique({
                     where: { id: impersonatedId },
                     include: {
+                        organisationPlatforms: true,
                         subscriptions: {
                             orderBy: { createdAt: 'desc' },
                             take: 1,
