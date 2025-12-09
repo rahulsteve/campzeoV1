@@ -30,7 +30,8 @@ import {
   Eye,
   EyeOff,
   ChevronRight,
-  Download
+  Download,
+  Play
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -929,7 +930,7 @@ export default function AdminDashboard() {
                     <div className="p-4 border-b flex items-center justify-between gap-4 bg-slate-50/50">
                       <div className="flex gap-2 w-full md:w-auto flex-1 md:flex-none">
                         <div className="relative w-1/2 md:w-80">
-                          <Search className="absolute   size-4 text-muted-foreground" style={{top: "10px" , left:"10px"}} />
+                          <Search className="absolute   size-4 text-muted-foreground" style={{ top: "10px", left: "10px" }} />
                           <Input
                             placeholder="Search by name, email..."
                             className="pl-9 bg-white"
@@ -1536,6 +1537,101 @@ export default function AdminDashboard() {
                     }}>
                       <MessageSquare className="mr-2 size-4" /> Send Broadcast
                     </Button>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2 mt-6">
+                <Card className="border shadow-sm md:col-span-2">
+                  <CardHeader>
+                    <CardTitle>Campaign Posts Scheduler</CardTitle>
+                    <CardDescription>Configure and monitor the automated post scheduler.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-6 md:grid-cols-3">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label>Scheduler Status</Label>
+                          <Badge variant="default" className="bg-green-600">Active</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Runs every 5 minutes via Vercel Cron
+                        </p>
+                        <div className="pt-2">
+                          <p className="text-xs font-medium">Schedule:</p>
+                          <code className="text-xs bg-muted px-2 py-1 rounded">*/5 * * * *</code>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="cron-secret">Cron Secret</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="cron-secret"
+                            type="password"
+                            placeholder="Enter cron secret key"
+                            defaultValue={process.env.NEXT_PUBLIC_CRON_SECRET || ''}
+                            readOnly
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const input = document.getElementById('cron-secret') as HTMLInputElement;
+                              navigator.clipboard.writeText(input.value);
+                              toast.success('Copied to clipboard');
+                            }}
+                          >
+                            Copy
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Set this as CRON_SECRET in environment variables
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Actions</Label>
+                        <div className="space-y-2">
+                          <Button
+                            className="w-full"
+                            variant="default"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                toast.loading('Running scheduler...');
+                                const res = await fetch('/api/scheduler/campaign-posts', {
+                                  headers: {
+                                    'Authorization': `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET || 'your-secret-key'}`
+                                  }
+                                });
+                                const data = await res.json();
+                                toast.dismiss();
+
+                                if (res.ok && data.success) {
+                                  toast.success(`Scheduler completed! Processed: ${data.results?.processed || 0}, Failed: ${data.results?.failed || 0}`);
+                                } else {
+                                  toast.error(data.error || 'Scheduler failed');
+                                }
+                              } catch (error) {
+                                toast.dismiss();
+                                toast.error('Failed to run scheduler');
+                              }
+                            }}
+                          >
+                            <Play className="mr-2 size-4" /> Run Now
+                          </Button>
+                          <Button
+                            className="w-full"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open('/admin/scheduler', '_blank')}
+                          >
+                            <Settings className="mr-2 size-4" /> Advanced
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
