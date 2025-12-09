@@ -60,6 +60,8 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
     const [message, setMessage] = useState('');
     const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
     const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+    const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+    const [isReel, setIsReel] = useState(false);
 
     // Platform specific fields
     const [youtubeTags, setYoutubeTags] = useState('');
@@ -99,7 +101,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
         fetchCampaignContacts();
     }, [campaignId]);
 
-    const [isReel, setIsReel] = useState(false);
+
     const [uploadingMedia, setUploadingMedia] = useState(false);
     const [templates, setTemplates] = useState<any[]>([]);
     const [pinterestBoards, setPinterestBoards] = useState<{ id: string; name: string }[]>([]);
@@ -266,6 +268,34 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
         }
     };
 
+    const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        try {
+            setUploadingMedia(true);
+            const file = files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/api/socialmedia/upload-media-file', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) throw new Error('Upload failed');
+
+            const data = await response.json();
+            setThumbnailUrl(data.url);
+            toast.success('Thumbnail uploaded successfully');
+        } catch (error) {
+            console.error('Error uploading thumbnail:', error);
+            toast.error('Failed to upload thumbnail');
+        } finally {
+            setUploadingMedia(false);
+        }
+    };
+
     const removeMedia = (index: number) => {
         setMediaUrls(prev => prev.filter((_, i) => i !== index));
     };
@@ -390,7 +420,10 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                     youtubePrivacy,
                     pinterestBoardId,
                     pinterestLink,
-                    isReel // Send isReel flag
+                    pinterestBoardId,
+                    pinterestLink,
+                    isReel, // Send isReel flag
+                    thumbnailUrl // Send thumbnail
                 }),
             });
 
@@ -434,6 +467,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
     };
 
     // Handle template selection
+    // Handle template selection
     const handleTemplateSelect = (templateId: string) => {
         setSelectedTemplateId(templateId);
 
@@ -448,6 +482,38 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
         // Fill form with template data
         setSubject(template.subject || '');
         setMessage(template.content || '');
+
+        // Prefill media
+        if (template.mediaUrls && Array.isArray(template.mediaUrls)) {
+            setMediaUrls(template.mediaUrls);
+        }
+
+        // Handle metadata settings
+        if (template.metadata && typeof template.metadata === 'object') {
+            const meta = template.metadata as any;
+
+            // Map Reel/Short setting
+            if (['SHORT', 'REEL'].includes(meta.postType)) {
+                setIsReel(true);
+            } else {
+                setIsReel(false);
+            }
+
+            // Map YouTube Privacy
+            if (meta.youtubePrivacy) {
+                setYoutubePrivacy(meta.youtubePrivacy);
+            }
+
+            // Map YouTube Tags
+            if (meta.youtubeTags) {
+                setYoutubeTags(meta.youtubeTags);
+            }
+
+            // Map Thumbnail
+            if (meta.thumbnailUrl) {
+                setThumbnailUrl(meta.thumbnailUrl);
+            }
+        }
 
         toast.success('Template loaded! You can now edit the content.');
     };
@@ -794,6 +860,44 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                                 <p className="text-xs text-muted-foreground pl-6">
                                                                     Upload as a short-form video (Reel). Recommended for vertical videos (9:16) under 90 seconds.
                                                                 </p>
+
+                                                                {isReel && (
+                                                                    <div className="pl-6 pt-2">
+                                                                        <Label className="text-sm font-medium mb-2 block">Cover Image (Optional)</Label>
+                                                                        <div className="flex items-center gap-3">
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="outline"
+                                                                                size="sm"
+                                                                                onClick={() => document.getElementById('cover-upload')?.click()}
+                                                                                disabled={uploadingMedia}
+                                                                                className="gap-2"
+                                                                            >
+                                                                                <ImageIcon className="size-4" />
+                                                                                {uploadingMedia ? "Uploading..." : "Upload Cover"}
+                                                                            </Button>
+                                                                            <input
+                                                                                id="cover-upload"
+                                                                                type="file"
+                                                                                accept="image/*"
+                                                                                onChange={handleThumbnailUpload}
+                                                                                className="hidden"
+                                                                            />
+                                                                            {thumbnailUrl && (
+                                                                                <div className="relative h-10 w-10 overflow-hidden rounded border bg-muted group">
+                                                                                    <Image src={thumbnailUrl} alt="Cover" fill className="object-cover" unoptimized />
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => setThumbnailUrl(null)}
+                                                                                        className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                                    >
+                                                                                        <X className="size-3 text-white" />
+                                                                                    </button>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         )}
 
@@ -826,6 +930,40 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                                             <SelectItem value="unlisted">Unlisted</SelectItem>
                                                                         </SelectContent>
                                                                     </Select>
+                                                                </div>
+                                                            </div>
+                                                            <div className="space-y-2 pt-2">
+                                                                <Label className="text-sm font-medium">Custom Thumbnail</Label>
+                                                                <div className="flex items-center gap-3">
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="outline"
+                                                                        onClick={() => document.getElementById('yt-thumbnail-upload')?.click()}
+                                                                        disabled={uploadingMedia}
+                                                                        className="gap-2"
+                                                                    >
+                                                                        <ImageIcon className="size-4" />
+                                                                        {uploadingMedia ? "Uploading..." : "Upload Thumbnail"}
+                                                                    </Button>
+                                                                    <input
+                                                                        id="yt-thumbnail-upload"
+                                                                        type="file"
+                                                                        accept="image/*"
+                                                                        onChange={handleThumbnailUpload}
+                                                                        className="hidden"
+                                                                    />
+                                                                    {thumbnailUrl && (
+                                                                        <div className="relative aspect-video w-32 overflow-hidden rounded border bg-muted group">
+                                                                            <Image src={thumbnailUrl} alt="Thumbnail" fill className="object-cover" unoptimized />
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => setThumbnailUrl(null)}
+                                                                                className="absolute right-1 top-1 rounded-full bg-black/50 p-1 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                            >
+                                                                                <X className="size-3" />
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -951,7 +1089,6 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                         </CardContent>
                                     </Card>
 
-                                    {/* Actions */}
                                     <div className="flex justify-end gap-4">
                                         <Button
                                             type="button"
@@ -1002,6 +1139,8 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                         subject={subject}
                                                         message={message}
                                                         mediaUrls={mediaUrls}
+                                                        thumbnailUrl={thumbnailUrl}
+                                                        isReel={isReel}
                                                         user={{
                                                             name: user?.fullName || user?.firstName || 'User',
                                                             image: user?.imageUrl

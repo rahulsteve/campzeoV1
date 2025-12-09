@@ -30,11 +30,12 @@ export async function GET(req: Request) {
         };
 
         if (platform) {
-            whereClause.platform = platform;
+            // Enforce proper enum casing (uppercase)
+            whereClause.platform = platform.toUpperCase() as any;
         }
 
         if (category) {
-            whereClause.category = category;
+            whereClause.category = category.toUpperCase() as any;
         }
 
         if (search) {
@@ -85,11 +86,33 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json();
-        const { name, description, content, subject, platform, category, variables, isActive } = body;
+        const { name, description, content, subject, platform, category, variables, isActive, metadata, mediaUrls } = body;
 
         if (!name || !content || !platform) {
             return NextResponse.json(
                 { error: "Name, content, and platform are required" },
+                { status: 400 }
+            );
+        }
+
+        // Validate and format platform
+        const formattedPlatform = platform.toUpperCase();
+        const validPlatforms = ['EMAIL', 'SMS', 'WHATSAPP', 'RCS', 'FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'PINTEREST'];
+
+        if (!validPlatforms.includes(formattedPlatform)) {
+            return NextResponse.json(
+                { error: `Invalid platform. Must be one of: ${validPlatforms.join(', ')}` },
+                { status: 400 }
+            );
+        }
+
+        // Validate and format category
+        const formattedCategory = category ? category.toUpperCase() : "CUSTOM";
+        const validCategories = ['MARKETING', 'TRANSACTIONAL', 'NOTIFICATION', 'CUSTOM'];
+
+        if (!validCategories.includes(formattedCategory)) {
+            return NextResponse.json(
+                { error: `Invalid category. Must be one of: ${validCategories.join(', ')}` },
                 { status: 400 }
             );
         }
@@ -100,9 +123,11 @@ export async function POST(req: Request) {
                 description,
                 content,
                 subject,
-                platform,
-                category: category || "CUSTOM",
+                platform: formattedPlatform as any,
+                category: formattedCategory as any,
                 variables: variables || {},
+                metadata: metadata || {},
+                mediaUrls: mediaUrls || [],
                 isActive: isActive !== undefined ? isActive : true,
                 organisationId: dbUser.organisationId,
                 createdBy: user.id

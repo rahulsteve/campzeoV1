@@ -306,6 +306,8 @@ model MessageTemplate {
   platform       PlatformType
   category       TemplateCategory @default(CUSTOM)
   variables      Json?
+  metadata       Json?
+  mediaUrls      String[]         @default([])
   isActive       Boolean          @default(true)
   organisationId Int
   createdBy      String?
