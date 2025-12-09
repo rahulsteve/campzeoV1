@@ -117,6 +117,19 @@ export async function POST(req: Request) {
             );
         }
 
+        console.log('Creating template with data:', {
+            name,
+            description,
+            content: content?.substring(0, 50) + '...',
+            subject,
+            platform: formattedPlatform,
+            category: formattedCategory,
+            metadata,
+            mediaUrls,
+            organisationId: dbUser.organisationId,
+            createdBy: user.id
+        });
+
         const template = await prisma.messageTemplate.create({
             data: {
                 name,
@@ -134,6 +147,8 @@ export async function POST(req: Request) {
             }
         });
 
+        console.log('Template created successfully:', template.id);
+
         return NextResponse.json({
             success: true,
             data: template,
@@ -142,8 +157,16 @@ export async function POST(req: Request) {
 
     } catch (error) {
         console.error("Error creating template:", error);
+        console.error("Error details:", {
+            name: error instanceof Error ? error.name : 'Unknown',
+            message: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+        });
         return NextResponse.json(
-            { error: "Failed to create template" },
+            {
+                error: "Failed to create template",
+                details: error instanceof Error ? error.message : String(error)
+            },
             { status: 500 }
         );
     }

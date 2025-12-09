@@ -92,7 +92,16 @@ export async function PUT(
         }
 
         const body = await req.json();
-        const { name, description, content, subject, platform, category, variables, isActive } = body;
+        const { name, description, content, subject, platform, category, variables, isActive, metadata, mediaUrls } = body;
+
+        console.log('Updating template:', templateId, 'with data:', {
+            name,
+            hasContent: !!content,
+            platform,
+            category,
+            hasMetadata: !!metadata,
+            mediaUrlsCount: mediaUrls?.length || 0
+        });
 
         const template = await prisma.messageTemplate.update({
             where: { id: templateId },
@@ -104,9 +113,13 @@ export async function PUT(
                 ...(platform !== undefined && { platform }),
                 ...(category !== undefined && { category }),
                 ...(variables !== undefined && { variables }),
+                ...(metadata !== undefined && { metadata }),
+                ...(mediaUrls !== undefined && { mediaUrls }),
                 ...(isActive !== undefined && { isActive })
             }
         });
+
+        console.log('Template updated successfully:', template.id);
 
         return NextResponse.json({
             success: true,
@@ -116,8 +129,15 @@ export async function PUT(
 
     } catch (error) {
         console.error("Error updating template:", error);
+        console.error("Error details:", {
+            name: error instanceof Error ? error.name : 'Unknown',
+            message: error instanceof Error ? error.message : String(error)
+        });
         return NextResponse.json(
-            { error: "Failed to update template" },
+            {
+                error: "Failed to update template",
+                details: error instanceof Error ? error.message : String(error)
+            },
             { status: 500 }
         );
     }
