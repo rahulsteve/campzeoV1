@@ -3,11 +3,35 @@ import { prisma } from '@/lib/prisma';
 import { sendCampaignPost } from '@/lib/send-campaign-post';
 
 /**
+ * SCHEDULER FUNCTIONALITY - CURRENTLY DISABLED
+ * 
+ * This scheduler API is commented out to use manual sharing instead.
+ * The cron job functionality for automatic post scheduling is disabled.
+ * 
+ * To re-enable:
+ * 1. Uncomment the GET function below
+ * 2. Set up a cron job to call this endpoint
+ * 3. Configure CRON_SECRET environment variable
+ * 
  * Scheduler API to check and send scheduled campaign posts
  * This endpoint should be called by a cron job (e.g., every 5 minutes)
  * 
  * GET /api/scheduler/campaign-posts
  */
+
+// CRON FUNCTIONALITY DISABLED - Using manual sharing for now
+export async function GET(request: NextRequest) {
+    return NextResponse.json(
+        {
+            error: 'Scheduler disabled',
+            message: 'Automatic scheduling is currently disabled. Please use manual sharing.'
+        },
+        { status: 503 }
+    );
+}
+
+/* 
+// ORIGINAL SCHEDULER CODE - COMMENTED OUT
 export async function GET(request: NextRequest) {
     try {
         // Verify the request is from a trusted source (cron job)
@@ -134,3 +158,4 @@ export async function GET(request: NextRequest) {
         );
     }
 }
+*/

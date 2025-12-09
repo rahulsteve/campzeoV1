@@ -9,6 +9,7 @@
     "lint": "eslint",
     "postinstall": "prisma generate"
   },
+  "//": "CRON SCHEDULER DISABLED - Using manual sharing instead. See /api/scheduler/campaign-posts/route.ts for details.",
   "dependencies": {
     "@clerk/clerk-react": "^5.57.1",
     "@clerk/nextjs": "^6.35.6",
