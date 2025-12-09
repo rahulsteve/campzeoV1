@@ -420,8 +420,6 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                     youtubePrivacy,
                     pinterestBoardId,
                     pinterestLink,
-                    pinterestBoardId,
-                    pinterestLink,
                     isReel, // Send isReel flag
                     thumbnailUrl // Send thumbnail
                 }),
