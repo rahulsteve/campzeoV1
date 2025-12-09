@@ -45,7 +45,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className=" mx-auto space-y-6">
         <SettingsClient userData={userData} assignedPlatforms={assignedPlatforms} />
       </div>
     </div>

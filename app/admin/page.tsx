@@ -689,12 +689,12 @@ export default function AdminDashboard() {
       {/* Main Layout - Sidebar + Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} orientation="vertical" className="flex-1 flex flex-row overflow-hidden" style={{ minHeight: "87vh" }}>
         {/* Sidebar - Desktop */}
-        <div className="hidden md:flex w-64 shrink-0 bg-[#0f172a] text-white flex-col border-r border-slate-800 overflow-y-auto">
+        <div className="hidden md:flex w-64 shrink-0   text-white flex-col border-r border-slate-300 overflow-y-auto">
           <div className="p-4 py-6">
             {/* <div className="mb-6 px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
               Main Menu
             </div> */}
-            <TabsList className="flex flex-col h-auto items-stretch bg-transparent p-0 gap-1 text-slate-400">
+            <TabsList className="flex flex-col h-auto items-stretch  p-0 gap-1 text-slate-400">
               <TabsTrigger value="organisations" className="justify-start px-4 py-3 data-[state=active]:bg-primary data-[state=active]:text-white hover:bg-slate-800 hover:text-slate-200 transition-all rounded-md mx-2">
                 <Users className="mr-3 size-4" /> Organisation
               </TabsTrigger>
@@ -716,7 +716,7 @@ export default function AdminDashboard() {
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto p-8 md:p-24" style={{ paddingBlock: "20px" }}>
-          <div className="max-w-7xl mx-auto space-y-6">
+          <div className=" mx-auto space-y-6">
 
             {/* 1. Organisation Management */}
             <TabsContent value="organisations" className="m-0 space-y-6 focus-visible:outline-none" style={{ minHeight: "calc(60vh)" }}>

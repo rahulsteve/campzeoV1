@@ -519,12 +519,12 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
     };
 
     return (
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen w-full bg-background">
 
-            <div className="flex">
+            <div className="flex ">
 
                 <main className="flex-1 p-6">
-                    <div className="max-w-5xl mx-auto space-y-6">
+                    <div className=" mx-auto space-y-6">
                         {/* Header */}
                         <div className="flex items-center gap-4">
                             <Button
@@ -543,7 +543,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="grid  grid-cols-1 lg:grid-cols-3 gap-6">
                             <div className="lg:col-span-2">
                                 <form onSubmit={handleSubmit} className="space-y-6">
                                     {/* Post Details */}

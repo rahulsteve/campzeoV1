@@ -118,7 +118,7 @@ export default function InvoicePage() {
 
     return (
         <div className="min-h-screen bg-slate-50/50 p-6 md:p-8">
-            <div className="max-w-5xl mx-auto space-y-6">
+            <div className=" mx-auto space-y-6">
                 {/* Header Actions */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-2">
@@ -128,7 +128,7 @@ export default function InvoicePage() {
                         </Button>
                         <h1 className="text-xl font-semibold">Invoice Details</h1>
                     </div>
-                    <div className="flex items-center gap-2 w-1/2 sm:w-auto">
+                    <div className="flex items-center gap-2  sm:w-auto">
                         <Button variant="outline" onClick={handlePrint} disabled={isPrinting} className="flex-1 sm:flex-none">
                             <Printer className="size-4 mr-2" />
                             Print
@@ -143,7 +143,7 @@ export default function InvoicePage() {
                 {/* Invoice Content */}
                 <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
                     <div className="p-8 md:p-12" ref={contentRef}>
-                        <div className="max-w-[800px] mx-auto relative">
+                        <div className=" mx-auto relative">
                             {/* Status Watermark */}
                             {invoice.status !== 'PAID' && (
                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-45 pointer-events-none opacity-10 border-4 border-red-500 text-red-500 text-9xl font-black uppercase p-4 rounded-xl whitespace-nowrap z-0">

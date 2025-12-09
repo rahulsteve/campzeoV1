@@ -23,6 +23,7 @@ export default function NewTemplatePage() {
     const router = useRouter();
     const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
     const [isLoadingPlatforms, setIsLoadingPlatforms] = useState(true);
+    const [isPlayingVideo, setIsPlayingVideo] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
         subject: "",
@@ -152,14 +153,21 @@ export default function NewTemplatePage() {
 
     const handleCreate = async () => {
         try {
+            // Validation
             if (!formData.name) {
                 toast.error("Template name is required");
+                return;
+            }
+            if (!formData.platform) {
+                toast.error("Please select a platform");
                 return;
             }
             if (!formData.content) {
                 toast.error("Template content is required");
                 return;
             }
+
+            console.log('Creating template with data:', formData);
 
             setIsSaving(true);
             const response = await fetch("/api/templates", {
@@ -168,17 +176,21 @@ export default function NewTemplatePage() {
                 body: JSON.stringify(formData),
             });
 
+            console.log('Response status:', response.status);
             const data = await response.json();
+            console.log('Response data:', data);
 
-            if (data.success) {
+            if (response.ok && data.success) {
                 toast.success("Template created successfully");
                 router.push("/organisation/templates");
             } else {
-                toast.error(data.error || "Failed to create template");
+                const errorMessage = data.error || data.message || "Failed to create template";
+                console.error('Template creation failed:', errorMessage);
+                toast.error(errorMessage);
             }
         } catch (error) {
             console.error("Error creating template:", error);
-            toast.error("Failed to create template");
+            toast.error(error instanceof Error ? error.message : "Failed to create template");
         } finally {
             setIsSaving(false);
         }
@@ -391,41 +403,67 @@ export default function NewTemplatePage() {
                             "relative flex items-center justify-center bg-black overflow-hidden",
                             formData.metadata?.postType === 'SHORT' ? "aspect-[9/16] mx-auto w-1/2" : "aspect-video"
                         )}>
-                            {formData.metadata?.thumbnailUrl ? (
-                                <Image
-                                    src={formData.metadata.thumbnailUrl}
-                                    alt="Thumbnail"
-                                    fill
-                                    className="object-cover"
-                                    unoptimized
-                                />
-                            ) : formData.mediaUrls.length > 0 ? (
-                                <Image
+                            {isPlayingVideo && formData.mediaUrls.length > 0 && formData.mediaUrls[0].match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                                // Show video player when playing
+                                <video
                                     src={formData.mediaUrls[0]}
-                                    alt="Preview"
-                                    fill
-                                    className="object-cover opacity-80"
-                                    unoptimized
+                                    className="size-full object-cover"
+                                    controls
+                                    autoPlay
+                                    onEnded={() => setIsPlayingVideo(false)}
                                 />
                             ) : (
-                                <div className="text-center">
-                                    <ImageIcon className="mx-auto size-16 text-gray-400" />
-                                    <p className="mt-2 text-sm text-gray-400">Video thumbnail</p>
-                                </div>
-                            )}
+                                <>
+                                    {formData.metadata?.thumbnailUrl ? (
+                                        <Image
+                                            src={formData.metadata.thumbnailUrl}
+                                            alt="Thumbnail"
+                                            fill
+                                            className="object-cover"
+                                            unoptimized
+                                        />
+                                    ) : formData.mediaUrls.length > 0 ? (
+                                        formData.mediaUrls[0].match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                                            <video
+                                                src={formData.mediaUrls[0]}
+                                                className="size-full object-cover opacity-80"
+                                                preload="metadata"
+                                            />
+                                        ) : (
+                                            <Image
+                                                src={formData.mediaUrls[0]}
+                                                alt="Preview"
+                                                fill
+                                                className="object-cover opacity-80"
+                                                unoptimized
+                                            />
+                                        )
+                                    ) : (
+                                        <div className="text-center">
+                                            <ImageIcon className="mx-auto size-16 text-gray-400" />
+                                            <p className="mt-2 text-sm text-gray-400">Video thumbnail</p>
+                                        </div>
+                                    )}
 
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="flex size-16 items-center justify-center rounded-full bg-red-600/90 shadow-lg backdrop-blur-sm transition-transform hover:scale-110">
-                                    <div className="ml-1 size-0 border-y-8 border-l-12 border-y-transparent border-l-white"></div>
-                                </div>
-                            </div>
+                                    {/* Play Button Overlay */}
+                                    <button
+                                        onClick={() => setIsPlayingVideo(true)}
+                                        disabled={!formData.mediaUrls.length || !formData.mediaUrls[0].match(/\.(mp4|webm|ogg|mov)$/i)}
+                                        className="absolute inset-0 flex items-center justify-center disabled:cursor-not-allowed"
+                                    >
+                                        <div className="flex size-16 items-center justify-center rounded-full bg-red-600/90 shadow-lg backdrop-blur-sm transition-transform hover:scale-110 disabled:opacity-50">
+                                            <div className="ml-1 size-0 border-y-8 border-l-12 border-y-transparent border-l-white"></div>
+                                        </div>
+                                    </button>
 
-                            {formData.metadata?.postType === 'SHORT' && (
-                                <div className="absolute bottom-4 right-4 animate-bounce">
-                                    <div className="rounded-full bg-white/20 p-2 backdrop-blur-md">
-                                        <span className="text-white text-xs font-bold">Shorts</span>
-                                    </div>
-                                </div>
+                                    {formData.metadata?.postType === 'SHORT' && (
+                                        <div className="absolute bottom-4 right-4 animate-bounce">
+                                            <div className="rounded-full bg-white/20 p-2 backdrop-blur-md">
+                                                <span className="text-white text-xs font-bold">Shorts</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
 
@@ -576,7 +614,7 @@ export default function NewTemplatePage() {
             {/* Main Content */}
             <div className="flex flex-1 overflow-hidden">
                 <div className="flex-1 overflow-y-auto p-6">
-                    <div className="mx-auto max-w-4xl space-y-6">
+                    <div className="mx-auto  space-y-6">
                         {/* Template Name */}
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Template Name</label>
@@ -814,16 +852,16 @@ export default function NewTemplatePage() {
                             </div>
                         )}
 
-                        {/* Image Upload Section */}
+                        {/* Media Upload Section */}
                         <div className="space-y-3">
-                            <label className="text-sm font-medium">Upload Images (Optional)</label>
+                            <label className="text-sm font-medium">Upload Media (Optional)</label>
                             <div className="space-y-3">
                                 {/* Upload Button */}
                                 <div className="flex items-center gap-3">
                                     <Button
                                         type="button"
                                         variant="outline"
-                                        onClick={() => document.getElementById('image-upload')?.click()}
+                                        onClick={() => document.getElementById('media-upload')?.click()}
                                         disabled={isUploading}
                                         className="gap-2"
                                     >
@@ -835,43 +873,55 @@ export default function NewTemplatePage() {
                                         ) : (
                                             <>
                                                 <Upload className="size-4" />
-                                                Upload Images
+                                                Upload Images/Videos
                                             </>
                                         )}
                                     </Button>
                                     <input
-                                        id="image-upload"
+                                        id="media-upload"
                                         type="file"
-                                        accept="image/*"
+                                        accept="image/*,video/*"
                                         multiple
                                         onChange={handleImageUpload}
                                         className="hidden"
                                     />
                                     <p className="text-xs text-muted-foreground">
-                                        Images can be changed when creating posts
+                                        Images and videos can be changed when creating posts
                                     </p>
                                 </div>
 
-                                {/* Image Previews */}
+                                {/* Media Previews */}
                                 {formData.mediaUrls.length > 0 && (
                                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                                        {formData.mediaUrls.map((url, index) => (
-                                            <div key={index} className="group relative aspect-square overflow-hidden rounded-lg border bg-muted">
-                                                <Image
-                                                    src={url}
-                                                    alt={`Upload ${index + 1}`}
-                                                    fill
-                                                    className="object-cover"
-                                                    unoptimized
-                                                />
-                                                <button
-                                                    onClick={() => removeImage(index)}
-                                                    className="absolute right-1 top-1 rounded-full bg-destructive p-1 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                                                >
-                                                    <X className="size-3" />
-                                                </button>
-                                            </div>
-                                        ))}
+                                        {formData.mediaUrls.map((url, index) => {
+                                            const isVideo = url.match(/\.(mp4|webm|ogg|mov)$/i);
+                                            return (
+                                                <div key={index} className="group relative aspect-square overflow-hidden rounded-lg border bg-muted">
+                                                    {isVideo ? (
+                                                        <video
+                                                            src={url}
+                                                            className="size-full object-cover"
+                                                            controls
+                                                            preload="metadata"
+                                                        />
+                                                    ) : (
+                                                        <Image
+                                                            src={url}
+                                                            alt={`Upload ${index + 1}`}
+                                                            fill
+                                                            className="object-cover"
+                                                            unoptimized
+                                                        />
+                                                    )}
+                                                    <button
+                                                        onClick={() => removeImage(index)}
+                                                        className="absolute right-1 top-1 rounded-full bg-destructive p-1 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                                                    >
+                                                        <X className="size-3" />
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>

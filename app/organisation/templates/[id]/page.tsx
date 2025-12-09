@@ -536,7 +536,7 @@ export default function EditTemplatePage() {
             {/* Main Content */}
             <div className="flex flex-1 overflow-hidden">
                 <div className="flex-1 overflow-y-auto p-6">
-                    <div className="mx-auto max-w-4xl space-y-6">
+                    <div className="mx-auto  space-y-6">
                         {/* Template Name */}
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Template Name</label>

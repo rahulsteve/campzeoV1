@@ -314,7 +314,7 @@ export default function Page() {
       </div>
 
       <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t">
-        <div className="max-w-7xl mx-auto">
+        <div className=" mx-auto">
           <div className="grid md:grid-cols-3 gap-8 mb-8">
             {/* Brand Section */}
             <div className="text-center md:text-left">
