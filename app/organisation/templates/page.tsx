@@ -44,6 +44,7 @@ import {
   Youtube,
   Filter,
 } from "lucide-react";
+import TemplatePreview from "./_components/TemplatePreview";
 
 
 
@@ -59,6 +60,7 @@ interface MessageTemplate {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  mediaUrls?: string[];
 }
 
 const platformIcons: Record<string, any> = {
@@ -266,70 +268,61 @@ export default function TemplatesPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {filteredTemplates.map((template) => (
-              <Card key={template.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
+              <Card key={template.id} className="hover:shadow-lg transition-shadow overflow-hidden">
+                {/* Template Title Header */}
+                <div className="p-4 border-b bg-gray-50/50">
+                  <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <div className={`p-2 rounded-lg ${platformColors[template.platform]} text-white`}>
+                      <div className={`p-1.5 rounded ${platformColors[template.platform]} text-white`}>
                         {getPlatformIcon(template.platform)}
                       </div>
-                      <div>
-                        <CardTitle className="text-lg">{template.name}</CardTitle>
-                        <div className="flex gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs">
-                            {template.category}
-                          </Badge>
-                          {!template.isActive && (
-                            <Badge variant="secondary" className="text-xs">
-                              Inactive
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
+                      <h3 className="font-semibold text-gray-900 line-clamp-1">{template.name}</h3>
                     </div>
-                  </div>
-                  {template.description && (
-                    <CardDescription className="mt-2">
-                      {template.description}
-                    </CardDescription>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {template.subject && (
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">Subject:</p>
-                        <p className="text-sm truncate">{template.subject}</p>
-                      </div>
+                    {!template.isActive && (
+                      <Badge variant="secondary" className="text-xs">Inactive</Badge>
                     )}
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Content Preview:</p>
-                      <p className="text-sm line-clamp-2">{template.content}</p>
-                    </div>
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => router.push(`/organisation/templates/${template.id}`)}
-                      >
-                        <Eye className="mr-2 size-4" />
-                        Preview & Edit
-                      </Button>
-                      
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => setDeleteTemplate(template)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
                   </div>
-                </CardContent>
+                  <div className="flex gap-2">
+                    <Badge variant="outline" className="text-xs">
+                      {template.category}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Live Preview */}
+                <div className="p-4 bg-gray-50">
+                  <TemplatePreview
+                    platform={template.platform}
+                    content={template.content}
+                    subject={template.subject}
+                    mediaUrls={template.mediaUrls}
+                    isCompact={true}
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="p-4 border-t flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => router.push(`/organisation/templates/${template.id}`)}
+                  >
+                    <Eye className="mr-2 size-4" />
+                    View & Edit
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => setDeleteTemplate(template)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
               </Card>
             ))}
           </div>
