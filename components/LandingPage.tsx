@@ -143,7 +143,7 @@ export function LandingPage({ onLogin, onNavigate }: LandingPageProps) {
     <div className="min-h-screen">
       {/* Navigation */}
       <nav className="fixed top-0 w-full bg-background/80 backdrop-blur-md border-b z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className=" mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-2">
               <Zap className="size-8 text-primary" />
@@ -187,7 +187,7 @@ export function LandingPage({ onLogin, onNavigate }: LandingPageProps) {
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto text-center">
+        <div className=" mx-auto text-center">
           <Badge variant="secondary" className="mb-4">
             🚀 Now with AI-powered insights
           </Badge>
@@ -226,7 +226,7 @@ export function LandingPage({ onLogin, onNavigate }: LandingPageProps) {
 
       {/* Features Section */}
       <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/30">
-        <div className="max-w-7xl mx-auto">
+        <div className=" mx-auto">
           <div className="text-center mb-16">
             <h2 className="mb-4">Powerful Features for Every Team</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -267,7 +267,7 @@ export function LandingPage({ onLogin, onNavigate }: LandingPageProps) {
 
       {/* Pricing Section */}
       <section id="pricing" className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
+        <div className=" mx-auto">
           <div className="text-center mb-16">
             <h2 className="mb-4">Simple, Transparent Pricing</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -344,7 +344,7 @@ export function LandingPage({ onLogin, onNavigate }: LandingPageProps) {
 
       {/* Footer */}
       <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t">
-        <div className="max-w-7xl mx-auto text-center text-muted-foreground text-sm">
+        <div className=" mx-auto text-center text-muted-foreground text-sm">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Zap className="size-6 text-primary" />
             <span className="font-semibold text-foreground">SaaSify</span>

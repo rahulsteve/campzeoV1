@@ -31,6 +31,9 @@ export async function GET(
             },
             include: {
                 campaigns: {
+                    where: {
+                        isDeleted: false
+                    },
                     select: {
                         id: true,
                         name: true,
@@ -105,6 +108,9 @@ export async function PATCH(
             },
             include: {
                 campaigns: {
+                    where: {
+                        isDeleted: false
+                    },
                     select: {
                         id: true,
                         name: true,

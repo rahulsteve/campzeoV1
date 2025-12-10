@@ -72,7 +72,7 @@ export async function sendOrganisationInvite(params: OrganisationInviteParams): 
             return;
         } catch (error: any) {
             console.error('Error sending email via Mailgun:', error);
-        
+
         }
     }
 
@@ -319,4 +319,61 @@ export async function sendPaymentReceipt(params: PaymentReceiptParams): Promise<
     console.log(`Amount: ${formattedAmount}`);
     console.log(`Plan: ${planName}`);
     console.log('='.repeat(60));
+}
+
+interface SendEmailParams {
+    to: string;
+    subject: string;
+    html: string;
+    from?: string;
+    replyTo?: string;
+}
+
+/**
+ * Generic function to send an email
+ * @param params - Email parameters
+ */
+export async function sendEmail(params: SendEmailParams): Promise<boolean> {
+    const { to, subject, html, from, replyTo } = params;
+    const { apiKey, domain, fromEmail } = await getEmailConfig();
+
+    const senderEmail = from || fromEmail;
+
+    if (apiKey && domain && senderEmail) {
+        const mailgun = new Mailgun(FormData);
+        const mg = mailgun.client({ username: 'api', key: apiKey });
+
+        const msg: any = {
+            from: senderEmail,
+            to: [to],
+            subject: subject,
+            html: html,
+        };
+
+        if (replyTo) {
+            msg['h:Reply-To'] = replyTo;
+        }
+
+        try {
+            await mg.messages.create(domain, msg);
+            console.log(`✅ Email sent to ${to}`);
+            return true;
+        } catch (error: any) {
+            console.error('Error sending email via Mailgun:', error);
+            return false;
+        }
+    }
+
+    // Mock implementation
+    console.log('='.repeat(60));
+    console.log('📧 MOCK EMAIL');
+    console.log('='.repeat(60));
+    console.log(`To: ${to}`);
+    console.log(`Subject: ${subject}`);
+    if (replyTo) console.log(`Reply-To: ${replyTo}`);
+    console.log('\nBody:');
+    console.log(html);
+    console.log('='.repeat(60));
+
+    return true; // Return true for mock success
 }

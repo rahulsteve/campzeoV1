@@ -73,6 +73,9 @@ export async function GET(request: NextRequest) {
             where,
             include: {
                 campaigns: {
+                    where: {
+                        isDeleted: false
+                    },
                     select: {
                         id: true,
                         name: true,
@@ -206,6 +209,9 @@ export async function POST(request: NextRequest) {
             },
             include: {
                 campaigns: {
+                    where: {
+                        isDeleted: false
+                    },
                     select: {
                         id: true,
                         name: true,

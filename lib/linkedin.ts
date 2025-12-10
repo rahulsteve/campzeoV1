@@ -11,7 +11,12 @@ export async function postToLinkedIn(
     text: string,
     mediaUrls?: string | string[] | null
 ) {
-    const { accessToken, authorUrn } = credentials;
+    let { accessToken, authorUrn } = credentials;
+
+    // Ensure authorUrn is a valid URN
+    if (authorUrn && !authorUrn.startsWith("urn:li:")) {
+        authorUrn = `urn:li:person:${authorUrn}`;
+    }
 
     // Normalize mediaUrls to array
     const mediaList = Array.isArray(mediaUrls) ? mediaUrls : (mediaUrls ? [mediaUrls] : []);

@@ -11,13 +11,15 @@ interface PostPreviewProps {
     subject: string;
     message: string;
     mediaUrls: string[];
+    thumbnailUrl?: string | null;
+    isReel?: boolean;
     user?: {
         name?: string;
         image?: string;
     };
 }
 
-export function PostPreview({ platforms, subject, message, mediaUrls, user }: PostPreviewProps) {
+export function PostPreview({ platforms, subject, message, mediaUrls, thumbnailUrl, isReel, user }: PostPreviewProps) {
     const [activeTab, setActiveTab] = useState(platforms[0] || 'FACEBOOK');
 
     if (platforms.length === 0) {
@@ -57,51 +59,55 @@ export function PostPreview({ platforms, subject, message, mediaUrls, user }: Po
                         <TabsContent key={platform} value={platform} className="mt-0">
                             <div className="border rounded-lg overflow-hidden bg-white dark:bg-black">
                                 {platform === 'FACEBOOK' && (
-                                    <FacebookPreview 
-                                        subject={subject} 
-                                        message={message} 
-                                        mediaUrls={mediaUrls} 
-                                        user={user} 
+                                    <FacebookPreview
+                                        subject={subject}
+                                        message={message}
+                                        mediaUrls={mediaUrls}
+                                        thumbnailUrl={thumbnailUrl}
+                                        user={user}
                                     />
                                 )}
                                 {platform === 'INSTAGRAM' && (
-                                    <InstagramPreview 
-                                        subject={subject} 
-                                        message={message} 
-                                        mediaUrls={mediaUrls} 
-                                        user={user} 
+                                    <InstagramPreview
+                                        subject={subject}
+                                        message={message}
+                                        mediaUrls={mediaUrls}
+                                        thumbnailUrl={thumbnailUrl}
+                                        user={user}
                                     />
                                 )}
                                 {platform === 'LINKEDIN' && (
-                                    <LinkedInPreview 
-                                        subject={subject} 
-                                        message={message} 
-                                        mediaUrls={mediaUrls} 
-                                        user={user} 
+                                    <LinkedInPreview
+                                        subject={subject}
+                                        message={message}
+                                        mediaUrls={mediaUrls}
+                                        user={user}
                                     />
                                 )}
                                 {platform === 'TWITTER' && (
-                                    <TwitterPreview 
-                                        subject={subject} 
-                                        message={message} 
-                                        mediaUrls={mediaUrls} 
-                                        user={user} 
+                                    <TwitterPreview
+                                        subject={subject}
+                                        message={message}
+                                        mediaUrls={mediaUrls}
+                                        user={user}
                                     />
                                 )}
                                 {platform === 'YOUTUBE' && (
-                                    <YouTubePreview 
-                                        subject={subject} 
-                                        message={message} 
-                                        mediaUrls={mediaUrls} 
-                                        user={user} 
+                                    <YouTubePreview
+                                        subject={subject}
+                                        message={message}
+                                        mediaUrls={mediaUrls}
+                                        thumbnailUrl={thumbnailUrl}
+                                        user={user}
+                                        isReel={isReel}
                                     />
                                 )}
                                 {platform === 'PINTEREST' && (
-                                    <PinterestPreview 
-                                        subject={subject} 
-                                        message={message} 
-                                        mediaUrls={mediaUrls} 
-                                        user={user} 
+                                    <PinterestPreview
+                                        subject={subject}
+                                        message={message}
+                                        mediaUrls={mediaUrls}
+                                        user={user}
                                     />
                                 )}
                                 {platform === 'SMS' && (
@@ -119,7 +125,7 @@ export function PostPreview({ platforms, subject, message, mediaUrls, user }: Po
     );
 }
 
-function FacebookPreview({ subject, message, mediaUrls, user }: any) {
+function FacebookPreview({ subject, message, mediaUrls, thumbnailUrl, user }: any) {
     return (
         <div className="p-4 space-y-3">
             <div className="flex items-center gap-2">
@@ -138,7 +144,7 @@ function FacebookPreview({ subject, message, mediaUrls, user }: any) {
             {subject && <p className="font-bold">{subject}</p>}
             <p className="text-sm whitespace-pre-wrap">{message || 'Your post content...'}</p>
             {mediaUrls && mediaUrls.length > 0 && (
-                <MediaGrid mediaUrls={mediaUrls} />
+                <MediaGrid mediaUrls={mediaUrls} thumbnailUrl={thumbnailUrl} />
             )}
             <div className="flex items-center justify-between pt-2 border-t text-muted-foreground">
                 <Button variant="ghost" size="sm" className="flex-1 gap-2">
@@ -195,7 +201,7 @@ function LinkedInPreview({ subject, message, mediaUrls, user }: any) {
     );
 }
 
-function InstagramPreview({ subject, message, mediaUrls, user }: any) {
+function InstagramPreview({ subject, message, mediaUrls, thumbnailUrl, user }: any) {
     return (
         <div className="space-y-3 pb-4">
             <div className="flex items-center gap-2 p-3">
@@ -209,7 +215,7 @@ function InstagramPreview({ subject, message, mediaUrls, user }: any) {
                 </Button>
             </div>
             {mediaUrls && mediaUrls.length > 0 ? (
-                <MediaGrid mediaUrls={mediaUrls} square />
+                <MediaGrid mediaUrls={mediaUrls} thumbnailUrl={thumbnailUrl} square />
             ) : (
                 <div className="aspect-square bg-muted flex items-center justify-center text-muted-foreground">
                     No media
@@ -265,23 +271,55 @@ function TwitterPreview({ subject, message, mediaUrls, user }: any) {
     );
 }
 
-function YouTubePreview({ subject, message, mediaUrls, user }: any) {
+function YouTubePreview({ subject, message, mediaUrls, thumbnailUrl, user, isReel }: any) {
     const isExternalUrl = (url: string) => url.startsWith('http://') || url.startsWith('https://');
     const hasVideo = mediaUrls && mediaUrls.length > 0 && mediaUrls[0].match(/\.(mp4|mov|webm)$/i);
     const hasImage = mediaUrls && mediaUrls.length > 0 && !hasVideo;
-    
+
     return (
         <div className="space-y-3 pb-4">
-            {hasVideo ? (
-                <div className="aspect-video bg-black flex items-center justify-center text-white relative">
+            {thumbnailUrl ? (
+                <div className={`${isReel ? 'aspect-[9/16] max-w-[240px] mx-auto' : 'aspect-video'} relative bg-muted overflow-hidden`}>
+                    <Image
+                        src={thumbnailUrl}
+                        alt="Video Thumbnail"
+                        fill
+                        className="object-cover"
+                        unoptimized={isExternalUrl(thumbnailUrl)}
+                    />
+                    {hasVideo && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="size-16 rounded-full bg-red-600/90 flex items-center justify-center">
+                                <div className="ml-1 size-0 border-y-[12px] border-y-transparent border-l-[20px] border-l-white" />
+                            </div>
+                        </div>
+                    )}
+                    {isReel && (
+                        <div className="absolute top-2 right-2 bg-black/60 p-1 rounded-sm">
+                            <div className="border-2 border-white size-5 rounded-sm flex items-center justify-center">
+                                <div className="size-2 bg-white rounded-full"></div>
+                            </div>
+                        </div>
+                    )}
+                    <span className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-1 rounded">0:00</span>
+                </div>
+            ) : hasVideo ? (
+                <div className={`${isReel ? 'aspect-[9/16] max-w-[240px] mx-auto' : 'aspect-video'} bg-black flex items-center justify-center text-white relative`}>
                     <div className="size-16 rounded-full bg-red-600 flex items-center justify-center">
                         <div className="ml-1 size-0 border-y-[12px] border-y-transparent border-l-[20px] border-l-white" />
                     </div>
+                    {isReel && (
+                        <div className="absolute top-2 right-2 bg-black/60 p-1 rounded-sm">
+                            <div className="border-2 border-white size-5 rounded-sm flex items-center justify-center">
+                                <div className="size-2 bg-white rounded-full"></div>
+                            </div>
+                        </div>
+                    )}
                     <span className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-1 rounded">0:00</span>
                 </div>
             ) : hasImage ? (
                 <div className="aspect-video relative bg-muted overflow-hidden">
-                    <Image 
+                    <Image
                         src={mediaUrls[0]}
                         alt="Video Thumbnail"
                         fill
@@ -315,16 +353,16 @@ function YouTubePreview({ subject, message, mediaUrls, user }: any) {
 
 function PinterestPreview({ subject, message, mediaUrls, user }: any) {
     const isExternalUrl = (url: string) => url.startsWith('http://') || url.startsWith('https://');
-    
+
     return (
         <div className="p-4 max-w-[236px] mx-auto">
             <div className="rounded-2xl overflow-hidden bg-muted mb-2">
                 {mediaUrls && mediaUrls.length > 0 ? (
-                    <Image 
-                        src={mediaUrls[0]} 
-                        alt="Pin" 
-                        width={236} 
-                        height={354} 
+                    <Image
+                        src={mediaUrls[0]}
+                        alt="Pin"
+                        width={236}
+                        height={354}
                         className="object-cover w-full h-auto"
                         unoptimized={isExternalUrl(mediaUrls[0])}
                     />
@@ -371,47 +409,68 @@ function EmailPreview({ subject, message }: { subject: string, message: string }
     );
 }
 
-function MediaGrid({ mediaUrls, square, rounded }: { mediaUrls: string[], square?: boolean, rounded?: boolean }) {
+function MediaGrid({ mediaUrls, square, rounded, thumbnailUrl }: { mediaUrls: string[], square?: boolean, rounded?: boolean, thumbnailUrl?: string | null }) {
     const count = mediaUrls.length;
     const displayUrls = mediaUrls.slice(0, 4);
-    
+
     // Check if URL is external (Vercel Blob, etc.)
     const isExternalUrl = (url: string) => url.startsWith('http://') || url.startsWith('https://');
-    
+
     return (
         <div className={`grid gap-0.5 ${count === 1 ? 'grid-cols-1' : 'grid-cols-2'} ${rounded ? 'rounded-xl overflow-hidden border' : ''}`}>
-            {displayUrls.map((url, index) => (
-                <div key={index} className={`relative ${square ? 'aspect-square' : (count === 1 ? 'aspect-video' : 'aspect-square')} bg-muted overflow-hidden`}>
-                    {url.match(/\.(mp4|mov|webm)$/i) ? (
-                        <div className="flex items-center justify-center h-full bg-black/10">
-                            <div className="size-8 rounded-full bg-white/80 flex items-center justify-center">
-                                <div className="ml-1 size-0 border-y-[6px] border-y-transparent border-l-[10px] border-l-black" />
+            {displayUrls.map((url, index) => {
+                const isVideo = url.match(/\.(mp4|mov|webm)$/i);
+                // Use thumbnail if it's the first item, it's a video, and thumbnail is provided
+                const imageUrl = (index === 0 && isVideo && thumbnailUrl) ? thumbnailUrl : url;
+
+                return (
+                    <div key={index} className={`relative ${square ? 'aspect-square' : (count === 1 ? 'aspect-video' : 'aspect-square')} bg-muted overflow-hidden`}>
+                        {isVideo ? (
+                            <>
+                                {thumbnailUrl && index === 0 ? (
+                                    <Image
+                                        src={thumbnailUrl}
+                                        alt={`Media ${index}`}
+                                        fill
+                                        className="object-cover"
+                                        unoptimized={isExternalUrl(thumbnailUrl)}
+                                    />
+                                ) : (
+                                    <div className="flex items-center justify-center h-full bg-black/10">
+                                        {/* Fallback pattern if no thumbnail */}
+                                    </div>
+                                )}
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="size-8 rounded-full bg-white/80 flex items-center justify-center shadow-sm">
+                                        <div className="ml-1 size-0 border-y-[6px] border-y-transparent border-l-[10px] border-l-black" />
+                                    </div>
+                                </div>
+                            </>
+                        ) : isExternalUrl(url) ? (
+                            // Use unoptimized for external URLs (Vercel Blob, etc.)
+                            <Image
+                                src={url}
+                                alt={`Media ${index}`}
+                                fill
+                                className="object-cover"
+                                unoptimized
+                            />
+                        ) : (
+                            <Image
+                                src={url}
+                                alt={`Media ${index}`}
+                                fill
+                                className="object-cover"
+                            />
+                        )}
+                        {index === 3 && count > 4 && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold text-xl">
+                                +{count - 4}
                             </div>
-                        </div>
-                    ) : isExternalUrl(url) ? (
-                        // Use unoptimized for external URLs (Vercel Blob, etc.)
-                        <Image 
-                            src={url} 
-                            alt={`Media ${index}`} 
-                            fill 
-                            className="object-cover"
-                            unoptimized
-                        />
-                    ) : (
-                        <Image 
-                            src={url} 
-                            alt={`Media ${index}`} 
-                            fill 
-                            className="object-cover"
-                        />
-                    )}
-                    {index === 3 && count > 4 && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold text-xl">
-                            +{count - 4}
-                        </div>
-                    )}
-                </div>
-            ))}
+                        )}
+                    </div>
+                );
+            })}
         </div>
     );
 }

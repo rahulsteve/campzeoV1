@@ -264,7 +264,7 @@ export function AdminDashboard({ onLogout, onNavigate }: AdminDashboardProps) {
       {/* Header */}
      <Header />
 
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-6  mx-auto">
         {/* Stats Overview */}
         <div className="grid gap-4 md:grid-cols-4 mb-6">
           <Card>

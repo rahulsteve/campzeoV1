@@ -115,7 +115,8 @@ export async function POST(
             youtubePrivacy,
             pinterestBoardId,
             pinterestLink,
-            isReel
+            isReel,
+            thumbnailUrl
         } = body;
 
         // Validation
@@ -130,11 +131,11 @@ export async function POST(
         // Prepare metadata
         let metadata: any = {};
         if (type === 'YOUTUBE') {
-            metadata = { tags: youtubeTags, privacy: youtubePrivacy };
+            metadata = { tags: youtubeTags, privacy: youtubePrivacy, thumbnailUrl };
         } else if (type === 'PINTEREST') {
             metadata = { boardId: pinterestBoardId, link: pinterestLink };
         } else if (type === 'FACEBOOK' || type === 'INSTAGRAM') {
-            metadata = { isReel: !!isReel };
+            metadata = { isReel: !!isReel, thumbnailUrl };
         }
 
         // Create post

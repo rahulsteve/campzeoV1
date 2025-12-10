@@ -176,7 +176,7 @@ export async function GET(request: NextRequest) {
                 });
                 const profileData = await profileRes.json();
                 if (profileData.id) {
-                    updateData.linkedInAuthUrn = profileData.id;
+                    updateData.linkedInAuthUrn = `urn:li:person:${profileData.id}`;
                 }
             } catch (e) {
                 console.error("Failed to fetch LinkedIn Profile", e);

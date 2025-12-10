@@ -31,11 +31,12 @@ export async function GET(req: Request) {
         };
 
         if (platform) {
-            whereClause.platform = platform;
+            // Enforce proper enum casing (uppercase)
+            whereClause.platform = platform.toUpperCase() as any;
         }
 
         if (category) {
-            whereClause.category = category;
+            whereClause.category = category.toUpperCase() as any;
         }
 
         if (search) {
@@ -87,7 +88,7 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json();
-        const { name, description, content, subject, platform, category, variables, isActive } = body;
+        const { name, description, content, subject, platform, category, variables, isActive, metadata, mediaUrls } = body;
 
         if (!name || !content || !platform) {
             return NextResponse.json(
@@ -96,15 +97,52 @@ export async function POST(req: Request) {
             );
         }
 
+        // Validate and format platform
+        const formattedPlatform = platform.toUpperCase();
+        const validPlatforms = ['EMAIL', 'SMS', 'WHATSAPP', 'RCS', 'FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'PINTEREST'];
+
+        if (!validPlatforms.includes(formattedPlatform)) {
+            return NextResponse.json(
+                { error: `Invalid platform. Must be one of: ${validPlatforms.join(', ')}` },
+                { status: 400 }
+            );
+        }
+
+        // Validate and format category
+        const formattedCategory = category ? category.toUpperCase() : "CUSTOM";
+        const validCategories = ['MARKETING', 'TRANSACTIONAL', 'NOTIFICATION', 'CUSTOM'];
+
+        if (!validCategories.includes(formattedCategory)) {
+            return NextResponse.json(
+                { error: `Invalid category. Must be one of: ${validCategories.join(', ')}` },
+                { status: 400 }
+            );
+        }
+
+        console.log('Creating template with data:', {
+            name,
+            description,
+            content: content?.substring(0, 50) + '...',
+            subject,
+            platform: formattedPlatform,
+            category: formattedCategory,
+            metadata,
+            mediaUrls,
+            organisationId: dbUser.organisationId,
+            createdBy: user.id
+        });
+
         const template = await prisma.messageTemplate.create({
             data: {
                 name,
                 description,
                 content,
                 subject,
-                platform,
-                category: category || "CUSTOM",
+                platform: formattedPlatform as any,
+                category: formattedCategory as any,
                 variables: variables || {},
+                metadata: metadata || {},
+                mediaUrls: mediaUrls || [],
                 isActive: isActive !== undefined ? isActive : true,
                 organisationId: dbUser.organisationId,
                 createdBy: user.id
@@ -122,7 +160,10 @@ export async function POST(req: Request) {
         console.error("Error creating template:", error);
         await logError("Failed to create template", { userId: "unknown" }, error);
         return NextResponse.json(
-            { error: "Failed to create template" },
+            {
+                error: "Failed to create template",
+                details: error instanceof Error ? error.message : String(error)
+            },
             { status: 500 }
         );
     }

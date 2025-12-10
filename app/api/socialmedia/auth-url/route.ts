@@ -78,6 +78,10 @@ export async function GET(request: NextRequest) {
                 break;
             case "PINTEREST":
                 authUrl = `https://www.pinterest.com/oauth/?client_id=${clientIdConfig.value}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&response_type=code&scope=boards:read,boards:write,pins:read,pins:write`;
+                // For Sandbox usage, it often stays the same, but the tokens work against sandbox API. 
+                // However, double check if a specific sandbox auth URL is needed. 
+                // Pinterest docs say: "https://www.pinterest.com/oauth/" works for both, 
+                // but you use the app ID from sandbox.
                 break;
             default:
                 return NextResponse.json({ error: "Unsupported platform" }, { status: 400 });

@@ -8,8 +8,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
-import { formatPrice } from "@/lib/plans";
-import { Check, CreditCard, Calendar, TrendingUp, XCircle, GitCompare } from "lucide-react";
+import { PLANS, formatPrice, type PlanType } from "@/lib/plans";
+import { Check, CreditCard, Calendar, TrendingUp, XCircle, GitCompare, FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { RazorpayButton } from "@/components/razorpay-button";
 import { TrialCountdown } from "@/components/trial-countdown";
@@ -197,7 +197,7 @@ export default function BillingPage() {
   if (isLoading || plansLoading) {
     return (
       <div className="p-6">
-        <div className="max-w-7xl mx-auto">
+        <div className=" mx-auto">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-muted rounded w-1/4"></div>
             <div className="h-32 bg-muted rounded"></div>
@@ -217,7 +217,7 @@ export default function BillingPage() {
 
   return (
     <div className="p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className=" mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -226,13 +226,16 @@ export default function BillingPage() {
               Manage your subscription and view payment history
             </p>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => setShowComparisonModal(true)}
-          >
-            <GitCompare className="size-4 mr-2" />
-            Compare Plans
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => router.push("/organisation/billing/invoices")}>
+              <FileText className="size-4 mr-2" />
+              Invoices
+            </Button>
+            <Button variant="outline" onClick={() => setShowComparisonModal(true)}>
+              <GitCompare className="size-4 mr-2" />
+              Compare Plans
+            </Button>
+          </div>
         </div>
 
         {/* Trial Countdown */}

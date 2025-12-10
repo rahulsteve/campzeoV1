@@ -175,6 +175,7 @@ export async function GET() {
         // Pinterest
         if (dbUser.pinterestAccessToken) {
             try {
+                // Use Production API
                 const res = await fetchWithTimeout(`https://api.pinterest.com/v5/user_account`, {
                     headers: { Authorization: `Bearer ${dbUser.pinterestAccessToken}` }
                 });

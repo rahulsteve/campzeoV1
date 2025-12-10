@@ -50,13 +50,13 @@ function PaymentSuccessContent() {
               <span className="font-medium">Sent to email</span>
             </div>
           </div>
-
+                                                                 
           <div className="flex flex-col gap-3">
             <Button className="w-full" asChild>
               <Link href="/organisation">
                 Go to Dashboard <ArrowRight className="ml-2 size-4" />
               </Link>
-            </Button>
+            </Button>`` 
             <Button variant="outline" className="w-full">
               <Download className="mr-2 size-4" /> Download Invoice
             </Button>
