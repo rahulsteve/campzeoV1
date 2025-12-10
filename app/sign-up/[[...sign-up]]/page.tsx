@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { SignUp } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,12 +11,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Header } from "@/components/Header";
-import { Zap, Loader2 } from "lucide-react";
+import { Loader2, ArrowRight, Building2, User, MapPin, MessageSquare } from "lucide-react";
 
 export default function Page() {
-  const { client } = useClerk();
   const router = useRouter();
-
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     email: "",
@@ -42,24 +39,23 @@ export default function Page() {
 
     // Validation
     const requiredFields = {
+      name: "Owner Name",
       email: "Email",
       password: "Password",
-      name: "Owner Name",
-      organisationName: "Organisation Name",
       mobile: "Mobile Number",
+      organisationName: "Organisation Name",
       address: "Address",
       city: "City",
       state: "State",
       country: "Country",
       postalCode: "Postal Code",
-      taxNumber: "Tax Number"
     };
 
     // Check for missing required fields
     for (const [field, label] of Object.entries(requiredFields)) {
       if (!form[field as keyof typeof form] || form[field as keyof typeof form].trim() === "") {
         toast.error("Missing Required Field", {
-          description: `${label} is required. Please fill in all fields.`,
+          description: `${label} is required.`,
         });
         return;
       }
@@ -83,14 +79,6 @@ export default function Page() {
       return;
     }
 
-    // Mobile validation
-    if (form.mobile.length < 10) {
-      toast.error("Invalid Mobile Number", {
-        description: "Mobile number must be at least 10 digits.",
-      });
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -102,7 +90,6 @@ export default function Page() {
       const data = await response.json();
 
       if (!response.ok) {
-        // Show specific error from API if available
         if (data.errors && Array.isArray(data.errors)) {
           toast.error("Validation Failed", {
             description: data.errors.join(", "),
@@ -117,17 +104,16 @@ export default function Page() {
       }
 
       toast.success("Success!", {
-        description: "Your enquiry has been submitted successfully. Redirecting to approval status...",
+        description: "Your enquiry has been submitted. Redirecting...",
       });
 
-      // Navigate to pending-approval page after short delay
       setTimeout(() => {
         router.push("/pending-approval");
       }, 1500);
     } catch (error) {
       console.error("Submission error:", error);
       toast.error("Submission Failed", {
-        description: error instanceof Error ? error.message : "An error occurred during submission. Please try again.",
+        description: "An error occurred during submission. Please try again.",
       });
     } finally {
       setLoading(false);
@@ -135,242 +121,236 @@ export default function Page() {
   };
 
   return (
-
-    <div className="flex flex-col">
+    <div className="min-h-screen bg-muted/30 flex flex-col">
       <Header />
-      {/* Header */}
 
-      {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center bg-background p-4" >
-        <div className="w-full max-w-2xl" style={{  padding: "10px", borderRadius: "20px"}}>
-          <Card className="shadow-lg border-0 sm:border">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl font-bold text-center">Start your Free Trial</CardTitle>
-              <CardDescription className="text-center">
-                Create an account and tell us about your requirements
+      <main className="flex-1 flex items-center justify-center p-4 sm:p-8 pt-24 sm:pt-32 pb-12">
+        <div className="w-full max-w-3xl">
+          <Card className="shadow-xl border-muted/20">
+            <CardHeader className="space-y-2 text-center pb-8 border-b bg-muted/5">
+              <CardTitle className="text-3xl font-bold">Start your Free Trial</CardTitle>
+              <CardDescription className="text-lg text-muted-foreground max-w-lg mx-auto">
+                Create an account to access our comprehensive suite of tools. No credit card required.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={submit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex justify-between flex-wrap">
-                  <div className="space-y-2">
-                    <Label htmlFor="organisationName">Organisation Name <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
-                    <Input
-                      id="organisationName"
-                      name="organisationName"
-                      placeholder="Acme Corp"
-                      value={form.organisationName}
-                      onChange={handleChange}
-                    />
+            <CardContent className="p-6 sm:p-8">
+              <form onSubmit={submit} className="space-y-8">
+
+                {/* Account Details Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-primary font-medium border-b pb-2">
+                    <User className="size-4" />
+                    <h3>Account Details</h3>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Owner Name <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      placeholder="John Doe"
-                      value={form.name}
-                      onChange={handleChange}
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Full Name <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="name"
+                        name="name"
+                        placeholder="John Doe"
+                        value={form.name}
+                        onChange={handleChange}
+                        className="bg-background"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Work Email <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        placeholder="john@company.com"
+                        value={form.email}
+                        onChange={handleChange}
+                        className="bg-background"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="password">Password <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="password"
+                        name="password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={form.password}
+                        onChange={handleChange}
+                        className="bg-background"
+                      />
+                      <p className="text-xs text-muted-foreground">Min 8 chars, 1 uppercase, 1 lowercase, 1 number.</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="mobile">Phone Number <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="mobile"
+                        name="mobile"
+                        placeholder="+1 (555) 000-0000"
+                        value={form.mobile}
+                        onChange={handleChange}
+                        className="bg-background"
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className="flex justify-between flex-wrap">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      placeholder="name@example.com"
-                      value={form.email}
-                      onChange={handleChange}
-                      required
-                    />
+
+                {/* Organization Details Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-primary font-medium border-b pb-2">
+                    <Building2 className="size-4" />
+                    <h3>Organization Details</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="organisationName">Organization Name <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="organisationName"
+                        name="organisationName"
+                        placeholder="Acme Inc."
+                        value={form.organisationName}
+                        onChange={handleChange}
+                        className="bg-background"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="taxNumber">Tax ID / GST <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+                      <Input
+                        id="taxNumber"
+                        name="taxNumber"
+                        placeholder="Tax ID"
+                        value={form.taxNumber}
+                        onChange={handleChange}
+                        className="bg-background"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Location Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-primary font-medium border-b pb-2">
+                    <MapPin className="size-4" />
+                    <h3>Location</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="address">Street Address <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="address"
+                        name="address"
+                        placeholder="123 Business Blvd"
+                        value={form.address}
+                        onChange={handleChange}
+                        className="bg-background"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="city">City <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="city"
+                        name="city"
+                        placeholder="New York"
+                        value={form.city}
+                        onChange={handleChange}
+                        className="bg-background"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="state">State / Province <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="state"
+                        name="state"
+                        placeholder="NY"
+                        value={form.state}
+                        onChange={handleChange}
+                        className="bg-background"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="country"
+                        name="country"
+                        placeholder="United States"
+                        value={form.country}
+                        onChange={handleChange}
+                        className="bg-background"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="postalCode">Postal Code <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="postalCode"
+                        name="postalCode"
+                        placeholder="10001"
+                        value={form.postalCode}
+                        onChange={handleChange}
+                        className="bg-background"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional Info Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-primary font-medium border-b pb-2">
+                    <MessageSquare className="size-4" />
+                    <h3>Additional Information</h3>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="mobile">Mobile <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
-                    <Input
-                      id="mobile"
-                      name="mobile"
-                      placeholder="+1 (555) 000-0000"
-                      value={form.mobile}
+                    <Label htmlFor="enquiryText">Tell us about your needs <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+                    <Textarea
+                      id="enquiryText"
+                      name="enquiryText"
+                      placeholder="I'm interested in..."
+                      className="min-h-[100px] bg-background"
+                      value={form.enquiryText}
                       onChange={handleChange}
                     />
                   </div>
                 </div>
 
-                <div className="flex justify-between flex-wrap">
-
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Address <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
-                    <Input
-                      id="address"
-                      name="address"
-                      placeholder="123 Main St"
-                      value={form.address}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      placeholder="Create a password"
-                      value={form.password}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
+                <div className="pt-4">
+                  <Button
+                    type="submit"
+                    className="w-full text-lg h-12"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        Submitting...
+                      </span>
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">
+                        Create Account
+                        <ArrowRight className="size-4" />
+                      </span>
+                    )}
+                  </Button>
+                  <p className="text-xs text-center text-muted-foreground mt-4">
+                    By clicking "Create Account", you agree to our Terms of Service and Privacy Policy.
+                  </p>
                 </div>
-                <div className="flex justify-between flex-wrap">
-                  <div className="space-y-2">
-                    <Label htmlFor="city">City <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
-                    <Input
-                      id="city"
-                      name="city"
-                      placeholder="New York"
-                      value={form.city}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="state">State <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
-                    <Input
-                      id="state"
-                      name="state"
-                      placeholder="NY"
-                      value={form.state}
-                      onChange={handleChange}
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-between flex-wrap">
-                  <div className="space-y-2">
-                    <Label htmlFor="country">Country <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
-                    <Input
-                      id="country"
-                      name="country"
-                      placeholder="United States"
-                      value={form.country}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="postalCode">Postal Code <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
-                    <Input
-                      id="postalCode"
-                      name="postalCode"
-                      placeholder="10001"
-                      value={form.postalCode}
-                      onChange={handleChange}
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-between flex-wrap">
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="taxNumber">GST / Tax Number <span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
-                    <Input
-                      id="taxNumber"
-                      name="taxNumber"
-                      placeholder="Optional"
-                      value={form.taxNumber}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="enquiryText">Enquiry<span style={{ color: "red" }} className="text-red-600 font-bold ml-1">*</span></Label>
-                  <Textarea
-                    id="enquiryText"
-                    name="enquiryText"
-                    placeholder="Tell us about your requirements..."
-                    className="min-h-[100px]"
-                    value={form.enquiryText}
-                    onChange={handleChange}
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full md:col-span-2 mt-2"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      Submitting...
-                    </span>
-                  ) : (
-                    "Create Account & Submit Enquiry"
-                  )}
-                </Button>
-                <div id="clerk-captcha" />
               </form>
             </CardContent>
           </Card>
+
+          <div className="text-center mt-8">
+            <p className="text-muted-foreground">
+              Already have an account?{" "}
+              <Link href="/sign-in" className="text-primary hover:underline font-medium">
+                Sign In
+              </Link>
+            </p>
+          </div>
         </div>
-      </div>
+      </main>
 
-      <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t">
-        <div className=" mx-auto">
-          <div className="grid md:grid-cols-3 gap-8 mb-8">
-            {/* Brand Section */}
-            <div className="text-center md:text-left">
-              <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
-                <Zap className="size-6 text-primary" />
-                <span className="font-semibold text-foreground">Campzeo</span>
-              </div>
-              <p className="text-muted-foreground text-sm">
-                Streamline your social media management with powerful tools and insights.
-              </p>
-            </div>
-
-            {/* Quick Links */}
-            <div className="text-center">
-              <h3 className="font-semibold text-foreground mb-3">Quick Links</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <a href="#features" className="hover:text-foreground transition-colors">
-                    Features
-                  </a>
-                </li>
-                <li>
-                  <a href="#pricing" className="hover:text-foreground transition-colors">
-                    Pricing
-                  </a>
-                </li>
-                <li>
-                  <Link href="/privacy-policy" className="hover:text-foreground transition-colors">
-                    Privacy Policy
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/terms-of-service" className="hover:text-foreground transition-colors">
-                    Terms of Service
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Contact */}
-            <div className="text-center md:text-right">
-              <h3 className="font-semibold text-foreground mb-3">Contact</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>support@campzeo.com</li>
-                <li>privacy@campzeo.com</li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Bottom Bar */}
-          <div className="pt-8 border-t text-center text-muted-foreground text-sm">
-            <p>© 2025 Campzeo. All rights reserved.</p>
-          </div>
+      <footer className="py-8 border-t bg-background text-center text-sm text-muted-foreground">
+        <div className="max-w-7xl mx-auto px-4">
+          <p>© 2025 Campzeo. All rights reserved.</p>
         </div>
       </footer>
     </div>
-
   );
 }

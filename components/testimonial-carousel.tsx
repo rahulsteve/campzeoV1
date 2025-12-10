@@ -62,23 +62,27 @@ export function TestimonialCarousel() {
             <CarouselContent>
                 {testimonials.map((testimonial, index) => (
                     <CarouselItem key={index} className="md:basis-1/2 lg:basis-1/3 pl-4">
-                        <div className="p-1 h-full">
-                            <Card className="h-full border-muted/20 bg-muted/5 hover:bg-muted/10 transition-colors">
+                        <div className="p-2 h-full relative group perspective-1000">
+                            {/* Glow Effect */}
+                            <div className="absolute -inset-0.5 bg-gradient-to-br from-primary/30 to-orange-500/30 rounded-xl blur opacity-0 group-hover:opacity-50 transition duration-500"></div>
+
+                            {/* Card with 3D animation */}
+                            <Card className="relative h-full border-muted/20 bg-card/60 backdrop-blur-sm transition-all duration-500 hover:scale-105 hover:-rotate-1  z-10">
                                 <CardContent className="flex flex-col p-6 h-full">
                                     <div className="flex gap-1 mb-4 text-yellow-500">
                                         {[...Array(5)].map((_, i) => (
                                             <Star key={i} className="size-4 fill-current" />
                                         ))}
                                     </div>
-                                    <p className="text-muted-foreground flex-1 mb-6">"{testimonial.content}"</p>
-                                    <div className="flex items-center gap-3 mt-auto">
-                                        <Avatar>
+                                    <p className="text-muted-foreground flex-1 mb-6 italic leading-relaxed">"{testimonial.content}"</p>
+                                    <div className="flex items-center gap-3 mt-auto pt-4 border-t border-muted/10">
+                                        <Avatar className="ring-2 ring-primary/10">
                                             <AvatarImage src={`/avatars/${index + 1}.png`} alt={testimonial.name} />
-                                            <AvatarFallback>{testimonial.initials}</AvatarFallback>
+                                            <AvatarFallback className="bg-primary/5 text-primary font-bold">{testimonial.initials}</AvatarFallback>
                                         </Avatar>
                                         <div>
-                                            <div className="font-semibold text-sm">{testimonial.name}</div>
-                                            <div className="text-xs text-muted-foreground">{testimonial.role}, {testimonial.company}</div>
+                                            <div className="font-bold text-sm bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">{testimonial.name}</div>
+                                            <div className="text-xs text-muted-foreground font-medium">{testimonial.role}, {testimonial.company}</div>
                                         </div>
                                     </div>
                                 </CardContent>
