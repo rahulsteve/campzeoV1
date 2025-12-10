@@ -107,38 +107,54 @@ export async function postToInstagram(
             return { id: publishData.id };
 
         } else {
-            // Carousel post (multiple images)
+            // Carousel post (multiple images/videos)
             const containerIds: string[] = [];
+            const failedItems: string[] = [];
 
             // Create containers for each media item
-            for (const mediaUrl of validatedUrls) {
-                const containerResponse = await fetch(
-                    `https://graph.facebook.com/v18.0/${userId}/media`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            image_url: mediaUrl,
-                            is_carousel_item: true,
-                            access_token: accessToken,
-                        }),
+            for (let i = 0; i < validatedUrls.length; i++) {
+                const mediaUrl = validatedUrls[i];
+                const mediaIsVideo = isVideoUrl(mediaUrl);
+                
+                console.log(`[Instagram] Creating carousel item ${i + 1}/${validatedUrls.length}, Type: ${mediaIsVideo ? 'VIDEO' : 'IMAGE'}`);
+
+                try {
+                    const containerResponse = await fetch(
+                        `https://graph.facebook.com/v18.0/${userId}/media`,
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                [mediaIsVideo ? 'video_url' : 'image_url']: mediaUrl,
+                                is_carousel_item: true,
+                                access_token: accessToken,
+                            }),
+                        }
+                    );
+
+                    if (!containerResponse.ok) {
+                        const error = await containerResponse.json();
+                        console.error(`[Instagram] Failed to create carousel item ${i + 1}: ${JSON.stringify(error)}`);
+                        failedItems.push(`Item ${i + 1}: ${error.error?.message || 'Unknown error'}`);
+                        continue;
                     }
-                );
 
-                if (!containerResponse.ok) {
-                    const error = await containerResponse.json();
-                    console.error(`Failed to create carousel item: ${error}`);
-                    continue;
+                    const containerData = await containerResponse.json();
+                    containerIds.push(containerData.id);
+                } catch (err) {
+                    console.error(`[Instagram] Exception creating carousel item ${i + 1}:`, err);
+                    failedItems.push(`Item ${i + 1}: ${err instanceof Error ? err.message : 'Unknown error'}`);
                 }
-
-                const containerData = await containerResponse.json();
-                containerIds.push(containerData.id);
             }
 
             if (containerIds.length === 0) {
-                throw new Error('No valid media items could be uploaded');
+                throw new Error(`Carousel upload failed: No valid media items could be uploaded. Failed: ${failedItems.join('; ')}`);
+            }
+            
+            if (failedItems.length > 0) {
+                console.warn(`[Instagram] Some carousel items failed: ${failedItems.join('; ')}. Continuing with ${containerIds.length} items.`);
             }
 
             // Create carousel container

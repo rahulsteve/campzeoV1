@@ -68,6 +68,11 @@ export async function GET(request: NextRequest) {
                 // - business_management: For Instagram Business Account access
                 authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${clientIdConfig.value}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish,instagram_manage_insights,business_management`;
                 break;
+            case "INSTAGRAM_DIRECT":
+                // Direct Instagram app authentication (not via Facebook)
+                authUrl = `https://api.instagram.com/oauth/authorize?client_id=${clientIdConfig.value}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user_profile,user_media&response_type=code&state=${state}`;
+                break;
+
             case "LINKEDIN":
                 authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientIdConfig.value}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=w_member_social,r_basicprofile,w_organization_social,r_organization_social,rw_organization_admin`;
                 break;

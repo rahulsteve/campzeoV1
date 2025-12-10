@@ -141,34 +141,44 @@ export async function postToLinkedIn(
         };
 
         if (assets.length > 0) {
-            // If any video, treat as VIDEO (LinkedIn only supports single video usually, or mixed? 
-            // Standard API supports single video OR multiple images. Not mixed usually.)
-            // If multiple assets and one is video, we might have an issue if we try to send all.
-            // For now, if there's a video, we take the first video and ignore others, or assume user knows what they are doing.
-            // If all images, we send all.
+            // LinkedIn API: supports single video OR multiple images, NOT mixed
+            const videos = assets.filter(a => a.isVideo);
+            const images = assets.filter(a => !a.isVideo);
 
-            const hasVideo = assets.some(a => a.isVideo);
+            // Warn if mixed media is detected
+            if (videos.length > 0 && images.length > 0) {
+                console.warn(`[LinkedIn] Mixed video (${videos.length}) and image (${images.length}) media detected. LinkedIn supports single video OR multiple images.`);
+                console.warn('[LinkedIn] Solution: Upload images as carousel OR post video separately. Proceeding with images only (dropping video).');
+            }
 
-            if (hasVideo) {
-                shareBody.specificContent["com.linkedin.ugc.ShareContent"].shareMediaCategory = "VIDEO";
-                // Only take the first video
-                const videoAsset = assets.find(a => a.isVideo);
-                shareBody.specificContent["com.linkedin.ugc.ShareContent"].media = [
-                    {
-                        status: "READY",
-                        description: { text: "Video content" },
-                        media: videoAsset?.urn,
-                        title: { text: "Video content" },
-                    }
-                ];
-            } else {
+            // Prioritize images if mixed, otherwise use video if available
+            if (images.length > 0) {
                 shareBody.specificContent["com.linkedin.ugc.ShareContent"].shareMediaCategory = "IMAGE";
-                shareBody.specificContent["com.linkedin.ugc.ShareContent"].media = assets.map(asset => ({
+                shareBody.specificContent["com.linkedin.ugc.ShareContent"].media = images.map(asset => ({
                     status: "READY",
                     description: { text: "Image content" },
                     media: asset.urn,
                     title: { text: "Image content" },
                 }));
+                console.log(`[LinkedIn] Posting ${images.length} image(s)`);
+            } else if (videos.length > 0) {
+                // Only take the first video if no images
+                shareBody.specificContent["com.linkedin.ugc.ShareContent"].shareMediaCategory = "VIDEO";
+                const videoAsset = videos[0];
+                shareBody.specificContent["com.linkedin.ugc.ShareContent"].media = [
+                    {
+                        status: "READY",
+                        description: { text: "Video content" },
+                        media: videoAsset.urn,
+                        title: { text: "Video content" },
+                    }
+                ];
+                console.log(`[LinkedIn] Posting 1 video`);
+                
+                // Log if there are multiple videos
+                if (videos.length > 1) {
+                    console.warn(`[LinkedIn] Multiple videos provided (${videos.length}), but only 1 video can be posted. Posting first video only.`);
+                }
             }
         }
 

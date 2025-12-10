@@ -109,9 +109,12 @@ export async function POST(
             mediaUrls,
             youtubeTags,
             youtubePrivacy,
+            youtubeContentType,
+            youtubePlaylistTitle,
             pinterestBoardId,
             pinterestLink,
             isReel,
+            contentType,
             thumbnailUrl
         } = body;
 
@@ -127,11 +130,21 @@ export async function POST(
         // Prepare metadata
         let metadata: any = {};
         if (type === 'YOUTUBE') {
-            metadata = { tags: youtubeTags, privacy: youtubePrivacy, thumbnailUrl };
+            metadata = {
+                tags: youtubeTags,
+                privacy: youtubePrivacy,
+                thumbnailUrl,
+                postType: youtubeContentType,
+                playlistTitle: youtubePlaylistTitle
+            };
         } else if (type === 'PINTEREST') {
             metadata = { boardId: pinterestBoardId, link: pinterestLink };
         } else if (type === 'FACEBOOK' || type === 'INSTAGRAM') {
-            metadata = { isReel: !!isReel, thumbnailUrl };
+            metadata = {
+                isReel: !!isReel,
+                thumbnailUrl,
+                postType: contentType
+            };
         }
 
         // Create post

@@ -27,6 +27,12 @@ export async function postToPinterest(
     }
 
     try {
+        // Detect if media is video or image
+        const isVideo = /\.(mp4|mov|webm|avi|mkv)(\?.*)?$/i.test(mediaUrl);
+        const sourceType = isVideo ? 'video_url' : 'image_url';
+
+        console.log(`[Pinterest] Creating pin: ${title}, Media Type: ${sourceType}`);
+
         // Create a Pin - Production URL
         const response = await fetch('https://api.pinterest.com/v5/pins', {
             method: 'POST',
@@ -39,7 +45,7 @@ export async function postToPinterest(
                 description,
                 board_id: metadata?.boardId || undefined,
                 media_source: {
-                    source_type: 'image_url',
+                    source_type: sourceType,
                     url: mediaUrl,
                 },
             }),

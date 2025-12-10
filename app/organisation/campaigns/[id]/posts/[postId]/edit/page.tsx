@@ -20,10 +20,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { ArrowLeft, Loader2, Save, Upload, X, Youtube, Eye, Video, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Upload, X, Youtube, Eye, Video, Trash2, FileText } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import Image from 'next/image';
+import { WYSIWYGPreview } from '../../_components/WYSIWYGPreview';
+import { useUser } from '@clerk/nextjs';
 
 interface Post {
     id: number;
@@ -39,6 +41,7 @@ interface Post {
 }
 
 export default function EditPostPage() {
+    const { user } = useUser();
     const router = useRouter();
     const params = useParams();
     const campaignId = params.id as string;
@@ -55,7 +58,10 @@ export default function EditPostPage() {
     const [pinterestLink, setPinterestLink] = useState('');
     const [youtubeTags, setYoutubeTags] = useState('');
     const [youtubePrivacy, setYoutubePrivacy] = useState('public');
+    const [youtubeContentType, setYoutubeContentType] = useState('VIDEO'); // VIDEO, SHORT, PLAYLIST
+    const [youtubePlaylistTitle, setYoutubePlaylistTitle] = useState('');
     const [isReel, setIsReel] = useState(false);
+    const [contentType, setContentType] = useState('POST'); // For Facebook/Instagram: POST or REEL
     const [uploadingMedia, setUploadingMedia] = useState(false);
 
     // Pinterest Boards
@@ -66,6 +72,12 @@ export default function EditPostPage() {
 
     // Preview state
     const [showPreview, setShowPreview] = useState(false);
+
+    // Template state
+    const [templates, setTemplates] = useState<any[]>([]);
+    const [loadingTemplates, setLoadingTemplates] = useState(false);
+    const [selectedTemplateId, setSelectedTemplateId] = useState<string>('none');
+    const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
 
     // Fetch post data
     useEffect(() => {
@@ -102,7 +114,20 @@ export default function EditPostPage() {
                 setPinterestLink(metadata.link || '');
                 setYoutubeTags(metadata.tags ? (Array.isArray(metadata.tags) ? metadata.tags.join(', ') : metadata.tags) : '');
                 setYoutubePrivacy(metadata.privacy || 'public');
-                setIsReel(metadata.isReel || false);
+                setIsReel(metadata.isReel || metadata.postType === 'REEL' || false);
+
+                // Load YouTube content type
+                if (metadata.postType && type === 'YOUTUBE') {
+                    setYoutubeContentType(metadata.postType);
+                }
+                if (metadata.playlistTitle) {
+                    setYoutubePlaylistTitle(metadata.playlistTitle);
+                }
+
+                // Load Facebook/Instagram content type
+                if (metadata.postType && (type === 'FACEBOOK' || type === 'INSTAGRAM')) {
+                    setContentType(metadata.postType);
+                }
 
                 if (post.scheduledPostTime) {
                     const date = new Date(post.scheduledPostTime);
@@ -146,6 +171,97 @@ export default function EditPostPage() {
             fetchBoards();
         }
     }, [type]);
+
+    // Fetch templates when platform changes
+    useEffect(() => {
+        if (type) {
+            fetchTemplates(type);
+        } else {
+            setTemplates([]);
+            setSelectedTemplateId('none');
+        }
+    }, [type]);
+
+    // Fetch templates for selected platform
+    const fetchTemplates = async (platform: string) => {
+        try {
+            setLoadingTemplates(true);
+            const response = await fetch(`/api/templates?platform=${platform}&isActive=true`);
+            if (!response.ok) {
+                setTemplates([]);
+                return;
+            }
+            const data = await response.json();
+            setTemplates(data.success ? data.data : []);
+        } catch (error) {
+            console.error('Error fetching templates:', error);
+            setTemplates([]);
+        } finally {
+            setLoadingTemplates(false);
+        }
+    };
+
+    // Handle template selection
+    const handleTemplateSelect = (templateId: string) => {
+        setSelectedTemplateId(templateId);
+
+        if (!templateId || templateId === 'none') {
+            return;
+        }
+
+        const template = templates.find(t => t.id.toString() === templateId);
+        if (!template) return;
+
+        // Fill form with template data
+        setSubject(template.subject || '');
+        setMessage(template.content || '');
+
+        // Prefill media
+        if (template.mediaUrls && Array.isArray(template.mediaUrls)) {
+            setMediaUrls(template.mediaUrls);
+        }
+
+        // Handle metadata settings
+        if (template.metadata && typeof template.metadata === 'object') {
+            const meta = template.metadata as any;
+
+            // Map YouTube Content Type (VIDEO, SHORT, PLAYLIST)
+            if (meta.postType && type === 'YOUTUBE') {
+                setYoutubeContentType(meta.postType);
+                if (meta.postType === 'SHORT') {
+                    setIsReel(true); // Shorts are similar to reels
+                }
+            }
+
+            // Map YouTube Playlist Title
+            if (meta.playlistTitle) {
+                setYoutubePlaylistTitle(meta.playlistTitle);
+            }
+
+            // Map Facebook/Instagram Content Type
+            if (meta.postType && (type === 'FACEBOOK' || type === 'INSTAGRAM')) {
+                setContentType(meta.postType); // POST or REEL
+                setIsReel(meta.postType === 'REEL');
+            }
+
+            // Map YouTube Privacy
+            if (meta.youtubePrivacy) {
+                setYoutubePrivacy(meta.youtubePrivacy);
+            }
+
+            // Map YouTube Tags
+            if (meta.youtubeTags) {
+                setYoutubeTags(meta.youtubeTags);
+            }
+
+            // Map Thumbnail
+            if (meta.thumbnailUrl) {
+                setThumbnailUrl(meta.thumbnailUrl);
+            }
+        }
+
+        toast.success('Template loaded! You can now edit the content.');
+    };
 
     // Handle file upload
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -220,11 +336,16 @@ export default function EditPostPage() {
         // Prepare metadata
         let metadata: any = {};
         if (type === 'YOUTUBE') {
-            metadata = { tags: youtubeTags ? youtubeTags.split(',').map(t => t.trim()) : [], privacy: youtubePrivacy };
+            metadata = {
+                tags: youtubeTags ? youtubeTags.split(',').map(t => t.trim()) : [],
+                privacy: youtubePrivacy,
+                postType: youtubeContentType,
+                playlistTitle: youtubeContentType === 'PLAYLIST' ? youtubePlaylistTitle : undefined
+            };
         } else if (type === 'PINTEREST') {
             metadata = { boardId: pinterestBoardId, link: pinterestLink };
         } else if (type === 'FACEBOOK' || type === 'INSTAGRAM') {
-            metadata = { isReel: !!isReel };
+            metadata = { isReel: !!isReel, postType: contentType };
         }
 
         try {
@@ -403,21 +524,20 @@ export default function EditPostPage() {
                                     {/* Media Upload */}
                                     {['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'PINTEREST'].includes(type) && (
                                         <div className="space-y-2">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <Label>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <Label className="text-xs">
                                                     {type === 'YOUTUBE' ? 'Video *' : 'Media (Photo/Video)'}
                                                     {['INSTAGRAM', 'PINTEREST'].includes(type) && ' *'}
                                                 </Label>
-                                                <span className="text-xs text-muted-foreground">{mediaUrls.length}/10 uploaded</span>
+                                                <span className="text-[10px] text-muted-foreground">{mediaUrls.length}/10</span>
                                             </div>
 
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                                            <div className="flex flex-wrap gap-2 mb-2">
                                                 {mediaUrls.map((url, index) => (
-                                                    <div key={index} className="relative rounded-lg overflow-hidden border bg-muted/50 aspect-square group">
+                                                    <div key={index} className="relative rounded-md overflow-hidden border bg-muted/50 size-20 group">
                                                         {isVideoUrl(url) ? (
                                                             <div className="flex items-center justify-center h-full bg-black/10">
-                                                                <Video className="size-8 text-muted-foreground" />
-                                                                <p className="absolute bottom-2 left-2 text-xs bg-black/50 text-white px-2 py-1 rounded">Video</p>
+                                                                <Video className="size-6 text-muted-foreground" />
                                                             </div>
                                                         ) : (
                                                             <img
@@ -429,7 +549,7 @@ export default function EditPostPage() {
                                                         <button
                                                             type="button"
                                                             onClick={() => removeMedia(index)}
-                                                            className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                                            className="absolute top-0.5 right-0.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
                                                             title="Remove media"
                                                         >
                                                             <Trash2 className="size-3" />
@@ -438,13 +558,13 @@ export default function EditPostPage() {
                                                 ))}
 
                                                 {mediaUrls.length < 10 && (
-                                                    <label htmlFor="media-upload" className="flex flex-col items-center justify-center aspect-square border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                                                    <label htmlFor="media-upload" className="flex flex-col items-center justify-center size-20 border-2 border-dashed rounded-md cursor-pointer hover:bg-muted/50 transition-colors">
                                                         {uploadingMedia ? (
-                                                            <Loader2 className="size-6 text-muted-foreground animate-spin" />
+                                                            <Loader2 className="size-4 text-muted-foreground animate-spin" />
                                                         ) : (
                                                             <>
-                                                                <Upload className="size-6 text-muted-foreground mb-1" />
-                                                                <span className="text-xs text-muted-foreground">Add</span>
+                                                                <Upload className="size-4 text-muted-foreground mb-0.5" />
+                                                                <span className="text-[10px] text-muted-foreground">Add</span>
                                                             </>
                                                         )}
                                                         <input
@@ -462,28 +582,70 @@ export default function EditPostPage() {
                                         </div>
                                     )}
 
-                                    {/* Reel Option for Facebook/Instagram */}
-                                    {(type === 'FACEBOOK' || type === 'INSTAGRAM') &&
-                                        mediaUrls.some(url => isVideoUrl(url)) && (
-                                            <div className="space-y-4 pt-4 border-t">
-                                                <br />
-                                                <div className="flex items-center space-x-2">
-                                                    <input
-                                                        type="checkbox"
-                                                        id="isReel"
-                                                        checked={isReel}
-                                                        onChange={(e) => setIsReel(e.target.checked)}
-                                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                                    />
-                                                    <Label htmlFor="isReel" className="font-medium cursor-pointer">
-                                                        Post as Reel
-                                                    </Label>
-                                                </div>
-                                                <p className="text-xs text-muted-foreground pl-6">
-                                                    Upload as a short-form video (Reel). Recommended for vertical videos (9:16) under 90 seconds.
-                                                </p>
+                                    {/* Facebook & Instagram Content Type Selection */}
+                                    {(type === 'FACEBOOK' || type === 'INSTAGRAM') && (
+                                        <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+                                            <Label className="text-sm font-medium">Content Type</Label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {['POST', 'REEL'].map((cType) => (
+                                                    <button
+                                                        key={cType}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setContentType(cType);
+                                                            setIsReel(cType === 'REEL');
+                                                        }}
+                                                        className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-all ${contentType === cType
+                                                            ? 'border-primary bg-primary/10 text-primary'
+                                                            : 'border-border bg-background hover:bg-muted'
+                                                            }`}
+                                                    >
+                                                        {cType === 'POST' ? 'Standard Post' : 'Reel / Short Video'}
+                                                    </button>
+                                                ))}
                                             </div>
-                                        )}
+
+                                            {contentType === 'REEL' && (
+                                                <div className="space-y-2 pt-2">
+                                                    <Label className="text-sm font-medium">Cover Image (Optional)</Label>
+                                                    <div className="flex items-center gap-3">
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            onClick={() => document.getElementById('reel-cover-upload')?.click()}
+                                                            disabled={uploadingMedia}
+                                                            className="gap-2 w-full"
+                                                        >
+                                                            <Upload className="size-4" />
+                                                            {uploadingMedia ? "Uploading..." : "Upload Cover"}
+                                                        </Button>
+                                                        <input
+                                                            id="reel-cover-upload"
+                                                            type="file"
+                                                            accept="image/*"
+                                                            onChange={handleFileUpload}
+                                                            className="hidden"
+                                                        />
+                                                    </div>
+                                                    {thumbnailUrl && (
+                                                        <div className="relative aspect-[9/16] w-20 overflow-hidden rounded border bg-muted">
+                                                            <Image src={thumbnailUrl} alt="Cover" fill className="object-cover" unoptimized />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setThumbnailUrl(null)}
+                                                                className="absolute right-1 top-1 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
+                                                            >
+                                                                <X className="size-3" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Recommended for vertical videos (9:16) under 90 seconds.
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {/* YouTube Specific Fields */}
                                     {type === 'YOUTUBE' && (
@@ -492,6 +654,45 @@ export default function EditPostPage() {
                                                 <Youtube className="size-4 text-red-600" />
                                                 YouTube Settings
                                             </h3>
+
+                                            {/* Content Type Selection */}
+                                            <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+                                                <Label className="text-sm font-medium">Content Type</Label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {['VIDEO', 'SHORT', 'PLAYLIST'].map((yType) => (
+                                                        <button
+                                                            key={yType}
+                                                            type="button"
+                                                            onClick={() => setYoutubeContentType(yType)}
+                                                            className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-all ${youtubeContentType === yType
+                                                                ? 'border-primary bg-primary/10 text-primary'
+                                                                : 'border-border bg-background hover:bg-muted'
+                                                                }`}
+                                                        >
+                                                            {yType === 'VIDEO' ? 'Standard Video' : yType === 'SHORT' ? 'YouTube Short' : 'Playlist'}
+                                                        </button>
+                                                    ))}
+                                                </div>
+
+                                                {/* Playlist Options */}
+                                                {youtubeContentType === 'PLAYLIST' && (
+                                                    <div className="space-y-3 pt-2">
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="playlistTitle">New Playlist Title</Label>
+                                                            <Input
+                                                                id="playlistTitle"
+                                                                placeholder="Enter playlist title"
+                                                                value={youtubePlaylistTitle}
+                                                                onChange={(e) => setYoutubePlaylistTitle(e.target.value)}
+                                                            />
+                                                            <p className="text-xs text-muted-foreground">
+                                                                A new playlist will be created with this title
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="space-y-2">
                                                     <Label htmlFor="youtubeTags">Tags (comma separated)</Label>
@@ -574,6 +775,75 @@ export default function EditPostPage() {
                                     )}
                                 </CardContent>
                             </Card>
+
+                            {/* Template Selection */}
+                            {type && (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Templates</CardTitle>
+                                        <CardDescription>
+                                            Use a template to quickly fill in content
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        {loadingTemplates ? (
+                                            <div className="flex items-center gap-2 p-4 border rounded-lg">
+                                                <Loader2 className="size-4 animate-spin" />
+                                                <span className="text-sm text-muted-foreground">Loading templates...</span>
+                                            </div>
+                                        ) : templates.length > 0 ? (
+                                            <>
+                                                <Select value={selectedTemplateId || "none"} onValueChange={handleTemplateSelect}>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Select a template to start with..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="none">None - Keep current content</SelectItem>
+                                                        {templates.map((template) => (
+                                                            <SelectItem key={template.id} value={template.id.toString()}>
+                                                                <div className="flex items-center gap-2">
+                                                                    <FileText className="size-4" />
+                                                                    <span>{template.name}</span>
+                                                                    {template.category && (
+                                                                        <span className="text-xs text-muted-foreground">
+                                                                            ({template.category})
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Templates will replace the current content. You can edit directly in the preview below.
+                                                </p>
+                                            </>
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground p-4 border rounded-lg bg-muted/30">
+                                                No templates available for {type}. Create one in the Templates section!
+                                            </p>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {/* WYSIWYG Live Preview */}
+                            {type && (
+                                <WYSIWYGPreview
+                                    platform={type}
+                                    subject={subject}
+                                    message={message}
+                                    mediaUrls={mediaUrls}
+                                    thumbnailUrl={thumbnailUrl}
+                                    isReel={isReel || youtubeContentType === 'SHORT'}
+                                    onSubjectChange={setSubject}
+                                    onMessageChange={setMessage}
+                                    user={{
+                                        name: user?.fullName || user?.firstName || 'Your Brand',
+                                        image: user?.imageUrl
+                                    }}
+                                />
+                            )}
 
                             {/* Actions */}
                             <div className="flex justify-end gap-4">

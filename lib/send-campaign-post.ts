@@ -62,11 +62,14 @@ export async function sendCampaignPost(
                     data: { isPostSent: true }
                 });
 
+                // Extract post ID from LinkedIn response (response is the full post data)
+                const linkedInPostId = linkedInResponse?.id || linkedInResponse?.[Object.keys(linkedInResponse)[0]]?.id || JSON.stringify(linkedInResponse);
+
                 await prisma.postTransaction.create({
                     data: {
                         refId: post.id,
                         platform: 'LINKEDIN',
-                        postId: linkedInResponse.id,
+                        postId: linkedInPostId,
                         accountId: dbUser.linkedInAuthUrn,
                         message: post.message || post.subject || "",
                         mediaUrls: post.mediaUrls.length > 0 ? post.mediaUrls[0] : post.videoUrl,
@@ -151,6 +154,18 @@ export async function sendCampaignPost(
                     data: { isPostSent: true }
                 });
 
+                // Determine post type based on media count and type
+                const mediaCount = Array.isArray(post.mediaUrls) ? post.mediaUrls.length : (post.mediaUrls ? 1 : 0);
+                let postType = 'TEXT';
+                if ((post.metadata as any)?.isReel) {
+                    postType = 'REEL';
+                } else if (mediaCount > 1) {
+                    postType = 'CAROUSEL';
+                } else if (mediaCount === 1) {
+                    const firstMedia = post.mediaUrls[0];
+                    postType = firstMedia?.match(/\.(mp4|mov|webm)$/i) ? 'VIDEO' : 'IMAGE';
+                }
+
                 await prisma.postTransaction.create({
                     data: {
                         refId: post.id,
@@ -159,7 +174,7 @@ export async function sendCampaignPost(
                         accountId: dbUser.instagramUserId,
                         message: post.message || post.subject || "",
                         mediaUrls: post.mediaUrls.length > 0 ? post.mediaUrls[0] : post.videoUrl,
-                        postType: (post.metadata as any)?.isReel ? 'REEL' : 'IMAGE',
+                        postType,
                         accessToken: dbUser.instagramAccessToken,
                         published: true,
                         publishedAt: new Date(),
@@ -188,6 +203,8 @@ export async function sendCampaignPost(
                         {
                             tags: metadata?.tags || [],
                             privacy: metadata?.privacy || 'public',
+                            isShort: metadata?.isShort || false,
+                            thumbnailUrl: metadata?.thumbnailUrl || undefined,
                         }
                     );
                 } else {
@@ -211,7 +228,7 @@ export async function sendCampaignPost(
                         accountId: 'youtube-channel',
                         message: post.message || post.subject || "",
                         mediaUrls: post.mediaUrls.length > 0 ? post.mediaUrls[0] : post.videoUrl,
-                        postType: media && media.match(/\.(mp4|mov|webm)$/i) ? 'VIDEO' : 'TEXT',
+                        postType: media && media.match(/\.(mp4|mov|webm)$/i) ? (platformResponse.isShort ? 'SHORT' : 'VIDEO') : 'TEXT',
                         accessToken: dbUser.youtubeAccessToken,
                         published: true,
                         publishedAt: new Date(),
@@ -231,12 +248,15 @@ export async function sendCampaignPost(
                 const imageUrl = post.mediaUrls.length > 0 ? post.mediaUrls[0] : post.videoUrl;
 
                 if (!imageUrl) {
-                    throw new Error('Pinterest requires an image');
+                    throw new Error('Pinterest requires an image or video');
                 }
 
                 if (!metadata?.boardId) {
                     throw new Error('Pinterest requires a Board ID');
                 }
+
+                // Detect media type for Pinterest post type tracking
+                const isVideoPin = /\.(mp4|mov|webm|avi|mkv)(\?.*)?$/i.test(imageUrl);
 
                 const platformResponse = await postToPinterest(
                     { accessToken: dbUser.pinterestAccessToken },
@@ -245,7 +265,6 @@ export async function sendCampaignPost(
                     imageUrl,
                     {
                         boardId: metadata?.boardId,
-                        link: metadata?.link,
                     }
                 );
 
@@ -262,7 +281,7 @@ export async function sendCampaignPost(
                         accountId: 'pinterest-user',
                         message: post.message || post.subject || "",
                         mediaUrls: imageUrl,
-                        postType: 'IMAGE',
+                        postType: isVideoPin ? 'VIDEO' : 'IMAGE',
                         accessToken: dbUser.pinterestAccessToken,
                         published: true,
                         publishedAt: new Date(),

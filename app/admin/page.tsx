@@ -1416,8 +1416,10 @@ export default function AdminDashboard() {
                           {
                             platform: "INSTAGRAM",
                             keys: [
-                              { key: "INSTAGRAM_CLIENT_ID", label: "App ID" },
-                              { key: "INSTAGRAM_CLIENT_SECRET", label: "App Secret" }
+                              { key: "INSTAGRAM_CLIENT_ID", label: "OAuth App ID" },
+                              { key: "INSTAGRAM_CLIENT_SECRET", label: "OAuth App Secret" },
+                              { key: "INSTAGRAM_DIRECT_ID", label: "Direct Login ID (for direct Instagram auth)" },
+                              { key: "INSTAGRAM_DIRECT_SECRET", label: "Direct Login Secret (for direct Instagram auth)" }
                             ]
                           },
                           {

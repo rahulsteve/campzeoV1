@@ -148,7 +148,7 @@ export function OrganisationLayoutWrapper({
         
       </div>
       {/* Footer */}
-      <footer className="flex-shrink-0 border-t bg-background p-4 text-center text-sm text-muted-foreground">
+      <footer className="flex-shrink-0 border-t pt-1 bg-background p-4 text-center text-sm text-muted-foreground">
         &copy; {new Date().getFullYear()} CampZeo. All rights reserved.
       </footer>
 

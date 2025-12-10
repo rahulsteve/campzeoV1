@@ -6,6 +6,8 @@ interface YouTubeCredentials {
 interface YouTubeMetadata {
     tags?: string[];
     privacy?: 'public' | 'private' | 'unlisted';
+    isShort?: boolean; // For YouTube Shorts
+    thumbnailUrl?: string; // Custom thumbnail URL
 }
 
 // Refresh YouTube access token using refresh token
@@ -42,7 +44,8 @@ export async function postToYouTube(
 ) {
     const { accessToken } = credentials;
 
-    console.log(`[YouTube] Starting video upload: ${title}`);
+    const isShort = metadata?.isShort || false;
+    console.log(`[YouTube] Starting video upload: ${title}, Is Short: ${isShort}`);
 
     try {
         // Step 1: Fetch the video file from URL (works with Vercel Blob)
@@ -88,6 +91,7 @@ export async function postToYouTube(
                 status: {
                     privacyStatus: metadata?.privacy || 'public',
                     selfDeclaredMadeForKids: false,
+                    madeForKids: false,
                 },
             }),
         });
@@ -129,12 +133,73 @@ export async function postToYouTube(
         }
 
         const videoData: any = await uploadResponse.json();
-        console.log(`[YouTube] Video uploaded successfully: ${videoData.id}`);
+        const videoId = videoData.id;
+        console.log(`[YouTube] Video uploaded successfully: ${videoId}`);
 
-        return { id: videoData.id };
+        // Step 4: Upload custom thumbnail if provided
+        if (metadata?.thumbnailUrl) {
+            console.log(`[YouTube] Uploading custom thumbnail: ${metadata.thumbnailUrl}`);
+            try {
+                await uploadYouTubeThumbnail(accessToken, videoId, metadata.thumbnailUrl);
+                console.log(`[YouTube] Thumbnail uploaded successfully`);
+            } catch (thumbErr) {
+                console.warn(`[YouTube] Thumbnail upload failed (non-blocking):`, thumbErr);
+                // Don't fail the entire upload if thumbnail fails
+            }
+        }
+
+        // Note: YouTube automatically detects Shorts based on:
+        // - Aspect ratio (9:16 vertical)
+        // - Duration (< 60 seconds)
+        // We don't need to manually tag it
+        if (isShort) {
+            console.log(`[YouTube] Video marked as Short (auto-detected by YouTube based on format)`);
+        }
+
+        return { id: videoId, isShort };
 
     } catch (error) {
         console.error('YouTube video upload error:', error);
+        throw error;
+    }
+}
+
+// Upload custom thumbnail for YouTube video
+async function uploadYouTubeThumbnail(
+    accessToken: string,
+    videoId: string,
+    thumbnailUrl: string
+): Promise<void> {
+    try {
+        // Fetch thumbnail from URL
+        const thumbnailResponse = await fetch(thumbnailUrl);
+        if (!thumbnailResponse.ok) {
+            throw new Error(`Failed to fetch thumbnail: ${thumbnailResponse.statusText}`);
+        }
+
+        const thumbnailBuffer = Buffer.from(await thumbnailResponse.arrayBuffer());
+
+        // Determine image type from URL or content-type
+        const contentType = thumbnailResponse.headers.get('content-type') || 'image/jpeg';
+
+        // Upload thumbnail using resumable upload
+        const response = await fetch(`https://www.googleapis.com/upload/youtube/v3/videos/setThumbnail?videoId=${videoId}&uploadType=media`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': contentType,
+            },
+            body: thumbnailBuffer,
+        });
+
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`Thumbnail upload failed: ${error}`);
+        }
+
+        console.log(`[YouTube] Thumbnail set for video ${videoId}`);
+    } catch (error) {
+        console.error('YouTube thumbnail upload error:', error);
         throw error;
     }
 }
@@ -193,6 +258,121 @@ export async function postYouTubeCommunity(
 
     } catch (error) {
         console.error('YouTube community post error:', error);
+        throw error;
+    }
+}
+
+// Create a YouTube Playlist
+export async function createYouTubePlaylist(
+    credentials: YouTubeCredentials,
+    title: string,
+    description: string,
+    privacy: 'public' | 'private' | 'unlisted' = 'public'
+) {
+    const { accessToken } = credentials;
+
+    console.log(`[YouTube] Creating playlist: ${title}`);
+
+    try {
+        const response = await fetch('https://www.googleapis.com/youtube/v3/playlists?part=snippet,status', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                snippet: {
+                    title,
+                    description,
+                    defaultLanguage: 'en',
+                },
+                status: {
+                    privacyStatus: privacy,
+                },
+            }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('[YouTube] Playlist creation error:', error);
+
+            if (response.status === 401) {
+                throw new Error('YouTube access token expired. Please reconnect your YouTube account in Settings.');
+            }
+
+            throw new Error(`YouTube playlist creation failed: ${JSON.stringify(error)}`);
+        }
+
+        const data: any = await response.json();
+        console.log(`[YouTube] Playlist created successfully: ${data.id}`);
+        return { id: data.id, title: data.snippet.title };
+
+    } catch (error) {
+        console.error('YouTube playlist creation error:', error);
+        throw error;
+    }
+}
+
+// Add video to YouTube Playlist
+export async function addVideoToPlaylist(
+    credentials: YouTubeCredentials,
+    playlistId: string,
+    videoId: string,
+    position?: number,
+    metadata?: YouTubeMetadata
+) {
+    const { accessToken } = credentials;
+
+    const isShort = metadata?.isShort || false;
+    console.log(`[YouTube] Adding video ${videoId} to playlist ${playlistId}, Is Short: ${isShort}`);
+
+    try {
+        const response = await fetch('https://www.googleapis.com/youtube/v3/playlistItems?part=snippet', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                snippet: {
+                    playlistId,
+                    resourceId: {
+                        kind: 'youtube#video',
+                        videoId,
+                    },
+                    position: position || 0,
+                },
+            }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('[YouTube] Failed to add video to playlist:', error);
+            throw new Error(`Failed to add video to playlist: ${JSON.stringify(error)}`);
+        }
+
+        const data: any = await response.json();
+        console.log(`[YouTube] Video added to playlist successfully`);
+
+        // YouTube automatically detects shorts based on video format
+        if (isShort) {
+            console.log(`[YouTube] Short video added to playlist (auto-detected by YouTube based on format)`);
+        }
+
+        // If thumbnail URL provided, update thumbnail
+        if (metadata?.thumbnailUrl) {
+            try {
+                await uploadYouTubeThumbnail(accessToken, videoId, metadata.thumbnailUrl);
+                console.log(`[YouTube] Thumbnail updated for video in playlist`);
+            } catch (err) {
+                console.warn(`[YouTube] Failed to update thumbnail (non-blocking):`, err);
+            }
+        }
+
+        return { id: data.id, isShort };
+
+    } catch (error) {
+        console.error('YouTube add to playlist error:', error);
         throw error;
     }
 }
