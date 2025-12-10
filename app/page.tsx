@@ -10,79 +10,20 @@ import { SignInButton, SignUpButton, SignedOut, SignedIn, UserButton } from "@cl
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Header } from '@/components/Header';
+import { usePlans, Plan } from "@/hooks/use-plans";
+import { formatPrice } from "@/lib/plans";
 
-type Plan = {
-  name: string;
-  price: number;
-  period: string;
-  description: string;
-  features: string[];
-  isTrial?: boolean;
-  isPopular?: boolean;
-  priceId?: string;
-};
 
-const plans: Plan[] = [
-  {
-    name: "Free Trial",
-    price: 0,
-    period: "14 days",
-    description: "Try all features for free",
-    isTrial: true,
-    features: [
-      "Up to 5 users",
-      "Basic analytics",
-      "Email support",
-      "Core features access",
-      "5GB storage",
-      "Community support",
-    ],
-  },
-  {
-    name: "Professional",
-    price: 2999,
-    period: "month",
-    description: "Perfect for growing teams",
-    isPopular: true,
-    priceId: "plan_pro_monthly",
-    features: [
-      "Unlimited users",
-      "Advanced analytics",
-      "Priority support",
-      "All features unlocked",
-      "100GB storage",
-      "Custom integrations",
-      "API access",
-      "White-label options",
-    ],
-  },
-  {
-    name: "Enterprise",
-    price: 9999,
-    period: "month",
-    description: "For large organizations",
-    priceId: "plan_enterprise_monthly",
-    features: [
-      "Everything in Professional",
-      "Dedicated account manager",
-      "24/7 phone support",
-      "Custom SLA",
-      "Unlimited storage",
-      "Advanced security",
-      "Custom contracts",
-      "On-premise deployment option",
-    ],
-  },
-];
 
 export default function LandingPage() {
+  const { plans, isLoading: plansLoading } = usePlans();
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const router = useRouter();
 
   const handlePlanSelect = (plan: Plan) => {
-    if (plan.isTrial) {
-      // Redirect to sign up
+    if (plan.price === 0) {
+      // Redirect to sign up for free trial
       router.push("/sign-up");
     } else {
       // Show payment modal for paid plans
@@ -163,10 +104,12 @@ export default function LandingPage() {
             Start your free 14-day trial today, no credit card required.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" onClick={() => handlePlanSelect(plans[0])}>
-              Start Free Trial
-              <ArrowRight className="ml-2 size-4" />
-            </Button>
+            {!plansLoading && plans.length > 0 && (
+              <Button size="lg" onClick={() => handlePlanSelect(plans[0])}>
+                Start Free Trial
+                <ArrowRight className="ml-2 size-4" />
+              </Button>
+            )}
             <Button
               size="lg"
               variant="outline"
@@ -243,49 +186,61 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
-            {plans.map((plan) => (
-              <Card
-                key={plan.name}
-                className={`relative ${plan.isPopular ? "border-primary shadow-lg" : ""}`}
-              >
-                {plan.isPopular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <Badge className="gap-1">
-                      <Star className="size-3" />
-                      Most Popular
-                    </Badge>
-                  </div>
-                )}
-                <CardHeader>
-                  <CardTitle>{plan.name}</CardTitle>
-                  <CardDescription>{plan.description}</CardDescription>
-                  <div className="mt-4">
-                    <span className="text-4xl">{plan.price === 0 ? "Free" : `₹${plan.price}`}</span>
-                    {plan.price > 0 && <span className="text-muted-foreground">/{plan.period}</span>}
-                    {plan.isTrial && <span className="text-muted-foreground"> for {plan.period}</span>}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3">
-                    {plan.features.map((feature, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <Check className="size-5 text-green-500 shrink-0 mt-0.5" />
-                        <span className="text-sm">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-                <CardFooter>
-                  <Button
-                    className="w-full"
-                    variant={plan.isPopular ? "default" : "outline"}
-                    onClick={() => handlePlanSelect(plan)}
+            {plansLoading ? (
+              <div className="col-span-3 text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Loading plans...</p>
+              </div>
+            ) : (
+              plans.map((plan) => {
+                const isPopular = plan.price > 0 && plan.price < 5000;
+                const isTrial = plan.price === 0;
+
+                return (
+                  <Card
+                    key={plan.id}
+                    className={`relative ${isPopular ? "border-primary shadow-lg" : ""}`}
                   >
-                    {plan.isTrial ? "Start Free Trial" : "Purchase Now"}
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
+                    {isPopular && (
+                      <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                        <Badge className="gap-1">
+                          <Star className="size-3" />
+                          Most Popular
+                        </Badge>
+                      </div>
+                    )}
+                    <CardHeader>
+                      <CardTitle>{plan.name}</CardTitle>
+                      <CardDescription>{plan.description || (isTrial ? "Try all features for free" : "Perfect for your needs")}</CardDescription>
+                      <div className="mt-4">
+                        <span className="text-4xl">{plan.price === 0 ? "Free" : `₹${plan.price}`}</span>
+                        {plan.price > 0 && <span className="text-muted-foreground">/{plan.billingCycle || 'month'}</span>}
+                        {isTrial && <span className="text-muted-foreground"> trial</span>}
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-3">
+                        {plan.features.map((feature, index) => (
+                          <li key={index} className="flex items-start gap-2">
+                            <Check className="size-5 text-green-500 shrink-0 mt-0.5" />
+                            <span className="text-sm">{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                    <CardFooter>
+                      <Button
+                        className="w-full"
+                        variant={isPopular ? "default" : "outline"}
+                        onClick={() => handlePlanSelect(plan)}
+                      >
+                        {isTrial ? "Start Free Trial" : "Purchase Now"}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                );
+              })
+            )}
           </div>
         </div>
       </section>
@@ -296,7 +251,7 @@ export default function LandingPage() {
           <p className="mb-8 text-primary-foreground/90">
             Join thousands of teams already using SaaSify to streamline their operations
           </p>
-          <Button size="lg" variant="secondary" onClick={() => handlePlanSelect(plans[0])}>
+          <Button size="lg" variant="secondary" onClick={() => !plansLoading && plans.length > 0 && handlePlanSelect(plans[0])}>
             Start Your Free Trial
             <ArrowRight className="ml-2 size-4" />
           </Button>

@@ -61,12 +61,12 @@ model Organisation {
   updatedAt             DateTime               @updatedAt
   campaigns             Campaign[]
   contacts              Contact[]
+  messageTemplates      MessageTemplate[]
   notifications         Notification[]
   organisationPlatforms OrganisationPlatform[]
   payments              Payment[]
   subscriptions         Subscription[]
   users                 User[]
-  messageTemplates      MessageTemplate[]
 }
 
 model OrganisationPlatform {
@@ -101,13 +101,13 @@ model CampaignPost {
   isAttachedToCampaign Boolean      @default(false)
   campaignId           Int?
   videoUrl             String?
-  mediaUrls            String[]
-  metadata             Json?
   videoId              String?
   scheduledPostTime    DateTime?
   isPostSent           Boolean      @default(false)
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
+  mediaUrls            String[]
+  metadata             Json?
   campaign             Campaign?    @relation(fields: [campaignId], references: [id])
 }
 
@@ -136,6 +136,7 @@ model Plan {
   autoRenew     Boolean        @default(false)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  isDeleted     Boolean?       @default(false)
   subscriptions Subscription[]
 }
 
@@ -183,23 +184,23 @@ model Invoice {
 }
 
 model Enquiry {
-  id               Int      @id @default(autoincrement())
   name             String
-  phone            String?
   email            String
-  mobile           String?
-  password         String?
-  enquiryText      String?
-  organisationName String?
-  address          String?
-  city             String?
-  state            String?
-  country          String?
-  postalCode       String?
-  taxNumber        String?
-  isConverted      Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  address          String?
+  city             String?
+  enquiryText      String?
+  postalCode       String?
+  state            String?
+  id               Int      @id @default(autoincrement())
+  mobile           String?
+  organisationName String?
+  country          String?
+  isConverted      Boolean  @default(false)
+  phone            String?
+  taxNumber        String?
+  password         String?
 }
 
 model Notification {
@@ -301,7 +302,7 @@ model MessageTemplate {
   id             Int              @id @default(autoincrement())
   name           String
   description    String?
-  content        String           @db.Text
+  content        String
   subject        String?
   platform       PlatformType
   category       TemplateCategory @default(CUSTOM)
@@ -311,6 +312,8 @@ model MessageTemplate {
   createdBy      String?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
+  metadata       Json?
+  mediaUrls      String[]         @default([])
   organisation   Organisation     @relation(fields: [organisationId], references: [id], onDelete: Cascade)
 
   @@index([organisationId])

@@ -76,12 +76,22 @@ export async function GET() {
         // Parse plan features and limits
         let planData = null;
         if (subscription?.plan) {
-            const features = subscription.plan.features
-                ? JSON.parse(subscription.plan.features)
-                : [];
-            const usageLimits = subscription.plan.usageLimits
-                ? JSON.parse(subscription.plan.usageLimits)
-                : null;
+            let features;
+            try {
+                features = subscription.plan.features ? JSON.parse(subscription.plan.features) : [];
+            } catch (e) {
+                // If parsing fails, treat as a single string item or plain string depending on contract. 
+                // Assuming legacy frontend might expect array, but safetst is to return what we have if it's not parseable.
+                // Or better: wrap in array if it's a non-empty string.
+                features = subscription.plan.features ? [subscription.plan.features] : [];
+            }
+
+            let usageLimits;
+            try {
+                usageLimits = subscription.plan.usageLimits ? JSON.parse(subscription.plan.usageLimits) : null;
+            } catch (e) {
+                usageLimits = subscription.plan.usageLimits; // Return raw string if not JSON
+            }
 
             planData = {
                 id: subscription.plan.id,

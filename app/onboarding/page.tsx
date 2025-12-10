@@ -10,16 +10,18 @@ import { Badge } from "@/components/ui/badge";
 import { Building2, Check, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { RazorpayButton } from "@/components/razorpay-button";
-import { PLANS, formatPrice, type PlanType } from "@/lib/plans";
+import { formatPrice } from "@/lib/plans";
 import { toast } from "sonner";
+import { usePlans } from "@/hooks/use-plans";
 
 export default function OnboardingPage() {
   const { user } = useUser();
   const router = useRouter();
+  const { plans, isLoading: plansLoading } = usePlans();
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(true);
   const [error, setError] = useState("");
-  const [selectedPlan, setSelectedPlan] = useState<PlanType>("FREE_TRIAL");
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [showPayment, setShowPayment] = useState(false);
 
   // Form State
@@ -119,12 +121,15 @@ export default function OnboardingPage() {
 
   const createOrganisation = async (paymentData?: any) => {
     try {
+      const selectedPlan = plans.find(p => p.id === selectedPlanId);
+
       const response = await fetch("/api/organisations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          plan: selectedPlan,
+          plan: selectedPlan?.name || "FREE_TRIAL",
+          planId: selectedPlanId,
           paymentData
         }),
       });
@@ -188,7 +193,8 @@ export default function OnboardingPage() {
         return;
       }
 
-      if (selectedPlan === "FREE_TRIAL") {
+      const selectedPlan = plans.find(p => p.id === selectedPlanId);
+      if (selectedPlan && selectedPlan.price === 0) {
         // Free trial - create organisation directly
         await createOrganisation();
       } else {
@@ -244,7 +250,8 @@ export default function OnboardingPage() {
 
   // Payment step
   if (showPayment) {
-    const plan = PLANS[selectedPlan];
+    const plan = plans.find(p => p.id === selectedPlanId);
+    if (!plan) return null;
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
         <Card className="w-full max-w-2xl">
@@ -274,12 +281,12 @@ export default function OnboardingPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Billing:</span>
-                  <span className="font-medium">Monthly</span>
+                  <span className="font-medium">{plan.billingCycle || 'Monthly'}</span>
                 </div>
                 <div className="border-t pt-2 flex justify-between text-lg">
                   <span className="font-semibold">Total:</span>
                   <span className="font-bold text-primary">
-                    {formatPrice(plan.price, plan.currency)}/month
+                    {formatPrice(plan.price, "INR")}/{plan.billingCycle || 'month'}
                   </span>
                 </div>
               </div>
@@ -315,7 +322,7 @@ export default function OnboardingPage() {
                 Back
               </Button>
               <RazorpayButton
-                plan={selectedPlan}
+                plan={plan.name}
                 amount={plan.price}
                 onSuccess={handlePaymentSuccess}
                 onError={handlePaymentError}
@@ -323,7 +330,7 @@ export default function OnboardingPage() {
                 organizationName={formData.organizationName}
                 isSignup={true}
               >
-                Pay {formatPrice(plan.price, plan.currency)}
+                Pay {formatPrice(plan.price, "INR")}
               </RazorpayButton>
             </div>
 
@@ -466,45 +473,57 @@ export default function OnboardingPage() {
             {/* Plan Selection */}
             <div className="space-y-3 pt-4 border-t">
               <Label className="text-lg">Select Your Plan *</Label>
-              <div className="grid gap-4 md:grid-cols-3">
-                {Object.values(PLANS).map((plan) => (
-                  <Card
-                    key={plan.id}
-                    className={`cursor-pointer transition-all ${selectedPlan === plan.id
-                      ? "border-primary shadow-md ring-2 ring-primary"
-                      : "hover:border-primary/50"
-                      } ${plan.popular ? "relative" : ""}`}
-                    onClick={() => setSelectedPlan(plan.id)}
-                  >
-                    {plan.popular && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                        <Badge className="bg-primary">Most Popular</Badge>
-                      </div>
-                    )}
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg">{plan.name}</CardTitle>
-                      <div className="mt-2">
-                        <span className="text-3xl font-bold">
-                          {formatPrice(plan.price, plan.currency)}
-                        </span>
-                        {plan.price > 0 && (
-                          <span className="text-muted-foreground text-sm">/{plan.interval}</span>
+              {plansLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="text-sm text-muted-foreground mt-2">Loading plans...</p>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-3">
+                  {plans.map((plan) => {
+                    // Determine if this is a popular/recommended plan based on price range
+                    const isPopular = plan.price > 0 && plan.price < 5000;
+
+                    return (
+                      <Card
+                        key={plan.id}
+                        className={`cursor-pointer transition-all ${selectedPlanId === plan.id
+                          ? "border-primary shadow-md ring-2 ring-primary"
+                          : "hover:border-primary/50"
+                          } ${isPopular ? "relative" : ""}`}
+                        onClick={() => setSelectedPlanId(plan.id)}
+                      >
+                        {isPopular && (
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                            <Badge className="bg-primary">Most Popular</Badge>
+                          </div>
                         )}
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-2">
-                        {plan.features.slice(0, 4).map((feature, index) => (
-                          <li key={index} className="flex items-start gap-2 text-sm">
-                            <Check className="size-4 text-primary shrink-0 mt-0.5" />
-                            <span>{feature}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-lg">{plan.name}</CardTitle>
+                          <div className="mt-2">
+                            <span className="text-3xl font-bold">
+                              {formatPrice(plan.price, "INR")}
+                            </span>
+                            {plan.price > 0 && (
+                              <span className="text-muted-foreground text-sm">/{plan.billingCycle || 'month'}</span>
+                            )}
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <ul className="space-y-2">
+                            {plan.features.slice(0, 4).map((feature, index) => (
+                              <li key={index} className="flex items-start gap-2 text-sm">
+                                <Check className="size-4 text-primary shrink-0 mt-0.5" />
+                                <span>{feature}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {error && (
@@ -513,8 +532,8 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
-              {isLoading ? "Setting up..." : selectedPlan === "FREE_TRIAL" ? "Start Free Trial" : "Continue to Payment"}
+            <Button type="submit" className="w-full" size="lg" disabled={isLoading || !selectedPlanId}>
+              {isLoading ? "Setting up..." : plans.find(p => p.id === selectedPlanId)?.price === 0 ? "Start Free Trial" : "Continue to Payment"}
             </Button>
 
             <p className="text-xs text-center text-muted-foreground">

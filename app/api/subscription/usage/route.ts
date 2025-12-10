@@ -41,15 +41,28 @@ export async function GET() {
         });
 
         // Parse usage limits from plan
-        const usageLimits = subscription?.plan?.usageLimits
-            ? JSON.parse(subscription.plan.usageLimits)
-            : {
-                campaigns: 999999,
-                contacts: 999999,
-                users: 999999,
-                platforms: 999999,
-                postsPerMonth: 999999,
-            };
+        // Parse usage limits from plan
+        let usageLimits;
+        const defaultLimits = {
+            campaigns: 999999,
+            contacts: 999999,
+            users: 999999,
+            platforms: 999999,
+            postsPerMonth: 999999,
+        };
+
+        try {
+            usageLimits = subscription?.plan?.usageLimits
+                ? JSON.parse(subscription.plan.usageLimits as string)
+                : defaultLimits;
+
+            // Validate it's an object
+            if (typeof usageLimits !== 'object' || usageLimits === null) {
+                usageLimits = defaultLimits;
+            }
+        } catch (e) {
+            usageLimits = defaultLimits;
+        }
 
         // Count current usage
         const [campaignsCount, contactsCount, usersCount, platformsCount, postsThisMonthCount] =
