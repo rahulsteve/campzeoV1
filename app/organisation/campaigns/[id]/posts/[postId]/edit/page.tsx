@@ -20,12 +20,16 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { ArrowLeft, Loader2, Save, Upload, X, Youtube, Eye, Video, Trash2, FileText } from 'lucide-react';
+
+import { ArrowLeft, Loader2, Save, Upload, X, Youtube, Eye, Video, Trash2,FileText, Sparkles } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import Image from 'next/image';
+import { AIContentAssistant } from '@/components/ai-content-assistant';
 import { WYSIWYGPreview } from '../../_components/WYSIWYGPreview';
 import { useUser } from '@clerk/nextjs';
+
+
 
 interface Post {
     id: number;
@@ -78,6 +82,8 @@ export default function EditPostPage() {
     const [loadingTemplates, setLoadingTemplates] = useState(false);
     const [selectedTemplateId, setSelectedTemplateId] = useState<string>('none');
     const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+    // AI Assistant state
+    const [showAIAssistant, setShowAIAssistant] = useState(false);
 
     // Fetch post data
     useEffect(() => {
@@ -505,14 +511,27 @@ export default function EditPostPage() {
                                             <Label htmlFor="message">
                                                 Message {type !== 'EMAIL' && '*'}
                                             </Label>
-                                            <Textarea
-                                                id="message"
-                                                placeholder="Enter your message"
-                                                value={message}
-                                                onChange={(e) => setMessage(e.target.value)}
-                                                rows={6}
-                                                required={type !== 'EMAIL'}
-                                            />
+                                            <div className="relative">
+                                                <Textarea
+                                                    id="message"
+                                                    placeholder="Enter your message"
+                                                    value={message}
+                                                    onChange={(e) => setMessage(e.target.value)}
+                                                    rows={6}
+                                                    required={type !== 'EMAIL'}
+                                                    className="pr-12"
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="absolute bottom-2 right-2 size-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
+                                                    onClick={() => setShowAIAssistant(true)}
+                                                    title="Generate content with AI"
+                                                >
+                                                    <Sparkles className="size-4" />
+                                                </Button>
+                                            </div>
                                             <p className="text-xs text-muted-foreground">
                                                 {type === 'SMS' && 'SMS messages are limited to 160 characters'}
                                                 {type === 'WHATSAPP' && 'WhatsApp messages support rich formatting'}
@@ -933,6 +952,18 @@ export default function EditPostPage() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* AI Content Assistant */}
+            <AIContentAssistant
+                open={showAIAssistant}
+                onOpenChange={setShowAIAssistant}
+                onInsertContent={(content) => setMessage(content)}
+                onInsertImage={(url) => setMediaUrls(prev => [...prev, url])}
+                context={{
+                    platform: type,
+                    existingContent: message,
+                }}
+            />
         </div>
     );
 }

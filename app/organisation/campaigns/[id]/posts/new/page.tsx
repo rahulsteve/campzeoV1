@@ -33,7 +33,8 @@ import {
     FileText,
     Image as ImageIcon,
     Video,
-    Plus
+    Plus,
+    Sparkles
 } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import { PostPreview } from './_components/post-preview';
@@ -49,6 +50,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import React from 'react'; // Import React for React.use
+import { AIContentAssistant } from '@/components/ai-content-assistant';
 
 export default function NewPostPage({ params }: { params: Promise<{ id: string }> }) {
     const { user } = useUser();
@@ -116,6 +118,9 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
     const [newBoardName, setNewBoardName] = useState('');
     const [newBoardDescription, setNewBoardDescription] = useState('');
     const [creatingBoard, setCreatingBoard] = useState(false);
+
+    // AI Assistant state
+    const [showAIAssistant, setShowAIAssistant] = useState(false);
 
     // Helper for inserting variables
     const insertVariable = (variable: string) => {
@@ -621,16 +626,69 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                             )}
                                         </div>
 
-                                        {/* Template Selection */}
-                                        {selectedPlatform && (
-                                            <div className="space-y-2">
-                                                <Label htmlFor="template">Use a Template (Optional)</Label>
-                                                {loadingTemplates ? (
-                                                    <div className="flex items-center gap-2 p-4 border rounded-lg">
-                                                        <Loader2 className="size-4 animate-spin" />
-                                                        <span className="text-sm text-muted-foreground">Loading templates...</span>
+                                            {/* Other Platforms Form */}
+                                            {selectedPlatform && selectedPlatform !== 'EMAIL' && (
+                                                <div className="space-y-4">
+                                                    {/* Title Field for Social Media & WhatsApp */}
+                                                    {selectedPlatform !== 'SMS' && (
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor="subject">Title *</Label>
+                                                            <Input
+                                                                id="subject"
+                                                                placeholder="Enter post title"
+                                                                value={subject}
+                                                                onChange={(e) => setSubject(e.target.value)}
+                                                                required={selectedPlatform !== 'SMS' && selectedPlatform !== 'EMAIL'}
+                                                            />
+                                                            <p className="text-xs text-muted-foreground">
+                                                                This will be displayed as the bold header of your post
+                                                            </p>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="message">Message *</Label>
+                                                        <div className="relative">
+                                                            <Textarea
+                                                                id="message"
+                                                                placeholder="Enter your message"
+                                                                value={message}
+                                                                onChange={(e) => setMessage(e.target.value)}
+                                                                rows={6}
+                                                                required={true}
+                                                                className="pr-12"
+                                                            />
+                                                            <Button
+                                                                type="button"
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                className="absolute bottom-2 right-2 size-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
+                                                                onClick={() => setShowAIAssistant(true)}
+                                                                title="Generate content with AI"
+                                                            >
+                                                                <Sparkles className="size-4" />
+                                                            </Button>
+                                                        </div>
+                                                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                                                            <span>
+                                                                {message.length} characters
+                                                            </span>
+                                                            <span>
+                                                                {selectedPlatform === 'SMS' && `Limit: 160 | `}
+                                                                {selectedPlatform === 'TWITTER' && `Limit: 280 | `}
+                                                                {selectedPlatform === 'INSTAGRAM' && `Limit: 2200`}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {selectedPlatform === 'SMS' && 'SMS messages are limited to 160 characters. '}
+                                                            {selectedPlatform === 'WHATSAPP' && 'WhatsApp messages support rich formatting. '}
+                                                            {selectedPlatform === 'FACEBOOK' && 'Create engaging content for your Facebook audience. '}
+                                                            {selectedPlatform === 'INSTAGRAM' && 'Share visual content with your Instagram followers. '}
+                                                            {selectedPlatform === 'LINKEDIN' && 'Professional content for your LinkedIn network. '}
+                                                            {selectedPlatform === 'YOUTUBE' && 'Video description or community post. '}
+                                                        </p>
                                                     </div>
-                                                ) : templates.length > 0 ? (
+                                                {/* ) : templates.length > 0 ? (
                                                     <>
                                                         <Select value={selectedTemplateId || "none"} onValueChange={handleTemplateSelect}>
                                                             <SelectTrigger id="template">
@@ -661,7 +719,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                     <p className="text-sm text-muted-foreground p-4 border rounded-lg bg-muted/30">
                                                         No templates available for {selectedPlatform}. Create one in the Templates section!
                                                     </p>
-                                                )}
+                                                )} */}
                                             </div>
                                         )}
 
@@ -1261,8 +1319,20 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                         </div>
                     </div>
                 </main>
-            </div >
-        </div >
+            </div>
+
+            {/* AI Content Assistant */}
+            <AIContentAssistant
+                open={showAIAssistant}
+                onOpenChange={setShowAIAssistant}
+                onInsertContent={(content) => setMessage(content)}
+                onInsertImage={(url) => setMediaUrls(prev => [...prev, url])}
+                context={{
+                    platform: selectedPlatform || undefined,
+                    existingContent: message,
+                }}
+            />
+        </div>
     );
 }
 
