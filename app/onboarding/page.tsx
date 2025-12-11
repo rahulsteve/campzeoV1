@@ -5,14 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Check, Sparkles, MapPin, Phone, Mail, Globe, CreditCard } from "lucide-react";
+import { Building2, Check, Sparkles, CreditCard, ArrowRight, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { RazorpayButton } from "@/components/razorpay-button";
 import { PLANS, formatPrice, type PlanType } from "@/lib/plans";
 import { toast } from "sonner";
-import { Header } from "@/components/Header";
 
 export default function OnboardingPage() {
   const { user } = useUser();
@@ -72,7 +71,6 @@ export default function OnboardingPage() {
           !syncedUser.subscription) {
 
           console.log(" User from enquiry - Prefilling onboarding form");
-
           setFormData({
             organizationName: syncedUser.organisation.name || "",
             email: syncedUser.organisation.email || user?.primaryEmailAddress?.emailAddress || "",
@@ -105,7 +103,7 @@ export default function OnboardingPage() {
     } else {
       setIsSyncing(false);
     }
-  }, [user, router]);
+  }, [user, router]); // formData dependency removed to avoid infinite loop if it changes
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -133,6 +131,7 @@ export default function OnboardingPage() {
       console.log("Organisation created:", data);
       toast.success("Welcome! Your account is ready.");
 
+      // Redirect based on role
       if (data.user?.role === "ADMIN_USER" || user?.publicMetadata?.role === "admin") {
         router.push("/admin");
       } else {
@@ -193,7 +192,9 @@ export default function OnboardingPage() {
       setIsLoading(true);
       toast.info("Payment successful! Creating your organization...");
 
+      // Store payment info to pass to organisation creation
       if (paymentData?.payment) {
+        // Create organisation with payment information
         await createOrganisation(paymentData.payment);
       } else {
         await createOrganisation();
@@ -212,15 +213,12 @@ export default function OnboardingPage() {
 
   if (isSyncing) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
-        <Card className="w-full max-w-md shadow-xl">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Setting up your account...</p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <h2 className="text-xl font-medium tracking-tight">Setting up your account...</h2>
+          <p className="text-muted-foreground text-sm">Please wait while we sync your details.</p>
+        </div>
       </div>
     );
   }
@@ -229,81 +227,85 @@ export default function OnboardingPage() {
   if (showPayment) {
     const plan = PLANS[selectedPlan];
     return (
-      <div className="min-h-screen bg-muted/30 flex flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center p-4 py-12">
-          <Card className="w-full max-w-2xl shadow-xl border-muted/20">
-            <CardHeader className="text-center border-b bg-muted/5 pb-8">
-              <div className="flex justify-center mb-6">
-                <div className="size-20 rounded-full bg-primary/10 flex items-center justify-center ring-4 ring-primary/5">
-                  <Sparkles className="size-10 text-primary" />
-                </div>
-              </div>
-              <CardTitle className="text-3xl font-bold">Complete Your Payment</CardTitle>
-              <CardDescription className="text-lg mt-2">
-                You're almost there! Activate your <span className="font-semibold text-primary">{plan.name}</span> plan
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-8 p-8">
-              {/* Order Summary */}
-              <div className="bg-muted/10 rounded-xl p-6 border border-muted/20">
-                <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50/50 dark:bg-neutral-900/50 p-6">
+        <Card className="w-full max-w-3xl shadow-xl overflow-hidden border-border/60">
+          <div className="grid md:grid-cols-5 h-full">
+            {/* Sidebar / Summary */}
+            <div className="md:col-span-2 bg-muted/30 border-r p-6 flex flex-col h-full">
+              <div className="mb-6">
+                <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <CreditCard className="size-5 text-primary" />
-                  Order Summary
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Organization</span>
-                    <span className="font-medium bg-background px-3 py-1 rounded-md border">{formData.organizationName}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
+                </div>
+                <h3 className="font-semibold text-lg">Order Summary</h3>
+                <p className="text-sm text-muted-foreground">Review your subscription</p>
+              </div>
+
+              <div className="space-y-4 flex-1">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
                     <span className="text-muted-foreground">Plan</span>
-                    <span className="font-medium bg-background px-3 py-1 rounded-md border">{plan.name}</span>
+                    <span className="font-medium">{plan.name}</span>
                   </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Billing Cycle</span>
-                    <span className="font-medium bg-background px-3 py-1 rounded-md border">Monthly</span>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Billing Period</span>
+                    <span className="font-medium">Monthly</span>
                   </div>
-                  <div className="border-t pt-4 mt-4 flex justify-between items-center text-lg">
-                    <span className="font-semibold">Total Amount</span>
-                    <span className="font-bold text-2xl text-primary">
-                      {formatPrice(plan.price, plan.currency)}<span className="text-sm font-normal text-muted-foreground">/mo</span>
+                </div>
+                <div className="border-t pt-4">
+                  <div className="flex justify-between items-baseline">
+                    <span className="font-semibold">Total Due</span>
+                    <span className="text-2xl font-bold text-primary">
+                      {formatPrice(plan.price, plan.currency)}
                     </span>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-1 text-right">Includes all taxes</p>
                 </div>
               </div>
 
-              {/* Plan Features */}
-              <div className="rounded-xl p-6 border border-muted/20">
-                <h3 className="font-semibold mb-3">What's Included:</h3>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {plan.features.map((feature, index) => (
-                    <div key={index} className="flex items-start gap-2">
-                      <div className="mt-0.5 rounded-full bg-green-500/10 p-1">
-                        <Check className="size-3 text-green-600 shrink-0" />
-                      </div>
-                      <span className="text-sm text-muted-foreground">{feature}</span>
-                    </div>
-                  ))}
-                </div>
+              <div className="mt-8 pt-6 border-t text-xs text-muted-foreground">
+                <p>Secure payment powered by Razorpay. You can cancel anytime from your dashboard.</p>
+              </div>
+            </div>
+
+            {/* Main Payment Content */}
+            <div className="md:col-span-3 p-6 md:p-8 flex flex-col">
+              <div className="mb-6">
+                <CardTitle className="text-2xl mb-2">Complete Payment</CardTitle>
+                <CardDescription>
+                  Activate your <span className="font-medium text-foreground">{plan.name}</span> plan to unlock all features.
+                </CardDescription>
               </div>
 
-              {error && (
-                <div className="p-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-                  <div className="size-2 rounded-full bg-red-500" />
-                  {error}
+              <div className="space-y-6 flex-1">
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                  <h4 className="font-semibold text-primary mb-2 flex items-center gap-2">
+                    <Sparkles className="size-4" /> What's included:
+                  </h4>
+                  <ul className="grid grid-cols-1 gap-2">
+                    {plan.features.map((feature, index) => (
+                      <li key={index} className="flex items-start gap-2 text-sm">
+                        <Check className="size-4 text-primary shrink-0 mt-0.5" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              )}
 
-              {/* Payment Buttons */}
-              <div className="flex gap-4 pt-4">
+                {error && (
+                  <div className="p-3 text-sm text-red-500 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-md flex items-center gap-2">
+                    <span className="font-bold">Error:</span> {error}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-4 mt-8 pt-4 border-t">
                 <Button
-                  variant="outline"
-                  className="flex-1 h-12 text-base"
+                  variant="ghost"
+                  className="flex-1"
                   onClick={() => setShowPayment(false)}
                   disabled={isLoading}
                 >
-                  Back
+                  Back to Plans
                 </Button>
                 <div className="flex-1">
                   <RazorpayButton
@@ -311,274 +313,218 @@ export default function OnboardingPage() {
                     amount={plan.price}
                     onSuccess={handlePaymentSuccess}
                     onError={handlePaymentError}
-                    className="w-full h-12 text-base shadow-lg shadow-primary/20"
+                    className="w-full"
                     organizationName={formData.organizationName}
                     isSignup={true}
                   >
-                    Pay {formatPrice(plan.price, plan.currency)}
+                    Pay Now
                   </RazorpayButton>
                 </div>
               </div>
-
-              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                <div className="size-2 rounded-full bg-green-500" />
-                Secure payment powered by Razorpay. Your payment information is encrypted.
-              </div>
-            </CardContent>
-          </Card>
-        </main>
-        <footer className="py-8 border-t bg-background text-center text-sm text-muted-foreground">
-          <div className="max-w-7xl mx-auto px-4">
-            <p>© 2025 Campzeo. All rights reserved.</p>
+            </div>
           </div>
-        </footer>
+        </Card>
       </div>
     );
   }
 
   // Onboarding form
   return (
-    <div className="min-h-screen bg-muted/30 flex flex-col">
-      <Header />
+    <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-muted/50 via-background to-background p-4 md:p-8">
+      <Card className="w-full max-w-5xl shadow-xl border-t-4 border-t-primary">
+        <CardHeader className="text-center pb-8 pt-8">
+          <div className="flex justify-center mb-6">
+            <div className="size-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shadow-inner">
+              <Building2 className="size-8 text-primary" />
+            </div>
+          </div>
+          <CardTitle className="text-3xl md:text-4xl font-bold tracking-tight">Welcome to CampZeo!</CardTitle>
+          <CardDescription className="text-lg mt-2 max-w-2xl mx-auto">
+            Let's set up your organization workspace. It only takes a minute.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-6 md:px-12 pb-12">
+          <form onSubmit={handleSubmit} className="space-y-10">
+            {/* Steps Visual (Optional, implies flow) */}
+            <div className="grid gap-8 md:grid-cols-2 lg:gap-12">
+              {/* Left: Organization Details */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 pb-2 border-b">
+                  <span className="flex items-center justify-center size-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">1</span>
+                  <h3 className="font-semibold text-lg">Organization Details</h3>
+                </div>
 
-      <main className="flex-1 flex items-center justify-center p-4 py-24">
-        <div className="w-full max-w-4xl">
-          <Card className="shadow-xl border-muted/20 overflow-hidden">
-            <CardHeader className="text-center pb-8 border-b bg-muted/5 pt-10">
-              <div className="flex justify-center mb-6">
-                <div className="size-20 rounded-full bg-primary/10 flex items-center justify-center ring-4 ring-primary/5">
-                  <Building2 className="size-10 text-primary" />
+                <div className="grid gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="organizationName">Organization Name <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="organizationName"
+                      placeholder="e.g. Acme Corp"
+                      value={formData.organizationName}
+                      onChange={handleInputChange}
+                      required
+                      className="bg-muted/30"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email <span className="text-destructive">*</span></Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        required
+                        className="bg-muted/30"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone <span className="text-destructive">*</span></Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        placeholder="+91..."
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        required
+                        className="bg-muted/30"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="taxNumber">Tax Number / GSTIN</Label>
+                    <Input
+                      id="taxNumber"
+                      placeholder="Optional"
+                      value={formData.taxNumber}
+                      onChange={handleInputChange}
+                      className="bg-muted/30"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-4">
+                  <Label htmlFor="address">Address <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="address"
+                    placeholder="Street Address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    required
+                    className="bg-muted/30"
+                  />
+                  <div className="grid grid-cols-2 gap-4 mt-2">
+                    <Input
+                      id="city"
+                      placeholder="City"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                      required
+                      className="bg-muted/30"
+                    />
+                    <Input
+                      id="state"
+                      placeholder="State"
+                      value={formData.state}
+                      onChange={handleInputChange}
+                      required
+                      className="bg-muted/30"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mt-2">
+                    <Input
+                      id="country"
+                      placeholder="Country"
+                      value={formData.country}
+                      onChange={handleInputChange}
+                      required
+                      className="bg-muted/30"
+                    />
+                    <Input
+                      id="postalCode"
+                      placeholder="Postal Code"
+                      value={formData.postalCode}
+                      onChange={handleInputChange}
+                      required
+                      className="bg-muted/30"
+                    />
+                  </div>
                 </div>
               </div>
-              <CardTitle className="text-4xl font-bold">Welcome to CampZeo!</CardTitle>
-              <CardDescription className="text-lg text-muted-foreground max-w-xl mx-auto mt-3">
-                Let's set up your organization so you can start managing your social media presence effectively.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-8 sm:p-10">
-              <form onSubmit={handleSubmit} className="space-y-10">
 
-                {/* Organization Section */}
-                <div className="space-y-6">
-                  <div className="flex items-center gap-2 text-primary font-semibold text-lg border-b pb-3">
-                    <Building2 className="size-5" />
-                    <h3>Organization Details</h3>
-                  </div>
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="organizationName">Organization Name <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="organizationName"
-                        placeholder="Acme Corp"
-                        value={formData.organizationName}
-                        onChange={handleInputChange}
-                        required
-                        className="bg-background h-11"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="taxNumber">Tax ID / GST <span className="text-muted-foreground font-normal text-xs ml-1">(Optional)</span></Label>
-                      <Input
-                        id="taxNumber"
-                        placeholder="GSTIN..."
-                        value={formData.taxNumber}
-                        onChange={handleInputChange}
-                        className="bg-background h-11"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Work Email <span className="text-red-500">*</span></Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-3 size-4 text-muted-foreground" />
-                        <Input
-                          id="email"
-                          type="email"
-                          value={formData.email}
-                          onChange={handleInputChange}
-                          required
-                          className="pl-9 bg-background h-11"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Phone Number <span className="text-red-500">*</span></Label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-3 size-4 text-muted-foreground" />
-                        <Input
-                          id="phone"
-                          type="tel"
-                          placeholder="+91 9999999999"
-                          value={formData.phone}
-                          onChange={handleInputChange}
-                          required
-                          className="pl-9 bg-background h-11"
-                        />
-                      </div>
-                    </div>
-                  </div>
+              {/* Right: Plan Selection */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 pb-2 border-b">
+                  <span className="flex items-center justify-center size-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">2</span>
+                  <h3 className="font-semibold text-lg">Select a Plan</h3>
                 </div>
 
-                {/* Location Section */}
-                <div className="space-y-6">
-                  <div className="flex items-center gap-2 text-primary font-semibold text-lg border-b pb-3">
-                    <MapPin className="size-5" />
-                    <h3>Location</h3>
-                  </div>
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="address">Street Address <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="address"
-                        placeholder="123 Business St"
-                        value={formData.address}
-                        onChange={handleInputChange}
-                        required
-                        className="bg-background h-11"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="city">City <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="city"
-                        placeholder="Mumbai"
-                        value={formData.city}
-                        onChange={handleInputChange}
-                        required
-                        className="bg-background h-11"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="state">State / Province <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="state"
-                        placeholder="Maharashtra"
-                        value={formData.state}
-                        onChange={handleInputChange}
-                        required
-                        className="bg-background h-11"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>
-                      <div className="relative">
-                        <Globe className="absolute left-3 top-3 size-4 text-muted-foreground" />
-                        <Input
-                          id="country"
-                          placeholder="India"
-                          value={formData.country}
-                          onChange={handleInputChange}
-                          required
-                          className="pl-9 bg-background h-11"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="postalCode">Postal Code <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="postalCode"
-                        placeholder="400001"
-                        value={formData.postalCode}
-                        onChange={handleInputChange}
-                        required
-                        className="bg-background h-11"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Plan Selection */}
-                <div className="space-y-6 pt-2">
-                  <div className="flex items-center gap-2 text-primary font-semibold text-lg border-b pb-3">
-                    <Sparkles className="size-5" />
-                    <h3>Select Your Plan</h3>
-                  </div>
-
-                  <div className="grid gap-6 md:grid-cols-3">
-                    {Object.values(PLANS).map((plan) => (
-                      <div
-                        key={plan.id}
-                        className={`relative rounded-xl border-2 transition-all cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${selectedPlan === plan.id
-                            ? "border-primary bg-primary/5 shadow-lg"
-                            : "border-muted bg-card hover:border-primary/50"
-                          }`}
-                        onClick={() => setSelectedPlan(plan.id)}
-                      >
-                        {/* Selection Indicator */}
-                        <div className={`absolute top-4 right-4 size-5 rounded-full border-2 flex items-center justify-center ${selectedPlan === plan.id ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground"
-                          }`}>
-                          {selectedPlan === plan.id && <Check className="size-3" />}
+                <div className="grid gap-4">
+                  {Object.values(PLANS).map((plan) => (
+                    <div
+                      key={plan.id}
+                      onClick={() => setSelectedPlan(plan.id)}
+                      className={`relative group cursor-pointer rounded-xl border-2 p-4 transition-all duration-200 hover:shadow-md ${selectedPlan === plan.id
+                          ? "border-primary bg-primary/5 ring-1 ring-primary"
+                          : "border-border hover:border-primary/50 bg-card"
+                        }`}
+                    >
+                      {plan.popular && (
+                        <div className="absolute -top-3 right-4">
+                          <Badge className="bg-primary hover:bg-primary text-xs uppercase px-2 py-0.5">Most Popular</Badge>
                         </div>
-
-                        {plan.popular && (
-                          <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                            <Badge className="bg-primary hover:bg-primary shadow-sm">Most Popular</Badge>
-                          </div>
-                        )}
-
-                        <div className="p-5">
-                          <h4 className={`font-bold text-lg ${selectedPlan === plan.id ? "text-primary" : ""}`}>{plan.name}</h4>
-                          <div className="mt-2 mb-4">
-                            <span className="text-3xl font-bold">
-                              {formatPrice(plan.price, plan.currency)}
-                            </span>
-                            {plan.price > 0 && (
-                              <span className="text-muted-foreground text-sm font-medium">/{plan.interval}</span>
-                            )}
-                          </div>
-
-                          <ul className="space-y-3">
-                            {plan.features.slice(0, 4).map((feature, index) => (
-                              <li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
-                                <Check className={`size-4 shrink-0 mt-0.5 ${selectedPlan === plan.id ? "text-primary" : "text-muted-foreground"}`} />
-                                <span className={selectedPlan === plan.id ? "text-foreground" : ""}>{feature}</span>
-                              </li>
-                            ))}
-                          </ul>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-bold text-base">{plan.name}</h4>
+                          <p className="text-sm text-muted-foreground line-clamp-1">{plan.id === 'FREE_TRIAL' ? 'Perfect for testing the waters' : 'For growing businesses level up.'}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="block font-bold text-xl">{formatPrice(plan.price, plan.currency)}</span>
+                          {plan.price > 0 && <span className="text-xs text-muted-foreground">/month</span>}
                         </div>
                       </div>
-                    ))}
-                  </div>
+                      {selectedPlan === plan.id && (
+                        <ul className="mt-3 space-y-1 border-t border-primary/10 pt-3">
+                          {plan.features.slice(0, 3).map((feature, idx) => (
+                            <li key={idx} className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Check className="size-3 text-primary" /> {feature}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ))}
                 </div>
+              </div>
+            </div>
 
-                {error && (
-                  <div className="p-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-                    <div className="size-2 rounded-full bg-red-500" />
-                    {error}
-                  </div>
+            {error && (
+              <div className="p-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md flex items-center gap-2">
+                <div className="size-2 rounded-full bg-red-600 animate-pulse" />
+                {error}
+              </div>
+            )}
+
+            <div className="pt-6 border-t flex flex-col items-center">
+              <Button type="submit" size="lg" className="w-full md:w-1/2 text-lg h-12 shadow-lg hover:shadow-xl transition-all" disabled={isLoading}>
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin" /> Setting up...
+                  </span>
+                ) : selectedPlan === "FREE_TRIAL" ? (
+                  <span className="flex items-center gap-2">Start Free Trial <ArrowRight className="size-5" /></span>
+                ) : (
+                  <span className="flex items-center gap-2">Continue to Payment <ArrowRight className="size-5" /></span>
                 )}
-
-                <div className="pt-6">
-                  <Button type="submit" className="w-full h-12 text-lg font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all" disabled={isLoading}>
-                    {isLoading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="animate-spin size-5 border-2 border-white/30 border-t-white rounded-full" />
-                        Processing...
-                      </div>
-                    ) : selectedPlan === "FREE_TRIAL" ? "Start Free 14-Day Trial" : "Continue to Payment"}
-                  </Button>
-
-                  <p className="text-xs text-center text-muted-foreground mt-4">
-                    By continuing, you agree to our <span className="underline cursor-pointer hover:text-foreground">Terms of Service</span> and <span className="underline cursor-pointer hover:text-foreground">Privacy Policy</span>
-                  </p>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
-
-      <footer className="py-8 border-t bg-background text-center text-sm text-muted-foreground">
-        <div className="max-w-7xl mx-auto px-4">
-          <p>© 2025 Campzeo. All rights reserved.</p>
-        </div>
-      </footer>
+              </Button>
+              <p className="text-xs text-center text-muted-foreground mt-4">
+                By clicking "Continue", you agree to our Terms of Service and Privacy Policy.
+              </p>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

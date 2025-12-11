@@ -7,7 +7,7 @@ import { Check, Zap, Shield, BarChart3, Users, ArrowRight, Layers, Globe } from 
 import { SignInButton, SignedOut, SignedIn, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-
+import { Header } from '@/components/Header';
 import { TestimonialCarousel } from "@/components/testimonial-carousel";
 
 export default function LandingPage() {
@@ -16,7 +16,7 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Navigation */}
-
+      {/* <Header /> */}
       <nav className="fixed top-0 w-full bg-background/80 backdrop-blur-md border-b z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -104,7 +104,6 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      {/* Features Section */}
       <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 bg-muted/30">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
@@ -113,116 +112,90 @@ export default function LandingPage() {
               Everything you need to manage, scale, and optimize your business operations
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8 px-4">
-            {/* Feature 1 */}
-            <div className="relative group perspective-1000">
-              <Card className="relative h-full bg-background/60 backdrop-blur-sm border-muted/20 p-2 transition-all duration-500 hover:rotate-y-6 hover:scale-105 hover:shadow-2xl z-10">
-                <div className="absolute -inset-0.5 bg-gradient-to-br from-primary/50 to-orange-500/50 rounded-xl blur opacity-0 group-hover:opacity-30 transition duration-500"></div>
-                <CardHeader className="relative bg-card rounded-lg h-full">
-                  <div className="size-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                    <BarChart3 className="size-6 text-primary" />
-                  </div>
-                  <CardTitle className="mb-2">Advanced Analytics</CardTitle>
-                  <CardDescription>
-                    Get deep insights into your business metrics with real-time dashboards and custom reports
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="relative group perspective-1000">
-              <Card className="relative h-full bg-background/60 backdrop-blur-sm border-muted/20 p-2 transition-all duration-500 hover:-rotate-y-6 hover:scale-105 hover:shadow-2xl z-10">
-                <div className="absolute -inset-0.5 bg-gradient-to-br from-blue-500/50 to-purple-500/50 rounded-xl blur opacity-0 group-hover:opacity-30 transition duration-500"></div>
-                <CardHeader className="relative bg-card rounded-lg h-full">
-                  <div className="size-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                    <Shield className="size-6 text-primary" />
-                  </div>
-                  <CardTitle className="mb-2">Enterprise Security</CardTitle>
-                  <CardDescription>
-                    Bank-level encryption, SOC 2 compliance, and advanced access controls to keep your data safe
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="relative group perspective-1000">
-              <Card className="relative h-full bg-background/60 backdrop-blur-sm border-muted/20 p-2 transition-all duration-500 hover:rotate-y-6 hover:scale-105 hover:shadow-2xl z-10">
-                <div className="absolute -inset-0.5 bg-gradient-to-br from-green-500/50 to-teal-500/50 rounded-xl blur opacity-0 group-hover:opacity-30 transition duration-500"></div>
-                <CardHeader className="relative bg-card rounded-lg h-full">
-                  <div className="size-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                    <Users className="size-6 text-primary" />
-                  </div>
-                  <CardTitle className="mb-2">Team Collaboration</CardTitle>
-                  <CardDescription>
-                    Work seamlessly with your team using shared workspaces, comments, and real-time updates
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            <Card className="bg-background/60 backdrop-blur-sm border-muted/20 shadow-sm hover:shadow-md transition-all duration-300">
+              <CardHeader>
+                <div className="size-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <BarChart3 className="size-6 text-primary" />
+                </div>
+                <CardTitle>Advanced Analytics</CardTitle>
+                <CardDescription>
+                  Get deep insights into your business metrics with real-time dashboards and custom reports
+                </CardDescription>
+              </CardHeader>
+            </Card>
+            <Card className="bg-background/60 backdrop-blur-sm border-muted/20 shadow-sm hover:shadow-md transition-all duration-300">
+              <CardHeader>
+                <div className="size-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <Shield className="size-6 text-primary" />
+                </div>
+                <CardTitle>Enterprise Security</CardTitle>
+                <CardDescription>
+                  Bank-level encryption, SOC 2 compliance, and advanced access controls to keep your data safe
+                </CardDescription>
+              </CardHeader>
+            </Card>
+            <Card className="bg-background/60 backdrop-blur-sm border-muted/20 shadow-sm hover:shadow-md transition-all duration-300">
+              <CardHeader>
+                <div className="size-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <Users className="size-6 text-primary" />
+                </div>
+                <CardTitle>Team Collaboration</CardTitle>
+                <CardDescription>
+                  Work seamlessly with your team using shared workspaces, comments, and real-time updates
+                </CardDescription>
+              </CardHeader>
+            </Card>
           </div>
         </div>
       </section>
 
       {/* How It Works Section */}
-      <section id="how-it-works" className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-background to-muted/20">
+      <section id="how-it-works" className="py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-orange-500">How It Works</h2>
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold mb-4">How It Works</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-              Get started in minutes with our simple three-step process designed for growth
+              Get started in minutes with our simple three-step process
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-12 relative px-4">
+          <div className="grid md:grid-cols-3 gap-12 relative">
             {/* Step 1 */}
-            <div className="relative group perspective-1000">
-              <div className="relative flex flex-col items-center text-center p-8 rounded-2xl bg-card border border-muted/20 shadow-xl transition-all duration-500 hover:rotate-x-6 hover:scale-105 hover:shadow-2xl hover:border-primary/50 z-10 h-full">
-                <div className="absolute -inset-1 bg-gradient-to-r from-primary to-orange-600 rounded-2xl blur opacity-0 group-hover:opacity-20 transition duration-500"></div>
-
-                <div className="size-20 rounded-2xl bg-gradient-to-br from-primary/10 to-orange-100 flex items-center justify-center mb-6 shadow-inner group-hover:scale-110 transition-transform duration-500">
-                  <Globe className="size-10 text-primary" />
-                </div>
-                <h3 className="text-2xl font-bold mb-4">1. Connect</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  Seamlessly link all your social media profiles and ad accounts in one secure dashboard.
-                </p>
+            <div className="relative flex flex-col items-center text-center group">
+              <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
+                <Globe className="size-8 text-primary" />
               </div>
+              <h3 className="text-xl font-bold mb-3">1. Connect Your Accounts</h3>
+              <p className="text-muted-foreground">
+                Seamlessly link all your social media profiles and ad accounts in one secure dashboard.
+              </p>
               {/* Connector Line (Desktop) */}
-              <div className="hidden md:block absolute top-1/2 -right-6 w-12 h-2 bg-gradient-to-r from-muted to-transparent transform -translate-y-1/2 z-0 opacity-50" />
+              <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-[2px] bg-gradient-to-r from-transparent via-border to-transparent" />
             </div>
 
             {/* Step 2 */}
-            <div className="relative group perspective-1000">
-              <div className="relative flex flex-col items-center text-center p-8 rounded-2xl bg-card border border-muted/20 shadow-xl transition-all duration-500 hover:-rotate-x-6 hover:scale-105 hover:shadow-2xl hover:border-primary/50 z-10 h-full">
-                <div className="absolute -inset-1 bg-gradient-to-r from-orange-600 to-primary rounded-2xl blur opacity-0 group-hover:opacity-20 transition duration-500"></div>
-
-                <div className="size-20 rounded-2xl bg-gradient-to-br from-primary/10 to-orange-100 flex items-center justify-center mb-6 shadow-inner group-hover:scale-110 transition-transform duration-500">
-                  <Layers className="size-10 text-primary" />
-                </div>
-                <h3 className="text-2xl font-bold mb-4">2. Create & Schedule</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  Use our AI-powered tools to create engaging content and schedule it for optimal times.
-                </p>
+            <div className="relative flex flex-col items-center text-center group">
+              <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
+                <Layers className="size-8 text-primary" />
               </div>
+              <h3 className="text-xl font-bold mb-3">2. Create & Schedule</h3>
+              <p className="text-muted-foreground">
+                Use our AI-powered tools to create engaging content and schedule it for optimal times.
+              </p>
               {/* Connector Line (Desktop) */}
-              <div className="hidden md:block absolute top-1/2 -right-6 w-12 h-2 bg-gradient-to-r from-muted to-transparent transform -translate-y-1/2 z-0 opacity-50" />
+              <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-[2px] bg-gradient-to-r from-transparent via-border to-transparent" />
             </div>
 
             {/* Step 3 */}
-            <div className="relative group perspective-1000">
-              <div className="relative flex flex-col items-center text-center p-8 rounded-2xl bg-card border border-muted/20 shadow-xl transition-all duration-500 hover:rotate-x-6 hover:scale-105 hover:shadow-2xl hover:border-primary/50 z-10 h-full">
-                <div className="absolute -inset-1 bg-gradient-to-r from-primary to-orange-600 rounded-2xl blur opacity-0 group-hover:opacity-20 transition duration-500"></div>
-
-                <div className="size-20 rounded-2xl bg-gradient-to-br from-primary/10 to-orange-100 flex items-center justify-center mb-6 shadow-inner group-hover:scale-110 transition-transform duration-500">
-                  <Zap className="size-10 text-primary" />
-                </div>
-                <h3 className="text-2xl font-bold mb-4">3. Analyze & Grow</h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  Track performance with real-time analytics and optimize your strategy for growth.
-                </p>
+            <div className="relative flex flex-col items-center text-center group">
+              <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
+                <Zap className="size-8 text-primary" />
               </div>
+              <h3 className="text-xl font-bold mb-3">3. Analyze & Grow</h3>
+              <p className="text-muted-foreground">
+                Track performance with real-time analytics and optimize your strategy for growth.
+              </p>
             </div>
           </div>
         </div>
