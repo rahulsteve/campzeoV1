@@ -1,12 +1,14 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { logError, logWarning } from "@/lib/audit-logger";
 
 export async function GET() {
     try {
         const user = await currentUser();
 
         if (!user) {
+            await logWarning("Unauthorized access attempt to fetch usage metrics", { action: "fetch-usage-metrics" });
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -39,15 +41,28 @@ export async function GET() {
         });
 
         // Parse usage limits from plan
-        const usageLimits = subscription?.plan?.usageLimits
-            ? JSON.parse(subscription.plan.usageLimits)
-            : {
-                campaigns: 999999,
-                contacts: 999999,
-                users: 999999,
-                platforms: 999999,
-                postsPerMonth: 999999,
-            };
+        // Parse usage limits from plan
+        let usageLimits;
+        const defaultLimits = {
+            campaigns: 999999,
+            contacts: 999999,
+            users: 999999,
+            platforms: 999999,
+            postsPerMonth: 999999,
+        };
+
+        try {
+            usageLimits = subscription?.plan?.usageLimits
+                ? JSON.parse(subscription.plan.usageLimits as string)
+                : defaultLimits;
+
+            // Validate it's an object
+            if (typeof usageLimits !== 'object' || usageLimits === null) {
+                usageLimits = defaultLimits;
+            }
+        } catch (e) {
+            usageLimits = defaultLimits;
+        }
 
         // Count current usage
         const [campaignsCount, contactsCount, usersCount, platformsCount, postsThisMonthCount] =
@@ -110,8 +125,9 @@ export async function GET() {
         };
 
         return NextResponse.json({ usage });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error calculating usage:", error);
+        await logError("Failed to calculate usage metrics", { userId: "unknown" }, error);
         return NextResponse.json(
             { error: "Failed to calculate usage metrics" },
             { status: 500 }

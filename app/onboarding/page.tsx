@@ -10,16 +10,18 @@ import { Badge } from "@/components/ui/badge";
 import { Building2, Check, Sparkles, CreditCard, ArrowRight, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { RazorpayButton } from "@/components/razorpay-button";
-import { PLANS, formatPrice, type PlanType } from "@/lib/plans";
+import { formatPrice } from "@/lib/plans";
 import { toast } from "sonner";
+import { usePlans } from "@/hooks/use-plans";
 
 export default function OnboardingPage() {
   const { user } = useUser();
   const router = useRouter();
+  const { plans, isLoading: plansLoading } = usePlans();
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(true);
   const [error, setError] = useState("");
-  const [selectedPlan, setSelectedPlan] = useState<PlanType>("FREE_TRIAL");
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [showPayment, setShowPayment] = useState(false);
 
   // Form State
@@ -112,12 +114,15 @@ export default function OnboardingPage() {
 
   const createOrganisation = async (paymentData?: any) => {
     try {
+      const selectedPlan = plans.find(p => p.id === selectedPlanId);
+
       const response = await fetch("/api/organisations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          plan: selectedPlan,
+          plan: selectedPlan?.name || "FREE_TRIAL",
+          planId: selectedPlanId,
           paymentData
         }),
       });
@@ -172,7 +177,8 @@ export default function OnboardingPage() {
         return;
       }
 
-      if (selectedPlan === "FREE_TRIAL") {
+      const selectedPlan = plans.find(p => p.id === selectedPlanId);
+      if (selectedPlan && selectedPlan.price === 0) {
         // Free trial - create organisation directly
         await createOrganisation();
       } else {
@@ -225,42 +231,47 @@ export default function OnboardingPage() {
 
   // Payment step
   if (showPayment) {
-    const plan = PLANS[selectedPlan];
+    const plan = plans.find(p => p.id === selectedPlanId);
+    if (!plan) return null;
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50/50 dark:bg-neutral-900/50 p-6">
-        <Card className="w-full max-w-3xl shadow-xl overflow-hidden border-border/60">
-          <div className="grid md:grid-cols-5 h-full">
-            {/* Sidebar / Summary */}
-            <div className="md:col-span-2 bg-muted/30 border-r p-6 flex flex-col h-full">
-              <div className="mb-6">
-                <div className="size-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <CreditCard className="size-5 text-primary" />
-                </div>
-                <h3 className="font-semibold text-lg">Order Summary</h3>
-                <p className="text-sm text-muted-foreground">Review your subscription</p>
+      <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
+        <Card className="w-full max-w-2xl">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <div className="size-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <Sparkles className="size-8 text-primary" />
               </div>
-
-              <div className="space-y-4 flex-1">
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Plan</span>
-                    <span className="font-medium">{plan.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Billing Period</span>
-                    <span className="font-medium">Monthly</span>
-                  </div>
+            </div>
+            <CardTitle>Complete Your Payment</CardTitle>
+            <CardDescription>
+              You're almost there! Complete payment to activate your {plan.name} plan
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Order Summary */}
+            <div className="border rounded-lg p-4 space-y-3">
+              <h3 className="font-semibold">Order Summary</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Organization:</span>
+                  <span className="font-medium">{formData.organizationName}</span>
                 </div>
-                <div className="border-t pt-4">
-                  <div className="flex justify-between items-baseline">
-                    <span className="font-semibold">Total Due</span>
-                    <span className="text-2xl font-bold text-primary">
-                      {formatPrice(plan.price, plan.currency)}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1 text-right">Includes all taxes</p>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Plan:</span>
+                  <span className="font-medium">{plan.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Billing:</span>
+                  <span className="font-medium">{plan.billingCycle || 'Monthly'}</span>
+                </div>
+                <div className="border-t pt-2 flex justify-between text-lg">
+                  <span className="font-semibold">Total:</span>
+                  <span className="font-bold text-primary">
+                    {formatPrice(plan.price, "INR")}/{plan.billingCycle || 'month'}
+                  </span>
                 </div>
               </div>
+            </div>
 
               <div className="mt-8 pt-6 border-t text-xs text-muted-foreground">
                 <p>Secure payment powered by Razorpay. You can cancel anytime from your dashboard.</p>
@@ -298,31 +309,33 @@ export default function OnboardingPage() {
                 )}
               </div>
 
-              <div className="flex gap-4 mt-8 pt-4 border-t">
-                <Button
-                  variant="ghost"
-                  className="flex-1"
-                  onClick={() => setShowPayment(false)}
-                  disabled={isLoading}
-                >
-                  Back to Plans
-                </Button>
-                <div className="flex-1">
-                  <RazorpayButton
-                    plan={selectedPlan}
-                    amount={plan.price}
-                    onSuccess={handlePaymentSuccess}
-                    onError={handlePaymentError}
-                    className="w-full"
-                    organizationName={formData.organizationName}
-                    isSignup={true}
-                  >
-                    Pay Now
-                  </RazorpayButton>
-                </div>
-              </div>
+            {/* Payment Buttons */}
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowPayment(false)}
+                disabled={isLoading}
+              >
+                Back
+              </Button>
+              <RazorpayButton
+                plan={plan.name}
+                amount={plan.price}
+                onSuccess={handlePaymentSuccess}
+                onError={handlePaymentError}
+                className="flex-1"
+                organizationName={formData.organizationName}
+                isSignup={true}
+              >
+                Pay {formatPrice(plan.price, "INR")}
+              </RazorpayButton>
             </div>
-          </div>
+
+            <p className="text-xs text-center text-muted-foreground">
+              Secure payment powered by Razorpay. Your payment information is encrypted and secure.
+            </p>
+          </CardContent>
         </Card>
       </div>
     );
@@ -459,44 +472,60 @@ export default function OnboardingPage() {
                   <h3 className="font-semibold text-lg">Select a Plan</h3>
                 </div>
 
-                <div className="grid gap-4">
-                  {Object.values(PLANS).map((plan) => (
-                    <div
-                      key={plan.id}
-                      onClick={() => setSelectedPlan(plan.id)}
-                      className={`relative group cursor-pointer rounded-xl border-2 p-4 transition-all duration-200 hover:shadow-md ${selectedPlan === plan.id
-                          ? "border-primary bg-primary/5 ring-1 ring-primary"
-                          : "border-border hover:border-primary/50 bg-card"
-                        }`}
-                    >
-                      {plan.popular && (
-                        <div className="absolute -top-3 right-4">
-                          <Badge className="bg-primary hover:bg-primary text-xs uppercase px-2 py-0.5">Most Popular</Badge>
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-bold text-base">{plan.name}</h4>
-                          <p className="text-sm text-muted-foreground line-clamp-1">{plan.id === 'FREE_TRIAL' ? 'Perfect for testing the waters' : 'For growing businesses level up.'}</p>
-                        </div>
-                        <div className="text-right">
-                          <span className="block font-bold text-xl">{formatPrice(plan.price, plan.currency)}</span>
-                          {plan.price > 0 && <span className="text-xs text-muted-foreground">/month</span>}
-                        </div>
-                      </div>
-                      {selectedPlan === plan.id && (
-                        <ul className="mt-3 space-y-1 border-t border-primary/10 pt-3">
-                          {plan.features.slice(0, 3).map((feature, idx) => (
-                            <li key={idx} className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <Check className="size-3 text-primary" /> {feature}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  ))}
+            {/* Plan Selection */}
+            <div className="space-y-3 pt-4 border-t">
+              <Label className="text-lg">Select Your Plan *</Label>
+              {plansLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="text-sm text-muted-foreground mt-2">Loading plans...</p>
                 </div>
-              </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-3">
+                  {plans.map((plan) => {
+                    // Determine if this is a popular/recommended plan based on price range
+                    const isPopular = plan.price > 0 && plan.price < 5000;
+
+                    return (
+                      <Card
+                        key={plan.id}
+                        className={`cursor-pointer transition-all ${selectedPlanId === plan.id
+                          ? "border-primary shadow-md ring-2 ring-primary"
+                          : "hover:border-primary/50"
+                          } ${isPopular ? "relative" : ""}`}
+                        onClick={() => setSelectedPlanId(plan.id)}
+                      >
+                        {isPopular && (
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                            <Badge className="bg-primary">Most Popular</Badge>
+                          </div>
+                        )}
+                        <CardHeader className="pb-3">
+                          <CardTitle className="text-lg">{plan.name}</CardTitle>
+                          <div className="mt-2">
+                            <span className="text-3xl font-bold">
+                              {formatPrice(plan.price, "INR")}
+                            </span>
+                            {plan.price > 0 && (
+                              <span className="text-muted-foreground text-sm">/{plan.billingCycle || 'month'}</span>
+                            )}
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <ul className="space-y-2">
+                            {plan.features.slice(0, 4).map((feature, index) => (
+                              <li key={index} className="flex items-start gap-2 text-sm">
+                                <Check className="size-4 text-primary shrink-0 mt-0.5" />
+                                <span>{feature}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {error && (
@@ -506,22 +535,13 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            <div className="pt-6 border-t flex flex-col items-center">
-              <Button type="submit" size="lg" className="w-full md:w-1/2 text-lg h-12 shadow-lg hover:shadow-xl transition-all" disabled={isLoading}>
-                {isLoading ? (
-                  <span className="flex items-center gap-2">
-                    <Loader2 className="h-5 w-5 animate-spin" /> Setting up...
-                  </span>
-                ) : selectedPlan === "FREE_TRIAL" ? (
-                  <span className="flex items-center gap-2">Start Free Trial <ArrowRight className="size-5" /></span>
-                ) : (
-                  <span className="flex items-center gap-2">Continue to Payment <ArrowRight className="size-5" /></span>
-                )}
-              </Button>
-              <p className="text-xs text-center text-muted-foreground mt-4">
-                By clicking "Continue", you agree to our Terms of Service and Privacy Policy.
-              </p>
-            </div>
+            <Button type="submit" className="w-full" size="lg" disabled={isLoading || !selectedPlanId}>
+              {isLoading ? "Setting up..." : plans.find(p => p.id === selectedPlanId)?.price === 0 ? "Start Free Trial" : "Continue to Payment"}
+            </Button>
+
+            <p className="text-xs text-center text-muted-foreground">
+              By continuing, you agree to our Terms of Service and Privacy Policy
+            </p>
           </form>
         </CardContent>
       </Card>

@@ -1,50 +1,80 @@
-import { currentUser } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
-import { PLANS, formatPrice } from "@/lib/plans";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { formatPrice } from "@/lib/plans";
+import { usePlans } from "@/hooks/use-plans";
 import { RazorpayButton } from "@/components/razorpay-button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Check, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-export default async function SelectPlanPage() {
-    const user = await currentUser();
 
-    if (!user) {
-        redirect("/sign-in");
-    }
+export default function SelectPlanPage() {
+    const { user, isLoaded } = useUser();
+    const router = useRouter();
+    const { plans, isLoading: plansLoading } = usePlans();
+    const [organisation, setOrganisation] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const dbUser = await prisma.user.findUnique({
-        where: { clerkId: user.id },
-        include: {
-            organisation: {
-                include: {
-                    subscriptions: {
-                        orderBy: { createdAt: 'desc' },
-                        take: 1,
-                        include: { plan: true }
-                    }
-                }
+    useEffect(() => {
+        const fetchUserData = async () => {
+            if (!isLoaded || !user) {
+                router.push("/sign-in");
+                return;
             }
-        },
-    });
 
-    if (!dbUser || !dbUser.organisation) {
-        redirect("/onboarding");
+            try {
+                const response = await fetch("/api/user/me");
+                const data = await response.json();
+
+                if (!data.organisation) {
+                    router.push("/onboarding");
+                    return;
+                }
+
+                const org = data.organisation;
+                const subscription = data.subscription;
+
+                const now = new Date();
+                const isTrialValid = org.isTrial && org.trialEndDate && new Date(org.trialEndDate) > now;
+                const hasActiveSubscription = subscription &&
+                    (subscription.status === 'ACTIVE' || subscription.status === 'active') &&
+                    (!subscription.endDate || new Date(subscription.endDate) > now);
+
+                // If user has a valid plan, redirect to dashboard
+                if (isTrialValid || hasActiveSubscription) {
+                    router.push("/organisation");
+                    return;
+                }
+
+                setOrganisation(org);
+            } catch (error) {
+                console.error("Error fetching user data:", error);
+                router.push("/onboarding");
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchUserData();
+    }, [user, isLoaded, router]);
+
+    if (isLoading || plansLoading || !organisation) {
+        return (
+            <div className="container mx-auto py-16 px-4 max-w-6xl flex items-center justify-center min-h-screen">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Loading...</p>
+                </div>
+            </div>
+        );
     }
 
-    const organisation = dbUser.organisation;
-    const subscription = organisation.subscriptions[0];
-
-    const now = new Date();
-    const isTrialValid = organisation.isTrial && organisation.trialEndDate && organisation.trialEndDate > now;
-    const hasActiveSubscription = subscription && (subscription.status === 'COMPLETED' || subscription.status === 'active') && (!subscription.endDate || subscription.endDate > now);
-
-    // If user has a valid plan, redirect to dashboard
-    if (isTrialValid || hasActiveSubscription) {
-        redirect("/organisation");
-    }
+    // Filter out free trial plans
+    const paidPlans = plans.filter(plan => plan.price > 0);
 
     return (
         <div className="container mx-auto py-16 px-4 max-w-6xl">
@@ -56,15 +86,15 @@ export default async function SelectPlanPage() {
             </div>
 
             <div className="grid gap-8 md:grid-cols-3">
-                {Object.values(PLANS).map((plan) => {
-                    if (plan.id === "FREE_TRIAL") return null; // Don't show trial plan since it's expired
+                {paidPlans.map((plan) => {
+                    const isPopular = plan.price > 0 && plan.price < 5000;
 
                     return (
                         <Card
                             key={plan.id}
-                            className={`relative flex flex-col ${plan.popular ? "border-primary shadow-lg scale-105 z-10" : ""}`}
+                            className={`relative flex flex-col ${isPopular ? "border-primary shadow-lg scale-105 z-10" : ""}`}
                         >
-                            {plan.popular && (
+                            {isPopular && (
                                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                                     <Badge className="bg-primary px-3 py-1 text-sm">Most Popular</Badge>
                                 </div>
@@ -73,12 +103,12 @@ export default async function SelectPlanPage() {
                                 <CardTitle className="text-2xl">{plan.name}</CardTitle>
                                 <div className="mt-4">
                                     <span className="text-4xl font-bold">
-                                        {formatPrice(plan.price, plan.currency)}
+                                        {formatPrice(plan.price, "INR")}
                                     </span>
-                                    <span className="text-muted-foreground">/{plan.interval}</span>
+                                    <span className="text-muted-foreground">/{plan.billingCycle || 'month'}</span>
                                 </div>
                                 <CardDescription className="mt-2">
-                                    Everything you need to grow your business
+                                    {plan.description || 'Everything you need to grow your business'}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="flex-1 flex flex-col">
@@ -92,7 +122,7 @@ export default async function SelectPlanPage() {
                                 </ul>
 
                                 <RazorpayButton
-                                    plan={plan.id}
+                                    plan={plan.name}
                                     amount={plan.price}
                                     organizationName={organisation.name}
                                     className="w-full"

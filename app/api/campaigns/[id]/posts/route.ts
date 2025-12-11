@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { currentUser } from '@clerk/nextjs/server';
 import { postToLinkedIn } from '@/lib/linkedin';
+import { logError, logWarning, logInfo } from '@/lib/audit-logger';
 
 // GET - Fetch all posts for a campaign
 export async function GET(
@@ -11,6 +12,7 @@ export async function GET(
     try {
         const user = await currentUser();
         if (!user) {
+            await logWarning("Unauthorized access attempt to fetch campaign posts", { action: "fetch-campaign-posts" });
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -52,8 +54,9 @@ export async function GET(
         });
 
         return NextResponse.json({ posts });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching campaign posts:', error);
+        await logError("Failed to fetch campaign posts", { userId: "unknown" }, error);
         return NextResponse.json({ error: 'Failed to fetch posts' }, { status: 500 });
     }
 }
@@ -66,6 +69,7 @@ export async function POST(
     try {
         const user = await currentUser();
         if (!user) {
+            await logWarning("Unauthorized access attempt to create campaign post", { action: "create-campaign-post" });
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -206,9 +210,11 @@ export async function POST(
             }
         }
 
+        await logInfo("Campaign post created", { postId: post.id, campaignId, type, createdBy: user.id });
         return NextResponse.json({ post }, { status: 201 });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error creating campaign post:', error);
+        await logError("Failed to create campaign post", { userId: "unknown" }, error);
         return NextResponse.json({ error: 'Failed to create post' }, { status: 500 });
     }
 }

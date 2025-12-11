@@ -3,12 +3,14 @@ import { NextResponse } from "next/server";
 import { verifyRazorpaySignature } from "@/lib/razorpay";
 import { prisma } from "@/lib/prisma";
 import { sendPaymentReceipt } from "@/lib/email";
+import { logError, logWarning, logInfo } from "@/lib/audit-logger";
 
 export async function POST(req: Request) {
     try {
         const user = await currentUser();
 
         if (!user) {
+            await logWarning("Unauthorized access attempt to verify payment", { action: "verify-payment" });
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -157,6 +159,7 @@ export async function POST(req: Request) {
 
 
 
+        await logInfo("Payment verified successfully", { paymentId: payment.id, amount: payment.amount, status: payment.status });
         return NextResponse.json({
             success: true,
             message: "Payment verified successfully",
@@ -167,8 +170,9 @@ export async function POST(req: Request) {
                 status: payment.status,
             },
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error verifying payment:", error);
+        await logError("Failed to verify payment", { userId: "unknown" }, error);
         return NextResponse.json(
             { error: "Failed to verify payment" },
             { status: 500 }

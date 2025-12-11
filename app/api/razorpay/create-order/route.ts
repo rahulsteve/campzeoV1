@@ -3,12 +3,14 @@ import { NextResponse } from "next/server";
 import { createRazorpayOrder } from "@/lib/razorpay";
 import { prisma } from "@/lib/prisma";
 import { getPlanById } from "@/lib/plans";
+import { logError, logWarning, logInfo } from "@/lib/audit-logger";
 
 export async function POST(req: Request) {
     try {
         const user = await currentUser();
 
         if (!user) {
+            await logWarning("Unauthorized access attempt to create razorpay order", { action: "create-razorpay-order" });
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -112,8 +114,9 @@ export async function POST(req: Request) {
                 isSignup: false,
             });
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error creating Razorpay order:", error);
+        await logError("Failed to create razorpay order", { userId: "unknown" }, error);
         return NextResponse.json(
             { error: "Failed to create order" },
             { status: 500 }

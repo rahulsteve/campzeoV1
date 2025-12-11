@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyWebhookSignature } from "@/lib/razorpay";
 import { prisma } from "@/lib/prisma";
+import { logError, logWarning, logInfo } from "@/lib/audit-logger";
 
 export async function POST(req: Request) {
     try {
@@ -17,6 +18,7 @@ export async function POST(req: Request) {
 
         if (!isValid) {
             console.error("Invalid webhook signature");
+            await logWarning("Invalid razorpay webhook signature", { action: "webhook-verification" });
             return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
         }
 
@@ -43,8 +45,9 @@ export async function POST(req: Request) {
         }
 
         return NextResponse.json({ received: true });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error processing webhook:", error);
+        await logError("Razorpay webhook processing failed", { action: "webhook-processing" }, error);
         return NextResponse.json(
             { error: "Webhook processing failed" },
             { status: 500 }

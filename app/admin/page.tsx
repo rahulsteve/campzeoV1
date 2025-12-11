@@ -31,7 +31,8 @@ import {
   EyeOff,
   ChevronRight,
   Download,
-  Play
+  X,
+  Trash
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -63,6 +64,7 @@ export default function AdminDashboard() {
   const [platformConfigs, setPlatformConfigs] = useState<any[]>([]);
   const [jobSettings, setJobSettings] = useState<any[]>([]);
   const [logs, setLogs] = useState<any[]>([]);
+  const [billingPlans, setBillingPlans] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Pagination & Filter State
@@ -82,6 +84,41 @@ export default function AdminDashboard() {
   const [logsPageSize] = useState(10);
   const [logsTotalCount, setLogsTotalCount] = useState(0);
   const [logsTotalPages, setLogsTotalPages] = useState(0);
+
+  // Logs Filter State
+  const [logsKeyword, setLogsKeyword] = useState("");
+  const [logsLevel, setLogsLevel] = useState("all"); // 'all', 'Info', 'Warning', 'Error'
+  const [logsDateFrom, setLogsDateFrom] = useState("");
+  const [logsDateTo, setLogsDateTo] = useState("");
+
+  // Billing Plans State
+  const [plansSearch, setPlansSearch] = useState("");
+  const [plansStatusFilter, setPlansStatusFilter] = useState("all");
+  const [plansSortBy, setPlansSortBy] = useState("name");
+
+  // Billing Plan Form State
+  const [isEditingPlan, setIsEditingPlan] = useState(false);
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const [planFormData, setPlanFormData] = useState({
+    name: "",
+    description: "",
+    price: "",
+    billingCycle: "MONTHLY",
+    isActive: true,
+    autoRenew: true
+  });
+  const [planFeatures, setPlanFeatures] = useState<string[]>([""]);
+  const [planErrors, setPlanErrors] = useState<Record<string, string>>({});
+  const [hasActiveSubscriptions, setHasActiveSubscriptions] = useState(false);
+  const [isSavingPlan, setIsSavingPlan] = useState(false);
+
+  // Delete Plan State
+  const [deletingPlan, setDeletingPlan] = useState<any | null>(null);
+  const [affectedOrganisations, setAffectedOrganisations] = useState<any[]>([]);
+  const [selectedMigrationPlan, setSelectedMigrationPlan] = useState<string>("");
+  const [deleteConfirmationChecked, setDeleteConfirmationChecked] = useState(false);
+  const [isDeletingPlan, setIsDeletingPlan] = useState(false);
+
 
   // Add/Edit Org Form State
   const [isAddingOrg, setIsAddingOrg] = useState(false);
@@ -151,11 +188,22 @@ export default function AdminDashboard() {
 
   const fetchOtherData = async () => {
     try {
+      // Build logs query parameters
+      const logsParams = new URLSearchParams({
+        page: logsPage.toString(),
+        pageSize: logsPageSize.toString()
+      });
+
+      if (logsKeyword) logsParams.append('keyword', logsKeyword);
+      if (logsLevel !== 'all') logsParams.append('level', logsLevel);
+      if (logsDateFrom) logsParams.append('dateFrom', logsDateFrom);
+      if (logsDateTo) logsParams.append('dateTo', logsDateTo);
+
       const [enqRes, confRes, jobsRes, logsRes] = await Promise.all([
         fetch('/api/admin/enquiries'),
         fetch('/api/admin/platform-config'),
         fetch('/api/admin/job-settings'),
-        fetch(`/api/admin/logs?page=${logsPage}&pageSize=${logsPageSize}`)
+        fetch(`/api/admin/logs?${logsParams}`)
       ]);
 
       if (enqRes.ok) {
@@ -177,6 +225,15 @@ export default function AdminDashboard() {
           setLogsTotalPages(logsData.data.totalPages || 0);
         }
       }
+
+      // Fetch billing plans
+      const plansRes = await fetch('/api/admin/billing-plans');
+      if (plansRes.ok) {
+        const plansData = await plansRes.json();
+        if (plansData.isSuccess) {
+          setBillingPlans(plansData.data || []);
+        }
+      }
     } catch (error) {
       console.error("Failed to fetch other data", error);
       toast.error("Failed to load admin data");
@@ -191,7 +248,7 @@ export default function AdminDashboard() {
     } else {
       fetchOtherData();
     }
-  }, [activeTab, pageNumber, pageSize, statusFilter, logsPage]); // Search text handled separately with debounce ideally, or on enter
+  }, [activeTab, pageNumber, pageSize, statusFilter, logsPage, logsKeyword, logsLevel, logsDateFrom, logsDateTo]); // Search text handled separately with debounce ideally, or on enter
 
   // Handle Search Enter
   const handleSearch = (e: React.KeyboardEvent) => {
@@ -556,7 +613,243 @@ export default function AdminDashboard() {
     }
   }
 
+  // Billing Plan Form Handlers
+  const handleCreatePlanClick = () => {
+    setPlanFormData({
+      name: "",
+      description: "",
+      price: "",
+      billingCycle: "MONTHLY",
+      isActive: true,
+      autoRenew: true
+    });
+    setPlanFeatures([""]);
+    setPlanErrors({});
+    setEditingPlanId(null);
+    setHasActiveSubscriptions(false);
+    setIsEditingPlan(true);
+  };
+
+  const handleEditPlanClick = async (plan: any) => {
+    try {
+      // Fetch full plan details
+      const res = await fetch(`/api/admin/billing-plans/${plan.id}`);
+      const data = await res.json();
+
+      if (data.isSuccess) {
+        const planData = data.data;
+        setPlanFormData({
+          name: planData.name,
+          description: planData.description || "",
+          price: planData.price.toString(),
+          billingCycle: planData.billingCycle,
+          isActive: planData.isActive,
+          autoRenew: planData.autoRenew
+        });
+        setPlanFeatures(Array.isArray(planData.features) ? planData.features : [""]);
+        setHasActiveSubscriptions(planData.activeSubscriptions > 0);
+        setEditingPlanId(plan.id);
+        setPlanErrors({});
+        setIsEditingPlan(true);
+      } else {
+        toast.error(data.message || "Failed to fetch plan details");
+      }
+    } catch (error) {
+      console.error("Error fetching plan:", error);
+      toast.error("Failed to load plan details");
+    }
+  };
+
+  const handleCancelPlanForm = () => {
+    setIsEditingPlan(false);
+    setEditingPlanId(null);
+    setPlanFormData({
+      name: "",
+      description: "",
+      price: "",
+      billingCycle: "MONTHLY",
+      isActive: true,
+      autoRenew: true
+    });
+    setPlanFeatures([""]);
+    setPlanErrors({});
+    setHasActiveSubscriptions(false);
+  };
+
+  const handleAddPlanFeature = () => {
+    setPlanFeatures([...planFeatures, ""]);
+  };
+
+  const handleRemovePlanFeature = (index: number) => {
+    if (planFeatures.length > 1) {
+      setPlanFeatures(planFeatures.filter((_, i) => i !== index));
+    }
+  };
+
+  const handlePlanFeatureChange = (index: number, value: string) => {
+    const newFeatures = [...planFeatures];
+    newFeatures[index] = value;
+    setPlanFeatures(newFeatures);
+  };
+
+  const validatePlanForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!planFormData.name.trim()) {
+      newErrors.name = "Plan name is required";
+    }
+
+    if (!planFormData.price || parseFloat(planFormData.price) < 0) {
+      newErrors.price = "Valid price is required (must be >= 0)";
+    }
+
+    const validFeatures = planFeatures.filter(f => f.trim());
+    if (validFeatures.length === 0) {
+      newErrors.features = "At least one feature is required";
+    }
+
+    setPlanErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmitPlan = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validatePlanForm()) {
+      toast.error("Please fix the errors in the form");
+      return;
+    }
+
+    try {
+      setIsSavingPlan(true);
+
+      const validFeatures = planFeatures.filter(f => f.trim());
+      const isEditing = !!editingPlanId;
+
+      let requestData: any = {
+        name: planFormData.name,
+        description: planFormData.description,
+        features: validFeatures,
+        isActive: planFormData.isActive,
+        autoRenew: planFormData.autoRenew
+      };
+
+      // Only include price and billingCycle for new plans or plans without active subscriptions
+      if (!isEditing || !hasActiveSubscriptions) {
+        requestData.price = parseFloat(planFormData.price);
+        requestData.billingCycle = planFormData.billingCycle;
+      }
+
+      const url = isEditing
+        ? `/api/admin/billing-plans/${editingPlanId}`
+        : "/api/admin/billing-plans";
+
+      const method = isEditing ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestData)
+      });
+
+      const data = await res.json();
+
+      if (data.isSuccess) {
+        toast.success(isEditing ? "Plan updated successfully" : "Plan created successfully");
+        handleCancelPlanForm();
+        // Refresh billing plans
+        fetchOtherData();
+      } else {
+        toast.error(data.message || `Failed to ${isEditing ? 'update' : 'create'} plan`);
+        if (data.message?.includes("already exists")) {
+          setPlanErrors({ name: data.message });
+        }
+      }
+    } catch (error) {
+      console.error("Error saving plan:", error);
+      toast.error("Failed to save plan");
+    } finally {
+      setIsSavingPlan(false);
+    }
+  };
+
+  // Delete Plan Handlers
+  const handleDeletePlanClick = async (plan: any) => {
+    try {
+      // Fetch affected users
+      const res = await fetch(`/api/admin/billing-plans/${plan.id}/affected-users`);
+      const data = await res.json();
+
+      if (data.isSuccess) {
+        setDeletingPlan(plan);
+        setAffectedOrganisations(data.data.organisations || []);
+        setSelectedMigrationPlan("");
+        setDeleteConfirmationChecked(false);
+      } else {
+        toast.error(data.message || "Failed to fetch affected users");
+      }
+    } catch (error) {
+      console.error("Error fetching affected users:", error);
+      toast.error("Failed to load affected users");
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingPlan) return;
+
+    // Validation
+    if (affectedOrganisations.length > 0) {
+      if (!selectedMigrationPlan) {
+        toast.error("Please select a plan to migrate users to");
+        return;
+      }
+      if (!deleteConfirmationChecked) {
+        toast.error("Please confirm the migration");
+        return;
+      }
+    }
+
+    try {
+      setIsDeletingPlan(true);
+
+      const requestBody: any = {};
+      if (affectedOrganisations.length > 0) {
+        requestBody.migrateToPlanId = parseInt(selectedMigrationPlan);
+      }
+
+      const res = await fetch(`/api/admin/billing-plans/${deletingPlan.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody)
+      });
+
+      const data = await res.json();
+
+      if (data.isSuccess) {
+        toast.success(data.message);
+        handleCancelDelete();
+        // Refresh billing plans
+        fetchOtherData();
+      } else {
+        toast.error(data.message || "Failed to delete plan");
+      }
+    } catch (error) {
+      console.error("Error deleting plan:", error);
+      toast.error("Failed to delete plan");
+    } finally {
+      setIsDeletingPlan(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeletingPlan(null);
+    setAffectedOrganisations([]);
+    setSelectedMigrationPlan("");
+    setDeleteConfirmationChecked(false);
+  };
+
   const exportEnquiriesToCSV = () => {
+
     if (enquiries.length === 0) {
       toast.error("No enquiries to export");
       return;
@@ -701,6 +994,9 @@ export default function AdminDashboard() {
               </TabsTrigger>
               <TabsTrigger value="enquiry" className="justify-start px-4 py-3 data-[state=active]:bg-primary data-[state=active]:text-white hover:bg-slate-800 hover:text-slate-200 transition-all rounded-md mx-2">
                 <MessageSquare className="mr-3 size-4" /> Enquiry
+              </TabsTrigger>
+              <TabsTrigger value="billing-plans" className="justify-start px-4 py-3 data-[state=active]:bg-primary data-[state=active]:text-white hover:bg-slate-800 hover:text-slate-200 transition-all rounded-md mx-2">
+                <Shield className="mr-3 size-4" /> Billing Plans
               </TabsTrigger>
               <TabsTrigger value="platform" className="justify-start px-4 py-3 data-[state=active]:bg-primary data-[state=active]:text-white hover:bg-slate-800 hover:text-slate-200 transition-all rounded-md mx-2">
                 <Settings className="mr-3 size-4" /> Platform Config
@@ -1541,102 +1837,502 @@ export default function AdminDashboard() {
                   </CardContent>
                 </Card>
               </div>
-
-              <div className="grid gap-6 md:grid-cols-2 mt-6">
-                <Card className="border shadow-sm md:col-span-2">
-                  <CardHeader>
-                    <CardTitle>Campaign Posts Scheduler</CardTitle>
-                    <CardDescription>Configure and monitor the automated post scheduler.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid gap-6 md:grid-cols-3">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label>Scheduler Status</Label>
-                          <Badge variant="default" className="bg-green-600">Active</Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Runs every 5 minutes via Vercel Cron
-                        </p>
-                        <div className="pt-2">
-                          <p className="text-xs font-medium">Schedule:</p>
-                          <code className="text-xs bg-muted px-2 py-1 rounded">*/5 * * * *</code>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="cron-secret">Cron Secret</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="cron-secret"
-                            type="password"
-                            placeholder="Enter cron secret key"
-                            defaultValue={process.env.NEXT_PUBLIC_CRON_SECRET || ''}
-                            readOnly
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const input = document.getElementById('cron-secret') as HTMLInputElement;
-                              navigator.clipboard.writeText(input.value);
-                              toast.success('Copied to clipboard');
-                            }}
-                          >
-                            Copy
-                          </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Set this as CRON_SECRET in environment variables
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Actions</Label>
-                        <div className="space-y-2">
-                          <Button
-                            className="w-full"
-                            variant="default"
-                            size="sm"
-                            onClick={async () => {
-                              try {
-                                toast.loading('Running scheduler...');
-                                const res = await fetch('/api/scheduler/campaign-posts', {
-                                  headers: {
-                                    'Authorization': `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET || 'your-secret-key'}`
-                                  }
-                                });
-                                const data = await res.json();
-                                toast.dismiss();
-
-                                if (res.ok && data.success) {
-                                  toast.success(`Scheduler completed! Processed: ${data.results?.processed || 0}, Failed: ${data.results?.failed || 0}`);
-                                } else {
-                                  toast.error(data.error || 'Scheduler failed');
-                                }
-                              } catch (error) {
-                                toast.dismiss();
-                                toast.error('Failed to run scheduler');
-                              }
-                            }}
-                          >
-                            <Play className="mr-2 size-4" /> Run Now
-                          </Button>
-                          <Button
-                            className="w-full"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.open('/admin/scheduler', '_blank')}
-                          >
-                            <Settings className="mr-2 size-4" /> Advanced
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
             </TabsContent>
+
+            {/* 4. Billing Plans */}
+            <TabsContent value="billing-plans" className="m-0 focus-visible:outline-none">
+              {!isEditingPlan ? (
+                <>
+                  <div className="mb-6 flex items-center justify-between">
+                    <div>
+                      <h2 className="text-2xl font-bold tracking-tight text-slate-900">Billing Plans</h2>
+                      <p className="text-muted-foreground">Manage subscription plans and pricing</p>
+                    </div>
+                    <Button onClick={handleCreatePlanClick}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Plan
+                    </Button>
+                  </div>
+
+                  {/* Search and Filter */}
+                  <Card className="border shadow-sm mb-4">
+                    <CardContent className="p-4">
+                      <div className="flex gap-4">
+                        <div className="flex-1">
+                          <Input
+                            placeholder="Search plans..."
+                            value={plansSearch}
+                            onChange={(e) => setPlansSearch(e.target.value)}
+                          />
+                        </div>
+                        <Select value={plansStatusFilter} onValueChange={setPlansStatusFilter}>
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Filter by status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Plans</SelectItem>
+                            <SelectItem value="active">Active Only</SelectItem>
+                            <SelectItem value="inactive">Inactive Only</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Plans Table */}
+                  <Card className="border shadow-sm">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Plan Name</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead>Price</TableHead>
+                          <TableHead>Billing Cycle</TableHead>
+                          <TableHead>Subscriptions</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {billingPlans
+                          .filter(plan => {
+                            const matchesSearch = !plansSearch ||
+                              plan.name.toLowerCase().includes(plansSearch.toLowerCase()) ||
+                              plan.description?.toLowerCase().includes(plansSearch.toLowerCase());
+                            const matchesStatus = plansStatusFilter === 'all' ||
+                              (plansStatusFilter === 'active' && plan.isActive) ||
+                              (plansStatusFilter === 'inactive' && !plan.isActive);
+                            return matchesSearch && matchesStatus;
+                          })
+                          .map((plan: any) => (
+                            <TableRow key={plan.id}>
+                              <TableCell className="font-medium">{plan.name}</TableCell>
+                              <TableCell className="max-w-xs truncate">
+                                {plan.description || "-"}
+                              </TableCell>
+                              <TableCell>₹{Number(plan.price).toLocaleString()}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline">{plan.billingCycle}</Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{plan.activeSubscriptions || 0}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    of {plan.totalSubscriptions || 0} total
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={plan.isActive ? "default" : "secondary"}>
+                                  {plan.isActive ? "Active" : "Inactive"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex gap-2 justify-end">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEditPlanClick(plan)}
+                                  >
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDeletePlanClick(plan)}
+                                  >
+                                    <Trash className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        {billingPlans.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                              No billing plans found. Click "Create Plan" to add one.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </Card>
+                </>
+              ) : (
+                <>
+                  {/* Billing Plan Form */}
+                  <div className="mb-6">
+                    <Button
+                      variant="ghost"
+                      onClick={handleCancelPlanForm}
+                      className="mb-4"
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Back to Plans
+                    </Button>
+                    <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+                      {editingPlanId ? 'Edit Plan' : 'Create New Plan'}
+                    </h2>
+                    <p className="text-muted-foreground mt-1">
+                      {editingPlanId ? 'Update billing plan details' : 'Add a new billing plan for subscriptions'}
+                    </p>
+                  </div>
+
+                  {/* Active Subscriptions Warning */}
+                  {hasActiveSubscriptions && editingPlanId && (
+                    <Card className="mb-6 border-yellow-500 bg-yellow-50">
+                      <CardContent className="p-4 flex items-start gap-3">
+                        <Shield className="h-5 w-5 text-yellow-600 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-yellow-800">
+                            This plan has active subscriptions.
+                          </p>
+                          <p className="text-sm text-yellow-700 mt-1">
+                            Price and billing cycle cannot be changed. Create a new plan if you need different pricing.
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Form */}
+                  <form onSubmit={handleSubmitPlan}>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Plan Details</CardTitle>
+                        <CardDescription>
+                          {editingPlanId ? 'Update the details for this billing plan' : 'Enter the details for the new billing plan'}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        {/* Plan Name */}
+                        <div className="space-y-2">
+                          <Label htmlFor="planName">
+                            Plan Name <span className="text-red-500">*</span>
+                          </Label>
+                          <Input
+                            id="planName"
+                            value={planFormData.name}
+                            onChange={(e) => {
+                              setPlanFormData({ ...planFormData, name: e.target.value });
+                              if (planErrors.name) setPlanErrors({ ...planErrors, name: "" });
+                            }}
+                            placeholder="e.g., Premium Plan"
+                            className={planErrors.name ? "border-red-500" : ""}
+                          />
+                          {planErrors.name && (
+                            <p className="text-sm text-red-500">{planErrors.name}</p>
+                          )}
+                        </div>
+
+                        {/* Description */}
+                        <div className="space-y-2">
+                          <Label htmlFor="planDescription">Description</Label>
+                          <Textarea
+                            id="planDescription"
+                            value={planFormData.description}
+                            onChange={(e) => setPlanFormData({ ...planFormData, description: e.target.value })}
+                            placeholder="Describe the plan benefits..."
+                            rows={3}
+                          />
+                        </div>
+
+                        {/* Price and Billing Cycle */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="planPrice">
+                              Price (₹) <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                              id="planPrice"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={planFormData.price}
+                              onChange={(e) => {
+                                setPlanFormData({ ...planFormData, price: e.target.value });
+                                if (planErrors.price) setPlanErrors({ ...planErrors, price: "" });
+                              }}
+                              placeholder="999.00"
+                              disabled={hasActiveSubscriptions && !!editingPlanId}
+                              className={planErrors.price ? "border-red-500" : ""}
+                            />
+                            {planErrors.price && (
+                              <p className="text-sm text-red-500">{planErrors.price}</p>
+                            )}
+                            {hasActiveSubscriptions && editingPlanId && (
+                              <p className="text-xs text-muted-foreground">
+                                Cannot be changed (plan has active subscriptions)
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="planBillingCycle">
+                              Billing Cycle <span className="text-red-500">*</span>
+                            </Label>
+                            <Select
+                              value={planFormData.billingCycle}
+                              onValueChange={(value) => setPlanFormData({ ...planFormData, billingCycle: value })}
+                              disabled={hasActiveSubscriptions && !!editingPlanId}
+                            >
+                              <SelectTrigger id="planBillingCycle">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="MONTHLY">Monthly</SelectItem>
+                                <SelectItem value="YEARLY">Yearly</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {hasActiveSubscriptions && editingPlanId && (
+                              <p className="text-xs text-muted-foreground">
+                                Cannot be changed (plan has active subscriptions)
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Features */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label>
+                              Features <span className="text-red-500">*</span>
+                            </Label>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={handleAddPlanFeature}
+                            >
+                              <Plus className="h-4 w-4 mr-1" />
+                              Add Feature
+                            </Button>
+                          </div>
+
+                          <div className="space-y-2">
+                            {planFeatures.map((feature, index) => (
+                              <div key={index} className="flex gap-2">
+                                <Input
+                                  value={feature}
+                                  onChange={(e) => handlePlanFeatureChange(index, e.target.value)}
+                                  placeholder={`Feature ${index + 1}`}
+                                  className={planErrors.features && !feature.trim() ? "border-red-500" : ""}
+                                />
+                                {planFeatures.length > 1 && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleRemovePlanFeature(index)}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          {planErrors.features && (
+                            <p className="text-sm text-red-500">{planErrors.features}</p>
+                          )}
+                        </div>
+
+                        {/* Settings */}
+                        <div className="space-y-4 pt-4 border-t">
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                              <Label htmlFor="planIsActive">Active Status</Label>
+                              <p className="text-sm text-muted-foreground">
+                                Make this plan available for subscriptions
+                              </p>
+                            </div>
+                            <Switch
+                              id="planIsActive"
+                              checked={planFormData.isActive}
+                              onCheckedChange={(checked) =>
+                                setPlanFormData({ ...planFormData, isActive: checked })
+                              }
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                              <Label htmlFor="planAutoRenew">Auto Renew</Label>
+                              <p className="text-sm text-muted-foreground">
+                                Automatically renew subscriptions
+                              </p>
+                            </div>
+                            <Switch
+                              id="planAutoRenew"
+                              checked={planFormData.autoRenew}
+                              onCheckedChange={(checked) =>
+                                setPlanFormData({ ...planFormData, autoRenew: checked })
+                              }
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Actions */}
+                    <div className="flex justify-end gap-4 mt-6">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleCancelPlanForm}
+                        disabled={isSavingPlan}
+                      >
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={isSavingPlan}>
+                        {isSavingPlan ? "Saving..." : (editingPlanId ? "Save Changes" : "Create Plan")}
+                      </Button>
+                    </div>
+                  </form>
+                </>
+              )}
+            </TabsContent>
+
+            {/* Delete Plan Modal */}
+            <Dialog open={!!deletingPlan} onOpenChange={(open) => !open && handleCancelDelete()}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>
+                    {affectedOrganisations.length > 0 ? 'Migrate and Delete Plan' : 'Delete Plan'}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {affectedOrganisations.length > 0
+                      ? 'This plan has active subscriptions. You must migrate users to another plan before deletion.'
+                      : 'Are you sure you want to delete this plan?'}
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4">
+                  {/* Plan Info */}
+                  {deletingPlan && (
+                    <Card className="bg-muted/50">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-semibold">{deletingPlan.name}</h4>
+                            <p className="text-sm text-muted-foreground">{deletingPlan.description}</p>
+                          </div>
+                          <Badge variant={deletingPlan.isActive ? "default" : "secondary"}>
+                            {deletingPlan.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Affected Organizations */}
+                  {affectedOrganisations.length > 0 && (
+                    <>
+                      <div>
+                        <Label className="text-base font-semibold">
+                          Affected Organizations ({affectedOrganisations.length})
+                        </Label>
+                        <Card className="mt-2 max-h-48 overflow-y-auto">
+                          <CardContent className="p-0">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Organization</TableHead>
+                                  <TableHead>Email</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {affectedOrganisations.map((org: any) => (
+                                  <TableRow key={org.id}>
+                                    <TableCell className="font-medium">{org.name}</TableCell>
+                                    <TableCell className="text-sm text-muted-foreground">
+                                      {org.email || '-'}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      {/* Migration Plan Selection */}
+                      <div className="space-y-2">
+                        <Label htmlFor="migrationPlan">
+                          Migrate to Plan <span className="text-red-500">*</span>
+                        </Label>
+                        <Select value={selectedMigrationPlan} onValueChange={setSelectedMigrationPlan}>
+                          <SelectTrigger id="migrationPlan">
+                            <SelectValue placeholder="Select a plan..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {billingPlans
+                              .filter(p => p.id !== deletingPlan?.id && p.isActive)
+                              .map((plan: any) => (
+                                <SelectItem key={plan.id} value={plan.id.toString()}>
+                                  {plan.name} - ₹{Number(plan.price).toLocaleString()}/{plan.billingCycle}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          All {affectedOrganisations.length} subscriptions will be migrated to the selected plan
+                        </p>
+                      </div>
+
+                      {/* Confirmation Checkbox */}
+                      <div className="flex items-start space-x-2 border rounded-lg p-4 bg-yellow-50 border-yellow-200">
+                        <input
+                          type="checkbox"
+                          id="deleteConfirmation"
+                          checked={deleteConfirmationChecked}
+                          onChange={(e) => setDeleteConfirmationChecked(e.target.checked)}
+                          className="mt-1"
+                        />
+                        <Label htmlFor="deleteConfirmation" className="text-sm cursor-pointer">
+                          I understand that {affectedOrganisations.length} organization{affectedOrganisations.length !== 1 ? 's' : ''} will be migrated to the selected plan, and this action cannot be undone.
+                        </Label>
+                      </div>
+                    </>
+                  )}
+
+                  {/* No Subscriptions Warning */}
+                  {affectedOrganisations.length === 0 && (
+                    <Card className="border-yellow-500 bg-yellow-50">
+                      <CardContent className="p-4 flex items-start gap-3">
+                        <Shield className="h-5 w-5 text-yellow-600 mt-0.5" />
+                        <div>
+                          <p className="text-sm font-medium text-yellow-800">
+                            This action will permanently delete the plan
+                          </p>
+                          <p className="text-sm text-yellow-700 mt-1">
+                            The plan will be marked as deleted and won't be available for new subscriptions.
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex justify-end gap-3 mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={handleCancelDelete}
+                    disabled={isDeletingPlan}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleConfirmDelete}
+                    disabled={isDeletingPlan}
+                  >
+                    {isDeletingPlan ? "Deleting..." : (affectedOrganisations.length > 0 ? "Migrate & Delete" : "Delete Plan")}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
 
             {/* 5. Logs */}
             <TabsContent value="logs" className="m-0 focus-visible:outline-none">
@@ -1644,6 +2340,94 @@ export default function AdminDashboard() {
                 <h2 className="text-2xl font-bold tracking-tight text-slate-900">Audit Logs</h2>
                 <p className="text-muted-foreground">View system activity and audit trail</p>
               </div>
+
+              {/* Filter Controls */}
+              <Card className="border shadow-sm mb-4">
+                <CardContent className="p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {/* Keyword Search */}
+                    <div className="space-y-2">
+                      <Label htmlFor="logsKeyword">Search</Label>
+                      <Input
+                        id="logsKeyword"
+                        placeholder="Search in message..."
+                        value={logsKeyword}
+                        onChange={(e) => {
+                          setLogsKeyword(e.target.value);
+                          setLogsPage(1); // Reset to first page
+                        }}
+                      />
+                    </div>
+
+                    {/* Log Level Filter */}
+                    <div className="space-y-2">
+                      <Label htmlFor="logsLevel">Log Level</Label>
+                      <Select value={logsLevel} onValueChange={(value) => {
+                        setLogsLevel(value);
+                        setLogsPage(1);
+                      }}>
+                        <SelectTrigger id="logsLevel">
+                          <SelectValue placeholder="All Levels" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Levels</SelectItem>
+                          <SelectItem value="Info">Info</SelectItem>
+                          <SelectItem value="Warning">Warning</SelectItem>
+                          <SelectItem value="Error">Error</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Date From */}
+                    <div className="space-y-2">
+                      <Label htmlFor="logsDateFrom">Date From</Label>
+                      <Input
+                        id="logsDateFrom"
+                        type="date"
+                        value={logsDateFrom}
+                        onChange={(e) => {
+                          setLogsDateFrom(e.target.value);
+                          setLogsPage(1);
+                        }}
+                      />
+                    </div>
+
+                    {/* Date To */}
+                    <div className="space-y-2">
+                      <Label htmlFor="logsDateTo">Date To</Label>
+                      <Input
+                        id="logsDateTo"
+                        type="date"
+                        value={logsDateTo}
+                        onChange={(e) => {
+                          setLogsDateTo(e.target.value);
+                          setLogsPage(1);
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Clear Filters Button */}
+                  {(logsKeyword || logsLevel !== 'all' || logsDateFrom || logsDateTo) && (
+                    <div className="mt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setLogsKeyword("");
+                          setLogsLevel("all");
+                          setLogsDateFrom("");
+                          setLogsDateTo("");
+                          setLogsPage(1);
+                        }}
+                      >
+                        Clear Filters
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               <Card className="border shadow-sm">
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">

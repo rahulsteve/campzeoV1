@@ -16,11 +16,11 @@ import { TrialCountdown } from "@/components/trial-countdown";
 import { UsageMetricsCard } from "@/components/usage-metrics-card";
 import { CancelSubscriptionDialog } from "@/components/cancel-subscription-dialog";
 import { PlanComparisonModal } from "@/components/plan-comparison-modal";
+import { usePlans } from "@/hooks/use-plans";
 
 interface OrganisationData {
   id: number;
   name: string;
-  plan: PlanType;
   status: string;
   lastPaymentDate: string | null;
   nextBillingDate: string | null;
@@ -85,6 +85,7 @@ interface UsageData {
 
 export default function BillingPage() {
   const router = useRouter();
+  const { plans, isLoading: plansLoading } = usePlans();
   const [organisation, setOrganisation] = useState<OrganisationData | null>(null);
   const [payments, setPayments] = useState<PaymentData[]>([]);
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null);
@@ -186,14 +187,14 @@ export default function BillingPage() {
     }
   };
 
-  const handleSelectPlan = (planId: string) => {
+  const handleSelectPlan = (planId: string | number) => {
     const planElement = document.getElementById(`plan-${planId}`);
     if (planElement) {
       planElement.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   };
 
-  if (isLoading) {
+  if (isLoading || plansLoading) {
     return (
       <div className="p-6">
         <div className=" mx-auto">
@@ -322,17 +323,18 @@ export default function BillingPage() {
         <div>
           <h2 className="text-2xl font-bold mb-4">Available Plans</h2>
           <div className="grid gap-6 md:grid-cols-3">
-            {Object.values(PLANS).map((plan) => {
-              const isCurrentPlan = currentPlan?.name === plan.id;
-              const canUpgrade = currentPlan && !isCurrentPlan && plan.price > currentPlan.price;
+            {plans.map((plan) => {
+              const isCurrentPlan = currentPlan?.id === plan.id || currentPlan?.name === plan.name;
+              const canUpgrade = currentPlan && !isCurrentPlan && plan.price > Number(currentPlan.price);
+              const isPopular = plan.price > 0 && plan.price < 5000;
 
               return (
                 <Card
                   key={plan.id}
                   id={`plan-${plan.id}`}
-                  className={`relative ${plan.popular ? "border-primary shadow-lg" : ""}`}
+                  className={`relative ${isPopular ? "border-primary shadow-lg" : ""}`}
                 >
-                  {plan.popular && (
+                  {isPopular && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                       <Badge className="bg-primary">Most Popular</Badge>
                     </div>
@@ -341,9 +343,9 @@ export default function BillingPage() {
                     <CardTitle>{plan.name}</CardTitle>
                     <div className="mt-4">
                       <span className="text-4xl font-bold">
-                        {formatPrice(plan.price, plan.currency)}
+                        {formatPrice(plan.price, "INR")}
                       </span>
-                      <span className="text-muted-foreground">/{plan.interval}</span>
+                      <span className="text-muted-foreground">/{plan.billingCycle || 'month'}</span>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -361,13 +363,13 @@ export default function BillingPage() {
                         Current Plan
                       </Button>
                     ) : canUpgrade ? (
-                      plan.id === "FREE_TRIAL" ? (
+                      plan.price === 0 ? (
                         <Button variant="outline" className="w-full" disabled>
                           Not Available
                         </Button>
                       ) : (
                         <RazorpayButton
-                          plan={plan.id}
+                          plan={plan.name}
                           amount={plan.price}
                           onSuccess={handlePaymentSuccess}
                           className="w-full"

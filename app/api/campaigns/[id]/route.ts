@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { currentUser } from '@clerk/nextjs/server';
+import { logError, logWarning, logInfo } from '@/lib/audit-logger';
 
 // GET - Fetch a single campaign
 export async function GET(
@@ -10,6 +11,7 @@ export async function GET(
     try {
         const user = await currentUser();
         if (!user) {
+            await logWarning("Unauthorized access attempt to fetch campaign", { action: "fetch-campaign" });
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -56,8 +58,9 @@ export async function GET(
         }
 
         return NextResponse.json({ campaign });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching campaign:', error);
+        await logError("Failed to fetch campaign", { userId: "unknown" }, error);
         return NextResponse.json({ error: 'Failed to fetch campaign' }, { status: 500 });
     }
 }
@@ -70,6 +73,7 @@ export async function PUT(
     try {
         const user = await currentUser();
         if (!user) {
+            await logWarning("Unauthorized access attempt to update campaign", { action: "update-campaign" });
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -135,9 +139,11 @@ export async function PUT(
             },
         });
 
+        await logInfo("Campaign updated", { campaignId: campaign.id, name: campaign.name, updatedBy: user.id });
         return NextResponse.json({ campaign });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error updating campaign:', error);
+        await logError("Failed to update campaign", { userId: "unknown" }, error);
         return NextResponse.json({ error: 'Failed to update campaign' }, { status: 500 });
     }
 }
@@ -150,6 +156,7 @@ export async function DELETE(
     try {
         const user = await currentUser();
         if (!user) {
+            await logWarning("Unauthorized access attempt to delete campaign", { action: "delete-campaign" });
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -185,9 +192,11 @@ export async function DELETE(
             data: { isDeleted: true },
         });
 
+        await logInfo("Campaign deleted", { campaignId, deletedBy: user.id });
         return NextResponse.json({ message: 'Campaign deleted successfully' });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error deleting campaign:', error);
+        await logError("Failed to delete campaign", { userId: "unknown" }, error);
         return NextResponse.json({ error: 'Failed to delete campaign' }, { status: 500 });
     }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { currentUser } from '@clerk/nextjs/server';
+import { logError, logWarning, logInfo } from '@/lib/audit-logger';
 
 // GET - Fetch a single post
 export async function GET(
@@ -10,6 +11,7 @@ export async function GET(
     try {
         const user = await currentUser();
         if (!user) {
+            await logWarning("Unauthorized access attempt to fetch campaign post", { action: "fetch-campaign-post" });
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -53,8 +55,9 @@ export async function GET(
         }
 
         return NextResponse.json({ post });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching post:', error);
+        await logError("Failed to fetch campaign post", { userId: "unknown" }, error);
         return NextResponse.json({ error: 'Failed to fetch post' }, { status: 500 });
     }
 }
@@ -67,6 +70,7 @@ export async function PUT(
     try {
         const user = await currentUser();
         if (!user) {
+            await logWarning("Unauthorized access attempt to update campaign post", { action: "update-campaign-post" });
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -154,9 +158,11 @@ export async function PUT(
             },
         });
 
+        await logInfo("Campaign post updated", { postId: post.id, campaignId, updatedBy: user.id });
         return NextResponse.json({ post });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error updating post:', error);
+        await logError("Failed to update campaign post", { userId: "unknown" }, error);
         return NextResponse.json({ error: 'Failed to update post' }, { status: 500 });
     }
 }
@@ -169,6 +175,7 @@ export async function DELETE(
     try {
         const user = await currentUser();
         if (!user) {
+            await logWarning("Unauthorized access attempt to delete campaign post", { action: "delete-campaign-post" });
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -221,9 +228,11 @@ export async function DELETE(
             where: { id: postIdNum },
         });
 
+        await logInfo("Campaign post deleted", { postId: postIdNum, campaignId, deletedBy: user.id });
         return NextResponse.json({ message: 'Post deleted successfully' });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error deleting post:', error);
+        await logError("Failed to delete campaign post", { userId: "unknown" }, error);
         return NextResponse.json({ error: 'Failed to delete post' }, { status: 500 });
     }
 }

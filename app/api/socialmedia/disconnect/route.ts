@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { getImpersonatedOrganisationId } from "@/lib/admin-impersonation";
+import { logError, logWarning, logInfo } from '@/lib/audit-logger';
 
 export async function POST(request: NextRequest) {
     try {
         const { userId: currentUserId } = await auth();
         if (!currentUserId) {
+            await logWarning("Unauthorized access attempt to disconnect platform", { action: "disconnect-platform" });
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -54,9 +56,11 @@ export async function POST(request: NextRequest) {
             data: updateData
         });
 
+        await logInfo("Social media platform disconnected", { userId: targetUserId, platform });
         return NextResponse.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error disconnecting platform:", error);
+        await logError("Failed to disconnect platform", { userId: "Unknown" }, error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

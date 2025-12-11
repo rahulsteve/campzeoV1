@@ -43,6 +43,10 @@ next-env.d.ts
 
 # clerk configuration (can include secrets)
 /.clerk/
+/.vs
+/package-lock.json
+/package-lock.json
+/package-lock.json
 /.vscode
 /.vscode
 /.vscode

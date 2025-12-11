@@ -2,11 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { getImpersonatedOrganisationId } from "@/lib/admin-impersonation";
+import { logError, logWarning, logInfo } from '@/lib/audit-logger';
 
 export async function GET(request: NextRequest) {
     try {
         const { userId } = await auth();
         if (!userId) {
+            await logWarning("Unauthorized access attempt to generate auth URL", { action: "generate-auth-url" });
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -98,9 +100,11 @@ export async function GET(request: NextRequest) {
             state,
         });
 
+        await logInfo("OAuth URL generated", { userId, platform, impersonated: !!impersonatedOrgId });
         return NextResponse.json({ url: authUrl });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error generating auth URL:", error);
+        await logError("Failed to generate auth URL", { userId: "Unknown" }, error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
 }

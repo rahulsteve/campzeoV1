@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { generatePassword, sendOrganisationInvite } from "@/lib/email";
 import { createClerkUser } from "@/lib/clerk-admin";
 import { sendSms } from "@/lib/twilio";
+import { logError, logWarning, logInfo } from "@/lib/audit-logger";
 // Define PlatformType locally to avoid build errors if Prisma client generation fails to export it
 enum PlatformType {
     EMAIL = 'EMAIL',
@@ -30,6 +31,7 @@ export async function GET(req: Request) {
         const dbUser = await prisma.user.findUnique({ where: { clerkId: user.id } });
 
         if (dbUser?.role !== "ADMIN_USER") {
+            await logWarning("Forbidden access attempt to list organisations", { userId: user.id, role: dbUser?.role });
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
@@ -93,6 +95,7 @@ export async function GET(req: Request) {
 
     } catch (error) {
         console.error("Error fetching organisations:", error);
+        await logError("Failed to fetch organisations", { userId: "Unknown" }, error as Error);
         return NextResponse.json(
             { isSuccess: false, message: "Internal server error", error: error instanceof Error ? error.message : "Unknown error" },
             { status: 500 }
@@ -112,6 +115,7 @@ export async function POST(req: Request) {
         const dbUser = await prisma.user.findUnique({ where: { clerkId: user.id } });
 
         if (dbUser?.role !== "ADMIN_USER") {
+            await logWarning("Forbidden access attempt to create/update organisation", { userId: user.id, role: dbUser?.role });
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -241,6 +245,7 @@ export async function POST(req: Request) {
 
     } catch (error) {
         console.error("Error saving organisation:", error);
+        await logError("Failed to save organisation", { action: "create-update-organisation" }, error as Error);
         return NextResponse.json(
             { isSuccess: false, message: "Internal server error", error: error instanceof Error ? error.message : "Unknown error" },
             { status: 500 }

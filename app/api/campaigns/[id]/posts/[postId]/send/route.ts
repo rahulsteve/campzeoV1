@@ -11,6 +11,7 @@ export async function POST(
     try {
         const { userId } = await auth();
         if (!userId) {
+            await logWarning("Unauthorized access attempt to send campaign post", { action: "send-campaign-post" });
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -65,8 +66,9 @@ export async function POST(
             failed: result.failed
         });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('[POST_SHARE]', error);
+        await logError("Failed to send campaign post", { userId: "unknown" }, error);
         return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
     }
 }
