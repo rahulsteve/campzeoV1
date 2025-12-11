@@ -146,13 +146,19 @@ export function AIContentAssistant({
             setImageLoading(true);
             setGeneratedImagePrompt('');
 
-            const response = await fetch('/api/ai/generate-image', {
+            // Create a minimum delay promise of 5 seconds (5000ms)
+            const delayPromise = new Promise(resolve => setTimeout(resolve, 5000));
+
+            const apiCallPromise = fetch('/api/ai/generate-image', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     prompt: imagePrompt,
                 }),
             });
+
+            // Wait for both the API call and the minimum delay
+            const [response] = await Promise.all([apiCallPromise, delayPromise]);
 
             const data = await response.json();
 
@@ -440,18 +446,53 @@ export function AIContentAssistant({
                                 </Button>
                             </div>
 
-                            {generatedImagePrompt && (
+                            {(generatedImagePrompt || imageLoading) && (
                                 <div className="space-y-4 border rounded-xl p-4 bg-muted/30">
-                                    <h3 className="font-medium text-center">Result</h3>
-                                    {generatedImagePrompt.startsWith('http') ? (
-                                        <div className="space-y-4">
-                                            <div className="relative aspect-square w-full max-w-md mx-auto overflow-hidden rounded-lg border bg-background shadow-sm">
+                                    <h3 className="font-medium text-center">
+                                        {imageLoading ? 'Generating Preview...' : 'Result'}
+                                    </h3>
+
+                                    <div className="space-y-4">
+                                        <div className="relative aspect-square w-full max-w-xl mx-auto overflow-hidden rounded-lg border bg-background shadow-sm flex items-center justify-center">
+                                            {imageLoading ? (
+                                                <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-muted/20">
+                                                    {/* Pixel Animation Grid */}
+                                                    <div className="absolute inset-0 grid grid-cols-12 grid-rows-12 gap-px opacity-90 p-4">
+                                                        {Array.from({ length: 144 }).map((_, i) => (
+                                                            <div
+                                                                key={i}
+                                                                className="bg-primary/10 rounded-[1px] animate-pulse"
+                                                                style={{
+                                                                    animationDelay: `${(i % 5) * 0.1}s`,
+                                                                    animationDuration: `${1 + Math.random()}s`,
+                                                                    opacity: Math.random() * 0.5 + 0.2
+                                                                }}
+                                                            />
+                                                        ))}
+                                                    </div>
+
+                                                    {/* Center loading text/icon */}
+                                                    <div className="relative z-10 flex flex-col items-center gap-3 bg-background/80 backdrop-blur-sm p-6 rounded-2xl border shadow-sm">
+                                                        <Loader2 className="size-8 animate-spin text-primary" />
+                                                        <p className="text-sm font-medium text-muted-foreground animate-pulse">
+                                                            Rendering pixels...
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ) : generatedImagePrompt.startsWith('http') ? (
                                                 <img
                                                     src={generatedImagePrompt}
                                                     alt="Generated content"
                                                     className="object-contain w-full h-full"
                                                 />
-                                            </div>
+                                            ) : (
+                                                <div className="text-center p-4">
+                                                    <p className="text-sm text-muted-foreground">{generatedImagePrompt}</p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {!imageLoading && generatedImagePrompt.startsWith('http') && (
                                             <div className="flex justify-center gap-3">
                                                 <Button
                                                     variant="secondary"
@@ -473,12 +514,8 @@ export function AIContentAssistant({
                                                     Use This Image
                                                 </Button>
                                             </div>
-                                        </div>
-                                    ) : (
-                                        <div className="text-center p-4">
-                                            <p className="text-sm text-muted-foreground">{generatedImagePrompt}</p>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>
