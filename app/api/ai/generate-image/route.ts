@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { generateImage } from '@/lib/ai-horde';
+import { generateImage } from '@/lib/pollinations';
 
 export async function POST(request: NextRequest) {
     try {

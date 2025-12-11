@@ -212,19 +212,116 @@ export async function checkImageStatus(jobId: string): Promise<{
 }
 
 // Keep legacy functions for backward compatibility if needed, but they will use the new flow internally
+/**
+ * Poll for text generation status
+ */
+async function pollForText(jobId: string): Promise<{ success: boolean; content?: string; error?: string }> {
+    const TIMEOUT = 60000; // 60 seconds
+    const POLLING_INTERVAL = 3000; // 3 seconds
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < TIMEOUT) {
+        const status = await checkTextStatus(jobId);
+
+        if (status.done) {
+            if (status.faulted) {
+                return { success: false, error: status.error || 'Generation failed on worker' };
+            }
+            return { success: true, content: status.content };
+        }
+
+        await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL));
+    }
+
+    return { success: false, error: 'Generation timed out' };
+}
+
+/**
+ * Poll for image generation status
+ */
+async function pollForImage(jobId: string): Promise<{ success: boolean; imageData?: string; error?: string }> {
+    const TIMEOUT = 120000; // 2 minutes (images take longer)
+    const POLLING_INTERVAL = 5000; // 5 seconds
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < TIMEOUT) {
+        const status = await checkImageStatus(jobId);
+
+        if (status.done) {
+            if (status.faulted) {
+                return { success: false, error: status.error || 'Generation failed on worker' };
+            }
+            return { success: true, imageData: status.imageUrl };
+        }
+
+        await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL));
+    }
+
+    return { success: false, error: 'Generation timed out' };
+}
+
 export async function generateContent(
     prompt: string,
     context?: { platform?: string; existingContent?: string; tone?: string; }
-): Promise<{ success: boolean; content?: string; error?: string }> {
-    // For now, we'll just return error as we want to force using the async flow
-    return { success: false, error: 'Please use async submission' };
+): Promise<{ success: boolean; content?: string; subject?: string; error?: string }> {
+
+    let enhancedPrompt = prompt;
+
+    if (context) {
+        const contextParts: string[] = [];
+        if (context.platform) contextParts.push(`Platform: ${context.platform}`);
+        if (context.tone) contextParts.push(`Tone: ${context.tone}`);
+        if (context.existingContent) contextParts.push(`Existing content: "${context.existingContent}"`);
+
+        if (contextParts.length > 0) {
+            enhancedPrompt = `${contextParts.join('\n')}\n\nUser request: ${prompt}\n\nGenerate the content.`;
+
+            // If asking for a post with a platform, request JSON format
+            if (context.platform && context.platform !== 'SMS') {
+                enhancedPrompt += `\n\nIMPORTANT: Respond ONLY with a valid JSON object in the following format:\n{\n  "subject": "The engaging title or subject line",\n  "content": "The main message body"\n}`;
+            }
+        }
+    }
+
+    const submission = await submitTextJob(enhancedPrompt);
+    if (!submission.success || !submission.jobId) {
+        return { success: false, error: submission.error || 'Failed to submit job' };
+    }
+
+    const result = await pollForText(submission.jobId);
+
+    if (result.success && result.content) {
+        let content = result.content;
+        let subject = undefined;
+
+        // Try to parse JSON response
+        try {
+            const cleanText = result.content.replace(/```json/g, '').replace(/```/g, '').trim();
+            if (cleanText.startsWith('{') && cleanText.endsWith('}')) {
+                const json = JSON.parse(cleanText);
+                content = json.content;
+                subject = json.subject;
+            }
+        } catch (e) {
+            console.log('Response was not JSON, using raw text');
+        }
+
+        return { success: true, content, subject };
+    }
+
+    return { success: false, error: result.error };
 }
 
-export async function generateImage(prompt: string, style?: string): Promise<any> {
-    return { success: false, error: 'Please use async submission' };
+export async function generateImage(prompt: string, style?: string): Promise<{ success: boolean; imageData?: string; error?: string }> {
+    const submission = await submitImageJob(prompt, style);
+    if (!submission.success || !submission.jobId) {
+        return { success: false, error: submission.error || 'Failed to submit job' };
+    }
+
+    return pollForImage(submission.jobId);
 }
 
 export async function refineContent(content: string, instruction: string, platform?: string): Promise<any> {
     const prompt = `Original content: "${content}"\n\nInstruction: ${instruction}\n\nPlease rewrite the content following the instruction.`;
-    return submitTextJob(prompt); // This now returns jobId
+    return generateContent(prompt, { platform, existingContent: content });
 }

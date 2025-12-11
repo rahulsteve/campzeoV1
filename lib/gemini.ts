@@ -3,22 +3,29 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 // Initialize Gemini API
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-// List of model names to try in order (from newest to oldest)
+// List of model names to try in order (prioritizing stable, free-tier friendly models)
 const MODEL_FALLBACKS = [
-    'gemini-2.0-flash-exp',      // Latest experimental model
-    'gemini-1.5-flash-latest',   // Latest stable flash
-    'gemini-1.5-pro-latest',     // Latest stable pro
+    // Flash 1.5 - Best combination of speed, cost (free tier), and capability
     'gemini-1.5-flash',
+    'gemini-1.5-flash-001',
+    'gemini-1.5-flash-002',
+
+    // Pro 1.5 - More capable
     'gemini-1.5-pro',
+    'gemini-1.5-pro-001',
+    'gemini-1.5-pro-002',
+
+    // Legacy Pro
     'gemini-pro',
-    'gemini-1.0-pro',
-    'models/gemini-2.0-flash-exp',
-    'models/gemini-1.5-flash-latest',
-    'models/gemini-1.5-pro-latest',
+
+    // Models with 'models/' prefix (sometimes required)
     'models/gemini-1.5-flash',
+    'models/gemini-1.5-flash-001',
+    'models/gemini-1.5-flash-002',
     'models/gemini-1.5-pro',
+    'models/gemini-1.5-pro-001',
+    'models/gemini-1.5-pro-002',
     'models/gemini-pro',
-    'models/gemini-1.0-pro',
 ];
 
 /**
@@ -70,7 +77,7 @@ export async function generateContent(
         existingContent?: string;
         tone?: string;
     }
-): Promise<{ success: boolean; content?: string; error?: string }> {
+): Promise<{ success: boolean; content?: string; subject?: string; error?: string }> {
     try {
         if (!process.env.GEMINI_API_KEY) {
             return {
@@ -112,7 +119,14 @@ export async function generateContent(
             }
 
             if (contextParts.length > 0) {
-                enhancedPrompt = `${contextParts.join('\n')}\n\nUser request: ${prompt}\n\nGenerate the content:`;
+                enhancedPrompt = `${contextParts.join('\n')}\n\nUser request: ${prompt}\n\nGenerate the content.`;
+
+                // If asking for a post with a platform, request JSON format
+                if (context.platform && context.platform !== 'SMS') {
+                    enhancedPrompt += `\n\nIMPORTANT: Respond ONLY with a valid JSON object in the following format:\n{\n  "subject": "The engaging title or subject line",\n  "content": "The main message body"\n}`;
+                } else {
+                    enhancedPrompt += `\n\nGenerate the content:`;
+                }
             }
         }
 
@@ -128,9 +142,26 @@ export async function generateContent(
                 const text = response.text();
 
                 console.log(`✅ Successfully generated content with: ${modelName}`);
+
+                let content = text;
+                let subject = undefined;
+
+                // Try to parse JSON response
+                try {
+                    const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                    if (cleanText.startsWith('{') && cleanText.endsWith('}')) {
+                        const json = JSON.parse(cleanText);
+                        content = json.content;
+                        subject = json.subject;
+                    }
+                } catch (e) {
+                    console.log('Response was not JSON, using raw text');
+                }
+
                 return {
                     success: true,
-                    content: text,
+                    content: content,
+                    subject: subject
                 };
             } catch (error: any) {
                 // Check if it's a quota error (429) or rate limit
@@ -247,7 +278,7 @@ export async function refineContent(
     content: string,
     instruction: string,
     platform?: string
-): Promise<{ success: boolean; content?: string; error?: string }> {
+): Promise<{ success: boolean; content?: string; subject?: string; error?: string }> {
     const prompt = `${instruction}\n\nOriginal content: "${content}"`;
     return generateContent(prompt, { platform, existingContent: content });
 }

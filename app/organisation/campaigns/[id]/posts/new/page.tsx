@@ -626,68 +626,68 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                             )}
                                         </div>
 
-                                            {/* Other Platforms Form */}
-                                            {selectedPlatform && selectedPlatform !== 'EMAIL' && (
-                                                <div className="space-y-4">
-                                                    {/* Title Field for Social Media & WhatsApp */}
-                                                    {selectedPlatform !== 'SMS' && (
-                                                        <div className="space-y-2">
-                                                            <Label htmlFor="subject">Title *</Label>
-                                                            <Input
-                                                                id="subject"
-                                                                placeholder="Enter post title"
-                                                                value={subject}
-                                                                onChange={(e) => setSubject(e.target.value)}
-                                                                required={selectedPlatform !== 'SMS' && selectedPlatform !== 'EMAIL'}
-                                                            />
-                                                            <p className="text-xs text-muted-foreground">
-                                                                This will be displayed as the bold header of your post
-                                                            </p>
-                                                        </div>
-                                                    )}
-
+                                        {/* Other Platforms Form */}
+                                        {selectedPlatform && selectedPlatform !== 'EMAIL' && (
+                                            <div className="space-y-4">
+                                                {/* Title Field for Social Media & WhatsApp */}
+                                                {selectedPlatform !== 'SMS' && (
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="message">Message *</Label>
-                                                        <div className="relative">
-                                                            <Textarea
-                                                                id="message"
-                                                                placeholder="Enter your message"
-                                                                value={message}
-                                                                onChange={(e) => setMessage(e.target.value)}
-                                                                rows={6}
-                                                                required={true}
-                                                                className="pr-12"
-                                                            />
-                                                            <Button
-                                                                type="button"
-                                                                size="icon"
-                                                                variant="ghost"
-                                                                className="absolute bottom-2 right-2 size-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
-                                                                onClick={() => setShowAIAssistant(true)}
-                                                                title="Generate content with AI"
-                                                            >
-                                                                <Sparkles className="size-4" />
-                                                            </Button>
-                                                        </div>
-                                                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                                                            <span>
-                                                                {message.length} characters
-                                                            </span>
-                                                            <span>
-                                                                {selectedPlatform === 'SMS' && `Limit: 160 | `}
-                                                                {selectedPlatform === 'TWITTER' && `Limit: 280 | `}
-                                                                {selectedPlatform === 'INSTAGRAM' && `Limit: 2200`}
-                                                            </span>
-                                                        </div>
+                                                        <Label htmlFor="subject">Title *</Label>
+                                                        <Input
+                                                            id="subject"
+                                                            placeholder="Enter post title"
+                                                            value={subject}
+                                                            onChange={(e) => setSubject(e.target.value)}
+                                                            required={selectedPlatform !== 'SMS' && selectedPlatform !== 'EMAIL'}
+                                                        />
                                                         <p className="text-xs text-muted-foreground">
-                                                            {selectedPlatform === 'SMS' && 'SMS messages are limited to 160 characters. '}
-                                                            {selectedPlatform === 'WHATSAPP' && 'WhatsApp messages support rich formatting. '}
-                                                            {selectedPlatform === 'FACEBOOK' && 'Create engaging content for your Facebook audience. '}
-                                                            {selectedPlatform === 'INSTAGRAM' && 'Share visual content with your Instagram followers. '}
-                                                            {selectedPlatform === 'LINKEDIN' && 'Professional content for your LinkedIn network. '}
-                                                            {selectedPlatform === 'YOUTUBE' && 'Video description or community post. '}
+                                                            This will be displayed as the bold header of your post
                                                         </p>
                                                     </div>
+                                                )}
+
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="message">Message *</Label>
+                                                    <div className="relative">
+                                                        <Textarea
+                                                            id="message"
+                                                            placeholder="Enter your message"
+                                                            value={message}
+                                                            onChange={(e) => setMessage(e.target.value)}
+                                                            rows={6}
+                                                            required={true}
+                                                            className="pr-12 border border-2 border-gray-300 rounded-2xl"
+                                                        />
+                                                        <Button
+                                                            type="button"
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="absolute bottom-2 right-2 size-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
+                                                            onClick={() => setShowAIAssistant(true)}
+                                                            title="Generate content with AI"
+                                                        >
+                                                            <Sparkles className="size-4" />
+                                                        </Button>
+                                                    </div>
+                                                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                                                        <span>
+                                                            {message.length} characters
+                                                        </span>
+                                                        <span>
+                                                            {selectedPlatform === 'SMS' && `Limit: 160 | `}
+                                                            {selectedPlatform === 'TWITTER' && `Limit: 280 | `}
+                                                            {selectedPlatform === 'INSTAGRAM' && `Limit: 2200`}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {selectedPlatform === 'SMS' && 'SMS messages are limited to 160 characters. '}
+                                                        {selectedPlatform === 'WHATSAPP' && 'WhatsApp messages support rich formatting. '}
+                                                        {selectedPlatform === 'FACEBOOK' && 'Create engaging content for your Facebook audience. '}
+                                                        {selectedPlatform === 'INSTAGRAM' && 'Share visual content with your Instagram followers. '}
+                                                        {selectedPlatform === 'LINKEDIN' && 'Professional content for your LinkedIn network. '}
+                                                        {selectedPlatform === 'YOUTUBE' && 'Video description or community post. '}
+                                                    </p>
+                                                </div>
                                                 {/* ) : templates.length > 0 ? (
                                                     <>
                                                         <Select value={selectedTemplateId || "none"} onValueChange={handleTemplateSelect}>
@@ -836,53 +836,6 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                         {/* Other Platforms Form */}
                                         {selectedPlatform && selectedPlatform !== 'EMAIL' && (
                                             <div className="space-y-4">
-                                                {/* Title Field for Social Media & WhatsApp */}
-                                                {selectedPlatform !== 'SMS' && (
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor="subject">Title *</Label>
-                                                        <Input
-                                                            id="subject"
-                                                            placeholder="Enter post title"
-                                                            value={subject}
-                                                            onChange={(e) => setSubject(e.target.value)}
-                                                            required={selectedPlatform !== 'SMS' && selectedPlatform !== 'EMAIL'}
-                                                        />
-                                                        <p className="text-xs text-muted-foreground">
-                                                            This will be displayed as the bold header of your post
-                                                        </p>
-                                                    </div>
-                                                )}
-
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="message">Message *</Label>
-                                                    <Textarea
-                                                        id="message"
-                                                        placeholder="Enter your message"
-                                                        value={message}
-                                                        onChange={(e) => setMessage(e.target.value)}
-                                                        rows={6}
-                                                        required={true}
-                                                        className="border border-gray-300 rounded-md p-2"
-                                                    />
-                                                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                                                        <span>
-                                                            {message.length} characters
-                                                        </span>
-                                                        <span>
-                                                            {selectedPlatform === 'SMS' && `Limit: 160 | `}
-                                                            {selectedPlatform === 'TWITTER' && `Limit: 280 | `}
-                                                            {selectedPlatform === 'INSTAGRAM' && `Limit: 2200`}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {selectedPlatform === 'SMS' && 'SMS messages are limited to 160 characters. '}
-                                                        {selectedPlatform === 'WHATSAPP' && 'WhatsApp messages support rich formatting. '}
-                                                        {selectedPlatform === 'FACEBOOK' && 'Create engaging content for your Facebook audience. '}
-                                                        {selectedPlatform === 'INSTAGRAM' && 'Share visual content with your Instagram followers. '}
-                                                        {selectedPlatform === 'LINKEDIN' && 'Professional content for your LinkedIn network. '}
-                                                        {selectedPlatform === 'YOUTUBE' && 'Video description or community post. '}
-                                                    </p>
-                                                </div>
 
 
                                                 {/* Media Upload */}
@@ -1325,7 +1278,10 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
             <AIContentAssistant
                 open={showAIAssistant}
                 onOpenChange={setShowAIAssistant}
-                onInsertContent={(content) => setMessage(content)}
+                onInsertContent={(content, subject) => {
+                    setMessage(content);
+                    if (subject) setSubject(subject);
+                }}
                 onInsertImage={(url) => setMediaUrls(prev => [...prev, url])}
                 context={{
                     platform: selectedPlatform || undefined,

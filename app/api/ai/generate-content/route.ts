@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { generateContent, refineContent } from '@/lib/ai-horde';
+import { generateContent, refineContent } from '@/lib/pollinations';
 
 export async function POST(request: NextRequest) {
     try {
@@ -40,6 +40,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
             success: true,
             content: result.content,
+            subject: result.subject,
+            variations: result.variations,
         });
     } catch (error: any) {
         console.error('Generate content API error:', error);
