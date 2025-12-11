@@ -271,7 +271,8 @@ export default function OnboardingPage() {
                   </span>
                 </div>
               </div>
-            </div>
+
+
 
               <div className="mt-8 pt-6 border-t text-xs text-muted-foreground">
                 <p>Secure payment powered by Razorpay. You can cancel anytime from your dashboard.</p>
@@ -308,7 +309,7 @@ export default function OnboardingPage() {
                   </div>
                 )}
               </div>
-
+            </div>
             {/* Payment Buttons */}
             <div className="flex gap-3">
               <Button
@@ -472,60 +473,62 @@ export default function OnboardingPage() {
                   <h3 className="font-semibold text-lg">Select a Plan</h3>
                 </div>
 
-            {/* Plan Selection */}
-            <div className="space-y-3 pt-4 border-t">
-              <Label className="text-lg">Select Your Plan *</Label>
-              {plansLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="text-sm text-muted-foreground mt-2">Loading plans...</p>
-                </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-3">
-                  {plans.map((plan) => {
-                    // Determine if this is a popular/recommended plan based on price range
-                    const isPopular = plan.price > 0 && plan.price < 5000;
-
-                    return (
-                      <Card
-                        key={plan.id}
-                        className={`cursor-pointer transition-all ${selectedPlanId === plan.id
-                          ? "border-primary shadow-md ring-2 ring-primary"
-                          : "hover:border-primary/50"
-                          } ${isPopular ? "relative" : ""}`}
-                        onClick={() => setSelectedPlanId(plan.id)}
-                      >
-                        {isPopular && (
-                          <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                            <Badge className="bg-primary">Most Popular</Badge>
-                          </div>
-                        )}
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-lg">{plan.name}</CardTitle>
-                          <div className="mt-2">
-                            <span className="text-3xl font-bold">
-                              {formatPrice(plan.price, "INR")}
-                            </span>
-                            {plan.price > 0 && (
-                              <span className="text-muted-foreground text-sm">/{plan.billingCycle || 'month'}</span>
+                <div className="space-y-4">
+                  {plansLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                      <p className="text-sm text-muted-foreground mt-2">Loading plans...</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4">
+                      {plans.map((plan) => {
+                        const isPopular = plan.price > 0 && plan.price < 5000;
+                        return (
+                          <Card
+                            key={plan.id}
+                            className={`cursor-pointer transition-all ${selectedPlanId === plan.id
+                              ? "border-primary shadow-md ring-2 ring-primary"
+                              : "hover:border-primary/50"
+                              } ${isPopular ? "relative" : ""}`}
+                            onClick={() => setSelectedPlanId(plan.id)}
+                          >
+                            {isPopular && (
+                              <div className="absolute -top-3 right-4">
+                                <Badge className="bg-primary text-xs">Most Popular</Badge>
+                              </div>
                             )}
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <ul className="space-y-2">
-                            {plan.features.slice(0, 4).map((feature, index) => (
-                              <li key={index} className="flex items-start gap-2 text-sm">
-                                <Check className="size-4 text-primary shrink-0 mt-0.5" />
-                                <span>{feature}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
+                            <CardHeader className="pb-3 p-4">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <CardTitle className="text-base font-bold">{plan.name}</CardTitle>
+                                  <div className="mt-1">
+                                    <span className="text-xl font-bold">
+                                      {formatPrice(plan.price, "INR")}
+                                    </span>
+                                    {plan.price > 0 && (
+                                      <span className="text-muted-foreground text-xs">/{plan.billingCycle || 'month'}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="p-4 pt-0">
+                              <ul className="space-y-1.5">
+                                {plan.features.slice(0, 3).map((feature, index) => (
+                                  <li key={index} className="flex items-start gap-2 text-xs text-muted-foreground">
+                                    <Check className="size-3.5 text-primary shrink-0 mt-0.5" />
+                                    <span>{feature}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
 
             {error && (
@@ -545,6 +548,7 @@ export default function OnboardingPage() {
           </form>
         </CardContent>
       </Card>
+
     </div>
-  );
+  )
 }

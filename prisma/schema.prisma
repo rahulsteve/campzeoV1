@@ -314,8 +314,7 @@ model MessageTemplate {
   createdBy      String?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
-  metadata       Json?
-  mediaUrls      String[]         @default([])
+
   organisation   Organisation     @relation(fields: [organisationId], references: [id], onDelete: Cascade)
 
   @@index([organisationId])

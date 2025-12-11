@@ -1,46 +1,20 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Zap, Shield, BarChart3, Users, ArrowRight, Layers, Globe } from "lucide-react";
+import { Check, BarChart3, Shield, Users, ArrowRight, Globe, Layers, Zap } from "lucide-react";
 import { SignInButton, SignedOut, SignedIn, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Header } from '@/components/Header';
-import { usePlans, Plan } from "@/hooks/use-plans";
-import { formatPrice } from "@/lib/plans";
 import { TestimonialCarousel } from "@/components/testimonial-carousel";
 
-
-
 export default function LandingPage() {
-  const { plans, isLoading: plansLoading } = usePlans();
-  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const router = useRouter();
-
-  const handlePlanSelect = (plan: Plan) => {
-    if (plan.price === 0) {
-      // Redirect to sign up for free trial
-      router.push("/sign-up");
-    } else {
-      // Show payment modal for paid plans
-      setSelectedPlan(plan);
-      setShowPaymentModal(true);
-    }
-  };
-
-  const handlePaymentSuccess = () => {
-    setShowPaymentModal(false);
-    alert("Payment successful! Your account has been created.");
-    router.push("/organisation");
-  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Navigation */}
-      {/* <Header /> */}
       <nav className="fixed top-0 w-full bg-background/80 backdrop-blur-md border-b z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -51,9 +25,6 @@ export default function LandingPage() {
               <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
                 Features
               </a>
-              <a href="#how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">
-                How it Works
-              </a>
               <a href="#testimonials" className="text-muted-foreground hover:text-foreground transition-colors">
                 Testimonials
               </a>
@@ -63,12 +34,12 @@ export default function LandingPage() {
             </div>
             <div className="flex items-center gap-4">
               <SignedOut>
-                <div className="flex items-center gap-3">
-                  <Button variant="outline" onClick={() => router.push("/sign-up")}>
+                <div className="flex  items-center gap-3">
+                  <Button variant="outline" className="cursor-pointer hover:text-red-500" onClick={() => router.push("/sign-up")}>
                     Sign Up
                   </Button>
                   <SignInButton mode="modal">
-                    <Button>Sign In</Button>
+                    <Button className="cursor-pointer hover:bg-red-500/50 hover:text-red-500">Sign In</Button>
                   </SignInButton>
                 </div>
               </SignedOut>
@@ -100,16 +71,14 @@ export default function LandingPage() {
             Start your free 14-day trial today.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            {!plansLoading && plans.length > 0 && (
-              <Button size="lg" onClick={() => handlePlanSelect(plans[0])}>
-                Start Free Trial
-                <ArrowRight className="ml-2 size-4" />
-              </Button>
-            )}
+            <Button size="lg" onClick={() => router.push("/sign-up")}>
+              Start Free Trial
+              <ArrowRight className="ml-2 size-4" />
+            </Button>
             <Button
               size="lg"
               variant="outline"
-              onClick={() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" })}
+              onClick={() => router.push("/pricing")}
             >
               View Pricing
             </Button>
@@ -130,6 +99,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
 
       {/* Features Section */}
       <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 bg-muted/30">
@@ -182,82 +152,94 @@ export default function LandingPage() {
       <section id="how-it-works" className="py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="mb-4">Simple, Transparent Pricing</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Choose the perfect plan for your needs. Start with a free trial or go straight to a paid plan.
+            <h2 className="text-3xl font-bold mb-4">How It Works</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
+              Get started in minutes with our simple three-step process
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {plansLoading ? (
-              <div className="col-span-3 text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Loading plans...</p>
-              </div>
-            ) : (
-              plans.map((plan) => {
-                const isPopular = plan.price > 0 && plan.price < 5000;
-                const isTrial = plan.price === 0;
 
-                return (
-                  <Card
-                    key={plan.id}
-                    className={`relative ${isPopular ? "border-primary shadow-lg" : ""}`}
-                  >
-                    {isPopular && (
-                      <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                        <Badge className="gap-1">
-                          <Star className="size-3" />
-                          Most Popular
-                        </Badge>
-                      </div>
-                    )}
-                    <CardHeader>
-                      <CardTitle>{plan.name}</CardTitle>
-                      <CardDescription>{plan.description || (isTrial ? "Try all features for free" : "Perfect for your needs")}</CardDescription>
-                      <div className="mt-4">
-                        <span className="text-4xl">{plan.price === 0 ? "Free" : `₹${plan.price}`}</span>
-                        {plan.price > 0 && <span className="text-muted-foreground">/{plan.billingCycle || 'month'}</span>}
-                        {isTrial && <span className="text-muted-foreground"> trial</span>}
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="space-y-3">
-                        {plan.features.map((feature, index) => (
-                          <li key={index} className="flex items-start gap-2">
-                            <Check className="size-5 text-green-500 shrink-0 mt-0.5" />
-                            <span className="text-sm">{feature}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                    <CardFooter>
-                      <Button
-                        className="w-full"
-                        variant={isPopular ? "default" : "outline"}
-                        onClick={() => handlePlanSelect(plan)}
-                      >
-                        {isTrial ? "Start Free Trial" : "Purchase Now"}
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                );
-              })
-            )}
+          <div className="grid md:grid-cols-3 gap-12 relative">
+            {/* Step 1 */}
+            <div className="relative flex flex-col items-center text-center group">
+              <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
+                <Globe className="size-8 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold mb-3">1. Connect Your Accounts</h3>
+              <p className="text-muted-foreground">
+                Seamlessly link all your social media profiles and ad accounts in one secure dashboard.
+              </p>
+              {/* Connector Line (Desktop) */}
+              <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-[2px] bg-gradient-to-r from-transparent via-border to-transparent" />
+            </div>
+
+            {/* Step 2 */}
+            <div className="relative flex flex-col items-center text-center group">
+              <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
+                <Layers className="size-8 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold mb-3">2. Create & Schedule</h3>
+              <p className="text-muted-foreground">
+                Use our AI-powered tools to create engaging content and schedule it for optimal times.
+              </p>
+              {/* Connector Line (Desktop) */}
+              <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-[2px] bg-gradient-to-r from-transparent via-border to-transparent" />
+            </div>
+
+            {/* Step 3 */}
+            <div className="relative flex flex-col items-center text-center group">
+              <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
+                <Zap className="size-8 text-primary" />
+              </div>
+              <h3 className="text-xl font-bold mb-3">3. Analyze & Grow</h3>
+              <p className="text-muted-foreground">
+                Track performance with real-time analytics and optimize your strategy for growth.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section id="testimonials" className="py-24 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold mb-4">Trusted by Industry Leaders</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
+              See what our customers have to say about their experience
+            </p>
           </div>
           <TestimonialCarousel />
         </div>
       </section>
-
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-primary text-primary-foreground">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="mb-4 text-primary-foreground">Ready to Get Started?</h2>
-          <p className="mb-8 text-primary-foreground/90">
-            Join thousands of teams already using SaaSify to streamline their operations
-          </p>
-          <Button size="lg" variant="secondary" onClick={() => !plansLoading && plans.length > 0 && handlePlanSelect(plans[0])}>
-            Start Your Free Trial
-            <ArrowRight className="ml-2 size-4" />
-          </Button>
+      {/* Red CTA Section (Replaces Pricing Grid on Landing Page) */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto">
+          <div className="bg-[#DC2626] rounded-xl text-white p-12 md:p-16 text-center shadow-lg">
+            <h2 className="text-3xl md:text-5xl font-bold mb-6">
+              Ready to streamline your workflow?
+            </h2>
+            <p className="text-white/90 text-lg md:text-xl mb-10 max-w-3xl mx-auto">
+              Join thousands of teams already using Campzeo to manage their social presence. Plans start at free.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button
+                size="lg"
+                variant="secondary"
+                className="bg-white text-black hover:bg-white/50 hover:text-white transition-all duration-100 cursor-pointer text-base font-semibold h-12 px-8"
+                onClick={() => router.push("/pricing")}
+              >
+                View Pricing Plans
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="bg-transparent border-white text-white cursor-pointer hover:bg-white/50 hover:text-red-500 text-base font-semibold h-12 px-8"
+                onClick={() => router.push("/sign-up")}
+              >
+                Start Free Trial
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -280,7 +262,7 @@ export default function LandingPage() {
               <h3 className="font-semibold text-foreground mb-4">Product</h3>
               <ul className="space-y-3 text-sm text-muted-foreground">
                 <li><a href="#features" className="hover:text-primary transition-colors">Features</a></li>
-                <li><a href="#pricing" className="hover:text-primary transition-colors">Pricing</a></li>
+                <li><Link href="/pricing" className="hover:text-primary transition-colors">Pricing</Link></li>
                 <li><Link href="/pricing" className="hover:text-primary transition-colors">Enterprise</Link></li>
               </ul>
             </div>
