@@ -342,7 +342,7 @@ export default function Page() {
                   id="enquiryText"
                   name="enquiryText"
                   placeholder="Share a bit about your organization's needs..."
-                  className="min-h-[80px] resize-none"
+                  className="min-h-[80px] border  border-gray-200 resize-none"
                   value={form.enquiryText}
                   onChange={handleChange}
                 />
