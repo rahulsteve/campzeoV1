@@ -52,6 +52,9 @@ export async function POST(req: Request) {
         if (!data.taxNumber || data.taxNumber.trim() === '') {
             errors.push("Tax number is required");
         }
+        if (!data.enquiryText || data.enquiryText.trim() === '') {
+            errors.push("Enquiry text is required");
+        }
 
         // 2. Validate email format
         if (data.email && !EMAIL_REGEX.test(data.email.trim())) {
