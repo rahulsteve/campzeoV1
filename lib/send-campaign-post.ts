@@ -4,7 +4,7 @@ import { postToLinkedIn } from '@/lib/linkedin';
 import { postToFacebook } from '@/lib/facebook';
 import { postToInstagram } from '@/lib/instagram';
 import { postToYouTube, postYouTubeCommunity } from '@/lib/youtube';
-import { postToPinterest } from '@/lib/pinterest';
+import { postToPinterest, createPinterestBoard } from '@/lib/pinterest';
 import { sendSms, sendWhatsapp } from '@/lib/twilio';
 
 /**
@@ -245,26 +245,46 @@ export async function sendCampaignPost(
                 }
 
                 const metadata = post.metadata as any;
-                const imageUrl = post.mediaUrls.length > 0 ? post.mediaUrls[0] : post.videoUrl;
+                const media = (post.mediaUrls && post.mediaUrls.length > 0) ? post.mediaUrls : post.videoUrl;
 
-                if (!imageUrl) {
+                if (!media || (Array.isArray(media) && media.length === 0)) {
                     throw new Error('Pinterest requires an image or video');
                 }
 
-                if (!metadata?.boardId) {
-                    throw new Error('Pinterest requires a Board ID');
+                if (!metadata?.boardId && !metadata?.newBoardName) {
+                    throw new Error('Pinterest requires a Board ID or a New Board Name');
                 }
 
                 // Detect media type for Pinterest post type tracking
-                const isVideoPin = /\.(mp4|mov|webm|avi|mkv)(\?.*)?$/i.test(imageUrl);
+                // If array, checking first one is enough for simple type classification or defaulting to IMAGE
+                const firstMedia = Array.isArray(media) ? media[0] : media;
+                const isVideoPin = /\.(mp4|mov|webm|avi|mkv)(\?.*)?$/i.test(firstMedia);
+
+                let targetBoardId = metadata?.boardId;
+
+                // Create new board if requested
+                if (metadata?.newBoardName) {
+                    try {
+                        const newBoard = await createPinterestBoard(
+                            dbUser.pinterestAccessToken,
+                            metadata.newBoardName,
+                            undefined,
+                            'PUBLIC'
+                        );
+                        targetBoardId = newBoard.id;
+                    } catch (error) {
+                        console.error("Failed to create new board:", error);
+                        throw new Error('Failed to create new board on Pinterest');
+                    }
+                }
 
                 const platformResponse = await postToPinterest(
                     { accessToken: dbUser.pinterestAccessToken },
                     post.subject || 'Pin',
                     post.message || "",
-                    imageUrl,
+                    media,
                     {
-                        boardId: metadata?.boardId,
+                        boardId: targetBoardId,
                     }
                 );
 
@@ -280,8 +300,8 @@ export async function sendCampaignPost(
                         postId: platformResponse.id,
                         accountId: 'pinterest-user',
                         message: post.message || post.subject || "",
-                        mediaUrls: imageUrl,
-                        postType: isVideoPin ? 'VIDEO' : 'IMAGE',
+                        mediaUrls: Array.isArray(media) ? media[0] : media,
+                        postType: isVideoPin ? 'VIDEO' : (Array.isArray(media) && media.length > 1 ? 'CAROUSEL' : 'IMAGE'),
                         accessToken: dbUser.pinterestAccessToken,
                         published: true,
                         publishedAt: new Date(),

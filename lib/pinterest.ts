@@ -13,7 +13,7 @@ export async function postToPinterest(
     credentials: PinterestCredentials,
     title: string,
     description: string,
-    mediaUrl: string,
+    media: string | string[],
     metadata?: {
         boardId?: string;
     }
@@ -22,16 +22,56 @@ export async function postToPinterest(
 
     console.log(`[Pinterest] Creating pin: ${title}`);
 
-    if (!mediaUrl) {
+    if (!media || (Array.isArray(media) && media.length === 0)) {
         throw new Error('Pinterest requires an image or video');
     }
 
     try {
-        // Detect if media is video or image
-        const isVideo = /\.(mp4|mov|webm|avi|mkv)(\?.*)?$/i.test(mediaUrl);
-        const sourceType = isVideo ? 'video_url' : 'image_url';
+        let body: any = {
+            title,
+            description,
+            board_id: metadata?.boardId || undefined,
+        };
 
-        console.log(`[Pinterest] Creating pin: ${title}, Media Type: ${sourceType}`);
+        const mediaList = Array.isArray(media) ? media : [media];
+
+        // Check if multiple images (Carousel)
+        if (mediaList.length > 1) {
+            // Validate all are images (Pinterest doesn't support mixed/video carousels easily via this endpoint)
+            const hasVideo = mediaList.some(url => /\.(mp4|mov|webm|avi|mkv)(\?.*)?$/i.test(url));
+            if (hasVideo) {
+                // Fallback: If video exists in list, just take the first item (or throw error, but let's prioritize main content)
+                // For now, let's treat it as not supported to mix, so we just take the first one if it's a mix?
+                // Or better, just filter? Let's assume user sends correct data. 
+                // If carousel, we use multiple_image_urls
+                console.warn('[Pinterest] Video detected in multiple items. Pinterest organic carousel mainly supports images. Proceeding with multiple_image_urls check.');
+            }
+
+            body.media_source = {
+                source_type: 'multiple_image_urls',
+                items: mediaList.map(url => ({
+                    url: url,
+                    title: title, // Optional: can be set per image
+                    description: description // Optional
+                })),
+                index: 0
+            };
+            console.log(`[Pinterest] Creating Carousel Pin with ${mediaList.length} images.`);
+
+        } else {
+            // Single Item
+            const mediaUrl = mediaList[0];
+            const isVideo = /\.(mp4|mov|webm|avi|mkv)(\?.*)?$/i.test(mediaUrl);
+            const sourceType = isVideo ? 'video_url' : 'image_url';
+
+            console.log(`[Pinterest] Creating pin: ${title}, Media Type: ${sourceType}`);
+
+            body.media_source = {
+                source_type: sourceType,
+                url: mediaUrl,
+                cover_image_url: isVideo ? undefined : mediaUrl, // Optional for video
+            };
+        }
 
         // Create a Pin - Production URL
         const response = await fetch('https://api.pinterest.com/v5/pins', {
@@ -40,15 +80,7 @@ export async function postToPinterest(
                 'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                title,
-                description,
-                board_id: metadata?.boardId || undefined,
-                media_source: {
-                    source_type: sourceType,
-                    url: mediaUrl,
-                },
-            }),
+            body: JSON.stringify(body),
         });
 
         if (!response.ok) {

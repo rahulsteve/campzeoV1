@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { ChevronLeft, Sparkles, Mail, MessageSquare, Facebook, Instagram, Linkedin, Youtube, Twitter, Image as ImageIcon, Send, Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, ThumbsUp, Repeat2, Upload, X } from "lucide-react";
+import { ChevronLeft, Sparkles, Mail, MessageSquare, Facebook, Instagram, Linkedin, Youtube, Twitter, Image as ImageIcon, Send, Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, ThumbsUp, Repeat2, Upload, X, Phone, Pin, MoreVertical } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +17,8 @@ const ALL_PLATFORMS = [
     { value: "LINKEDIN", label: "LinkedIn", icon: Linkedin },
     { value: "YOUTUBE", label: "YouTube", icon: Youtube },
     { value: "TWITTER", label: "Twitter", icon: Twitter },
+    { value: "WHATSAPP", label: "WhatsApp", icon: Phone },
+    { value: "PINTEREST", label: "Pinterest", icon: Pin },
 ];
 
 export default function NewTemplatePage() {
@@ -557,6 +559,100 @@ export default function NewTemplatePage() {
                     </div>
                 );
 
+            case "WHATSAPP":
+                return (
+                    <div className="mx-auto max-w-sm">
+                        <div className="rounded-2xl bg-[#e5ddd5] p-4 shadow-sm" style={{ minHeight: '300px' }}>
+                            <div className="flex flex-col gap-2">
+                                <div className="self-start rounded-lg bg-white p-3 shadow-sm rounded-tl-none">
+                                    <p className="text-xs font-bold text-red-500 mb-1">Your Business</p>
+
+                                    {/* Image Preview */}
+                                    {formData.mediaUrls.length > 0 && (
+                                        <div className="mb-2 relative aspect-video w-full max-w-[240px] overflow-hidden rounded-lg">
+                                            <Image
+                                                src={formData.mediaUrls[0]}
+                                                alt="Preview"
+                                                fill
+                                                className="object-cover"
+                                                unoptimized
+                                            />
+                                        </div>
+                                    )}
+
+                                    <textarea
+                                        value={formData.content}
+                                        onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                                        placeholder="Type your WhatsApp message..."
+                                        className="w-full resize-none border-0 bg-transparent p-0 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
+                                        style={{ whiteSpace: 'pre-wrap', minWidth: '200px' }}
+                                    />
+                                    <div className="mt-1 flex justify-end gap-1 text-[10px] text-gray-500">
+                                        <span>12:00 PM</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+
+            case "PINTEREST":
+                return (
+                    <div className="mx-auto max-w-sm">
+                        <div className="rounded-2xl bg-white shadow-md overflow-hidden" style={{ width: '236px' }}> {/* Typical Pinterest column width */}
+                            {/* Image Preview - Pinterest is image first */}
+                            <div className="relative w-full bg-gray-100" style={{ minHeight: '300px' }}>
+                                {formData.mediaUrls.length > 0 ? (
+                                    <Image
+                                        src={formData.mediaUrls[0]}
+                                        alt="Pin Preview"
+                                        fill
+                                        className="object-cover"
+                                        unoptimized
+                                    />
+                                ) : (
+                                    <div className="flex h-full w-full flex-col items-center justify-center p-8 text-center">
+                                        <Pin className="mb-2 size-8 text-red-600" />
+                                        <p className="text-xs text-gray-400">Upload an image to see preview</p>
+                                    </div>
+                                )}
+                                <div className="absolute right-2 top-2 rounded-full bg-white p-2 shadow-sm opacity-0 hover:opacity-100 transition-opacity">
+                                    <MoreHorizontal className="size-4 text-gray-700" />
+                                </div>
+                            </div>
+
+                            <div className="p-3">
+                                {formData.subject ? (
+                                    <h3 className="mb-1 text-sm font-bold text-gray-900 leading-tight">{formData.subject}</h3>
+                                ) : (
+                                    <input
+                                        type="text"
+                                        value={formData.subject}
+                                        onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                                        placeholder="Add a title"
+                                        className="w-full font-bold text-sm border-none p-0 placeholder:text-gray-400 focus:ring-0 mb-1"
+                                    />
+                                )}
+
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="size-6 rounded-full bg-gray-200 overflow-hidden relative">
+                                        <div className="absolute inset-0 flex items-center justify-center text-[8px] font-bold">YB</div>
+                                    </div>
+                                    <span className="text-xs font-medium text-gray-700">Your Brand</span>
+                                </div>
+
+                                <textarea
+                                    value={formData.content}
+                                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                                    placeholder="Add a detailed description..."
+                                    className="w-full resize-none border-0 bg-transparent p-0 text-xs text-gray-600 placeholder:text-gray-400 focus:outline-none focus:ring-0"
+                                    style={{ whiteSpace: 'pre-wrap', minHeight: '40px' }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                );
+
             case "SMS":
                 return (
                     <div className="mx-auto max-w-sm">
@@ -583,7 +679,7 @@ export default function NewTemplatePage() {
         }
     };
 
-    const showSubjectField = ["EMAIL", "FACEBOOK", "LINKEDIN", "YOUTUBE"].includes(formData.platform);
+    const showSubjectField = ["EMAIL", "FACEBOOK", "LINKEDIN", "YOUTUBE", "PINTEREST"].includes(formData.platform);
 
     return (
         <div className="flex h-screen flex-col bg-background">

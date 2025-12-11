@@ -43,6 +43,7 @@ import {
   Linkedin,
   Youtube,
   Filter,
+  Pin,
 } from "lucide-react";
 import TemplatePreview from "./_components/TemplatePreview";
 
@@ -71,6 +72,7 @@ const platformIcons: Record<string, any> = {
   INSTAGRAM: Instagram,
   LINKEDIN: Linkedin,
   YOUTUBE: Youtube,
+  PINTEREST: Pin,
 };
 
 const platformColors: Record<string, string> = {
@@ -81,6 +83,7 @@ const platformColors: Record<string, string> = {
   INSTAGRAM: "bg-pink-500",
   LINKEDIN: "bg-blue-700",
   YOUTUBE: "bg-red-500",
+  PINTEREST: "bg-red-600",
 };
 
 export default function TemplatesPage() {
@@ -229,6 +232,7 @@ export default function TemplatesPage() {
                   <SelectItem value="INSTAGRAM">Instagram</SelectItem>
                   <SelectItem value="LINKEDIN">LinkedIn</SelectItem>
                   <SelectItem value="YOUTUBE">YouTube</SelectItem>
+                  <SelectItem value="PINTEREST">Pinterest</SelectItem>
                 </SelectContent>
               </Select>
 

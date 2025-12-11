@@ -309,7 +309,7 @@ export default function Page() {
               </div>
 
               <div className="col-span-1 md:col-span-2 space-y-2">
-                <Label htmlFor="taxNumber">GST / Tax Number <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+                <Label htmlFor="taxNumber">GST / Tax Number <span className="text-destructive">*</span></Label>
                 <Input
                   id="taxNumber"
                   name="taxNumber"

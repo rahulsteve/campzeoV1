@@ -1736,8 +1736,7 @@ export default function AdminDashboard() {
                             platform: "PINTEREST",
                             keys: [
                               { key: "PINTEREST_CLIENT_ID", label: "App ID" },
-                              { key: "PINTEREST_CLIENT_SECRET", label: "Client Secret" },
-                              { key: "PINTEREST_AUTH_TOKEN", label: "Auth Token" }
+                              { key: "PINTEREST_CLIENT_SECRET", label: "Client Secret" }
                             ]
                           },
                           {

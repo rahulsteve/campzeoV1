@@ -262,6 +262,44 @@ export default function TemplatePreview({
                 </div>
             );
 
+        case "PINTEREST":
+            return (
+                <div className="rounded-lg border bg-white shadow-sm overflow-hidden mx-auto" style={{ maxWidth: "240px" }}>
+                    <div className="relative w-full aspect-[3/4] bg-gray-100">
+                        {hasMedia ? (
+                            <Image
+                                src={firstMedia!}
+                                alt="Pin Preview"
+                                fill
+                                className="object-cover"
+                                unoptimized
+                            />
+                        ) : (
+                            <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center">
+                                <ImageIcon className="mb-2 size-8 text-gray-300" />
+                            </div>
+                        )}
+                        <div className="absolute right-2 top-2 rounded-full bg-white p-1.5 shadow-sm opacity-80">
+                            <MoreHorizontal className="size-3 text-gray-700" />
+                        </div>
+                    </div>
+                    <div className="p-3">
+                        {subject && (
+                            <h3 className="mb-1 text-xs font-bold text-gray-900 leading-tight line-clamp-2">{subject}</h3>
+                        )}
+                        <div className="flex items-center gap-1.5 mb-2">
+                            <div className="size-4 rounded-full bg-gray-200 overflow-hidden relative">
+                                <div className="absolute inset-0 flex items-center justify-center text-[6px] font-bold">YB</div>
+                            </div>
+                            <span className="text-[10px] font-medium text-gray-700">Your Brand</span>
+                        </div>
+                        <p className="text-[10px] text-gray-600 line-clamp-2 text-left">
+                            {content || "Pin description..."}
+                        </p>
+                    </div>
+                </div>
+            );
+
         default:
             return (
                 <div className="rounded-lg border bg-gray-50 p-8 text-center">
