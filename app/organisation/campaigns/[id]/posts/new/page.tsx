@@ -629,6 +629,36 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                         {/* Other Platforms Form */}
                                         {selectedPlatform && selectedPlatform !== 'EMAIL' && (
                                             <div className="space-y-4">
+                                                {/* Template Selection */}
+                                                {!loadingTemplates && templates.length > 0 && (
+                                                    <div className="space-y-2 p-4 bg-muted/20 rounded-lg border border-dashed">
+                                                        <Label htmlFor="template" className="text-xs font-semibold uppercase text-muted-foreground">Quick Start with Template</Label>
+                                                        <Select value={selectedTemplateId || "none"} onValueChange={handleTemplateSelect}>
+                                                            <SelectTrigger id="template" className="bg-background border border-2 border-gray-200">
+                                                                <SelectValue placeholder="Select a template..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="none">None - Start from scratch</SelectItem>
+                                                                {templates.map((template) => (
+                                                                    <SelectItem key={template.id} value={template.id.toString()}>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <FileText className="size-4 text-primary" />
+                                                                            <span>{template.name}</span>
+                                                                            {template.category && (
+                                                                                <span className="text-xs text-muted-foreground ml-2 px-1.5 py-0.5 rounded-full bg-muted">
+                                                                                    {template.category}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <p className="text-[10px] text-muted-foreground">
+                                                            Selecting a template will populate the fields below. You can still edit them.
+                                                        </p>
+                                                    </div>
+                                                )}
                                                 {/* Title Field for Social Media & WhatsApp */}
                                                 {selectedPlatform !== 'SMS' && (
                                                     <div className="space-y-2">
@@ -688,38 +718,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                         {selectedPlatform === 'YOUTUBE' && 'Video description or community post. '}
                                                     </p>
                                                 </div>
-                                                {/* ) : templates.length > 0 ? (
-                                                    <>
-                                                        <Select value={selectedTemplateId || "none"} onValueChange={handleTemplateSelect}>
-                                                            <SelectTrigger id="template">
-                                                                <SelectValue placeholder="Select a template to start with..." />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="none">None - Start from scratch</SelectItem>
-                                                                {templates.map((template) => (
-                                                                    <SelectItem key={template.id} value={template.id.toString()}>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <FileText className="size-4" />
-                                                                            <span>{template.name}</span>
-                                                                            {template.category && (
-                                                                                <span className="text-xs text-muted-foreground">
-                                                                                    ({template.category})
-                                                                                </span>
-                                                                            )}
-                                                                        </div>
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            Templates will pre-fill the form. You can edit directly in the preview below.
-                                                        </p>
-                                                    </>
-                                                ) : (
-                                                    <p className="text-sm text-muted-foreground p-4 border rounded-lg bg-muted/30">
-                                                        No templates available for {selectedPlatform}. Create one in the Templates section!
-                                                    </p>
-                                                )} */}
+
                                             </div>
                                         )}
 
