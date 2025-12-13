@@ -215,24 +215,35 @@ export async function GET(request: NextRequest) {
 
             try {
                 // Fetch user's pages with connected Instagram accounts
-                // Include more fields for debugging
-                const pagesRes = await fetch(
-                    `https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username,name,profile_picture_url}&access_token=${accessToken}`
-                );
-                const pagesData = await pagesRes.json();
+                // Handle pagination to ensure we check ALL pages
+                let allPages: any[] = [];
+                let nextUrl = `https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username,name,profile_picture_url}&access_token=${accessToken}&limit=100`;
 
-                console.log("🔵 Instagram/Facebook Pages Response:", JSON.stringify(pagesData, null, 2));
+                while (nextUrl) {
+                    const pagesRes = await fetch(nextUrl);
+                    const pagesData = await pagesRes.json();
+
+                    if (pagesData.data) {
+                        allPages = [...allPages, ...pagesData.data];
+                    }
+
+                    nextUrl = pagesData.paging?.next || null;
+                }
+
+                console.log(`🔵 Instagram/Facebook Pages Fetched: ${allPages.length}`);
 
                 let instagramAccountFound = false;
 
-                if (pagesData.data && pagesData.data.length > 0) {
-                    // Find the first page with a connected Instagram Business Account
-                    for (const page of pagesData.data) {
-                        console.log(`  📄 Page: ${page.name} (${page.id}) - Instagram: ${page.instagram_business_account ? 'Yes' : 'No'}`);
-
+                if (allPages.length > 0) {
+                    // Method 1: Check if instagram_business_account is directly returned
+                    for (const page of allPages) {
                         if (page.instagram_business_account) {
                             updateData.instagramUserId = page.instagram_business_account.id;
-                            updateData.instagramAccessToken = page.access_token; // Use Page Token for Instagram API
+                            updateData.instagramAccessToken = page.access_token; // Use Page Token for existing/legacy logic
+
+                            // Important: Use the Long-Lived User Token or Page Token? 
+                            // Usually Page Token is best for managing the specific page/instagram account.
+
                             updateData.instagramTokenExpiresIn = expiresIn;
                             updateData.instagramTokenCreatedAt = new Date();
 
@@ -244,23 +255,22 @@ export async function GET(request: NextRequest) {
                             });
 
                             instagramAccountFound = true;
-                            break; // Stop after finding the first one
+                            // Prefer the first found, or logic could be improved to pick a specific one? 
+                            // For now, first found is standard behavior.
+                            break;
                         }
                     }
 
-                    // If no instagram_business_account found on any page, try an alternative method
+                    // Method 2: Fallback - Explicitly query each page if Method 1 missed it (rare but possible with permissions)
                     if (!instagramAccountFound) {
-                        console.log("⚠️ No instagram_business_account found, trying alternative method...");
+                        console.log("⚠️ Method 1 failed. Trying Method 2 (Explicit Page Query)...");
 
-                        // Try to get Instagram account via Page's connected IG field
-                        for (const page of pagesData.data) {
+                        for (const page of allPages) {
                             try {
                                 const igRes = await fetch(
                                     `https://graph.facebook.com/v18.0/${page.id}?fields=instagram_business_account{id,username}&access_token=${page.access_token}`
                                 );
                                 const igData = await igRes.json();
-
-                                console.log(`  🔍 Checking page ${page.name}:`, JSON.stringify(igData));
 
                                 if (igData.instagram_business_account) {
                                     updateData.instagramUserId = igData.instagram_business_account.id;
@@ -268,7 +278,7 @@ export async function GET(request: NextRequest) {
                                     updateData.instagramTokenExpiresIn = expiresIn;
                                     updateData.instagramTokenCreatedAt = new Date();
 
-                                    console.log("✅ Instagram Business Account Connected (Alt):", {
+                                    console.log("✅ Instagram Business Account Connected (Method 2):", {
                                         instagramId: igData.instagram_business_account.id,
                                         instagramUsername: igData.instagram_business_account.username,
                                         pageId: page.id
@@ -278,30 +288,27 @@ export async function GET(request: NextRequest) {
                                     break;
                                 }
                             } catch (altError) {
-                                console.error(`  ❌ Alt method failed for page ${page.id}:`, altError);
+                                console.error(`  ❌ Method 2 failed for page ${page.id}:`, altError);
                             }
                         }
                     }
                 } else {
                     console.warn("⚠️ No Facebook Pages found for this user");
-                    console.log("   Make sure you have a Facebook Page created and linked to your Instagram Business/Creator account");
                 }
 
                 if (!instagramAccountFound) {
                     console.warn("⚠️ No Instagram Business Account found connected to any Facebook Page");
-                    console.log("   To fix this:");
-                    console.log("   1. Make sure your Instagram account is a Business or Creator account");
-                    console.log("   2. Link it to a Facebook Page in Instagram Settings > Account > Linked Accounts");
-                    console.log("   3. Try reconnecting");
 
-                    // Fallback: Just save the user token, but posting will likely fail
+                    // Fallback: Set to 'no-business-account' so UI knows
                     updateData.instagramAccessToken = accessToken;
                     updateData.instagramUserId = "no-business-account";
+
+                    // Redirect with stricter error if preferred, or allow 'connected' state with warning
+                    // return NextResponse.redirect(new URL("/organisation/settings?error=no_business_account_found", request.url));
                 }
 
             } catch (e) {
                 console.error("❌ Failed to fetch Instagram Business Account:", e);
-                // Fallback
                 updateData.instagramAccessToken = accessToken;
                 updateData.instagramUserId = "no-business-account";
             }

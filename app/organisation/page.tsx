@@ -150,11 +150,11 @@ export default function OrganisationDashboard() {
           <div className="flex items-center justify-between">
             {/* <h1 className="text-3xl font-bold tracking-tight">Organisation Overview</h1> */}
             <TabsList>
-              <TabsTrigger value="dashboard" className="gap-2">
+              <TabsTrigger value="dashboard" className="gap-2 cursor-pointer">
                 <LayoutDashboard className="size-4" />
                 Dashboard
               </TabsTrigger>
-              <TabsTrigger value="calendar" className="gap-2">
+              <TabsTrigger value="calendar" className="gap-2 cursor-pointer">
                 <Calendar className="size-4" />
                 Calendar
               </TabsTrigger>
@@ -171,7 +171,10 @@ export default function OrganisationDashboard() {
             </div>
 
             {/* Plan Status Banner */}
-            <Card className="bg-primary text-primary-foreground">
+            <Card
+              className="bg-primary text-primary-foreground transition-opacity"
+              
+            >
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -187,7 +190,7 @@ export default function OrganisationDashboard() {
                         : "Your subscription is active."}
                     </p>
                   </div>
-                  <Button variant="secondary" onClick={handleManageBilling} className="bg-white text-primary hover:bg-white/90">
+                  <Button onClick={handleManageBilling} variant="secondary" className="bg-white cursor-pointer text-primary hover:bg-white/90">
                     <CreditCard className="size-4 mr-2" />
                     Manage Billing
                   </Button>
@@ -197,10 +200,13 @@ export default function OrganisationDashboard() {
 
             {/* Stats Grid */}
             <div className="grid gap-4 md:grid-cols-3">
-              <Card>
+              <Card
+                className="cursor-pointer hover:bg-red-50/50 transition-colors"
+                onClick={() => router.push("/organisation/campaigns")}
+              >
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">Total Campaigns</CardTitle>
-                  <Megaphone className="size-4 text-muted-foreground" />
+                  <Megaphone className="size-8 bg-red-500 p-2 rounded-full text-white " />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{stats.campaigns}</div>
@@ -210,10 +216,13 @@ export default function OrganisationDashboard() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card
+                className="cursor-pointer hover:bg-orange-50/50 transition-colors"
+                onClick={() => router.push("/contacts")}
+              >
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">Total Contacts</CardTitle>
-                  <Contact className="size-4 text-muted-foreground" />
+                  <Contact className="size-8 bg-orange-500 p-2 rounded-full text-white " />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{stats.contacts}</div>
@@ -223,10 +232,10 @@ export default function OrganisationDashboard() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card  className="cursor-pointer hover:bg-yellow-50/50 transition-colors">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">Team Size</CardTitle>
-                  <Users className="size-4 text-muted-foreground" />
+                  <Users className="size-8 bg-yellow-400 p-2 rounded-full text-white " />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{stats.users}</div>
@@ -240,9 +249,9 @@ export default function OrganisationDashboard() {
             {/* Tabs Content (Inner Dashboard Tabs) */}
             <Tabs defaultValue="activity" className="space-y-4">
               <TabsList>
-                <TabsTrigger value="activity">Recent Activity</TabsTrigger>
-                <TabsTrigger value="team">Team Members</TabsTrigger>
-                <TabsTrigger value="usage">Usage Details</TabsTrigger>
+                <TabsTrigger className="cursor-pointer" value="activity">Recent Activity</TabsTrigger>
+                <TabsTrigger className="cursor-pointer" value="team">Team Members</TabsTrigger>
+                <TabsTrigger className="cursor-pointer" value="usage">Usage Details</TabsTrigger>
               </TabsList>
 
               <TabsContent value="activity" className="space-y-4">

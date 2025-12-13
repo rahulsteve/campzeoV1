@@ -160,13 +160,40 @@ export async function GET(request: NextRequest) {
             updateData.instagramTokenCreatedAt = new Date();
 
             try {
-                const meRes = await fetch(`https://graph.facebook.com/me?access_token=${accessToken}`);
-                const meData = await meRes.json();
-                if (meData.id) {
-                    updateData.instagramUserId = meData.id;
+                // Fetch user's pages to find the connected Instagram Business Account
+                const pagesRes = await fetch(`https://graph.facebook.com/v18.0/me/accounts?fields=instagram_business_account,name,access_token&access_token=${accessToken}`);
+                const pagesData = await pagesRes.json();
+
+                let instagramBusinessId: string | null = null;
+
+                if (pagesData.data && Array.isArray(pagesData.data)) {
+                    for (const page of pagesData.data) {
+                        if (page.instagram_business_account?.id) {
+                            instagramBusinessId = page.instagram_business_account.id;
+                            console.log(`[Instagram] Found Business Account: ${instagramBusinessId} (via Page: ${page.name})`);
+                            break; // Use the first one found
+                        }
+                    }
                 }
+
+                if (instagramBusinessId) {
+                    updateData.instagramUserId = instagramBusinessId;
+                } else {
+                    console.warn("[Instagram] No Instagram Business Account found linked to any Facebook Page.");
+                    // Fallback to fetch 'me' just to have *something*, though it won't work for posting
+                    const meRes = await fetch(`https://graph.facebook.com/me?access_token=${accessToken}`);
+                    const meData = await meRes.json();
+                    if (meData.id) {
+                        // Don't set this as instagramUserId if it's not a business account, 
+                        // or maybe we should? If we do, usage will fail. 
+                        // Better to leave it null or set it and let the user know.
+                        // But for now, let's NOT set it if it's not a business account to avoid confusion.
+                        console.log(`[Instagram] Fallback User ID (not business): ${meData.id}`);
+                    }
+                }
+
             } catch (e) {
-                console.error("Failed to fetch Instagram User ID", e);
+                console.error("Failed to fetch Instagram Business Account ID", e);
             }
         } else if (platform === "LINKEDIN") {
             updateData.linkedInAccessToken = accessToken;

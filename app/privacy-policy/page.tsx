@@ -11,7 +11,7 @@ export default function PrivacyPolicyPage() {
     <div className="min-h-screen">
       {/* Navigation */}
       <Header />
-      
+
       {/* Hero Section */}
       <section className="pt-32 pb-12 px-4 sm:px-6 lg:px-8 bg-muted/30">
         <div className="max-w-4xl mx-auto">
@@ -21,16 +21,16 @@ export default function PrivacyPolicyPage() {
               Back to Home
             </Button>
           </Link>
-          
+
           <div className="flex items-center gap-3 mb-4">
             <Shield className="size-12 text-primary" />
             <h1 className="text-4xl font-bold">Privacy Policy</h1>
           </div>
-          
+
           <p className="text-muted-foreground text-lg mb-2">
             Last Updated: December 4, 2025
           </p>
-          
+
           <p className="text-muted-foreground">
             At Campzeo, we take your privacy seriously. This policy describes how we collect, use, and protect your personal information.
           </p>
@@ -40,7 +40,7 @@ export default function PrivacyPolicyPage() {
       {/* Main Content */}
       <section className="py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto space-y-8">
-          
+
           {/* Information We Collect */}
           <Card>
             <CardHeader>
@@ -62,7 +62,7 @@ export default function PrivacyPolicyPage() {
                   <li>Profile information and preferences</li>
                 </ul>
               </div>
-              
+
               <div>
                 <h3 className="font-semibold mb-2">Usage Information</h3>
                 <ul className="list-disc list-inside space-y-1 text-muted-foreground">
@@ -116,15 +116,15 @@ export default function PrivacyPolicyPage() {
             </CardContent>
           </Card>
 
-          {/* Social Media Integration */}
+          {/* Social Media Integration and Google User Data */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
                 <Share2 className="size-6 text-primary" />
-                <CardTitle>Social Media Integration</CardTitle>
+                <CardTitle>Social Media Integration & Google User Data</CardTitle>
               </div>
               <CardDescription>
-                How we handle your social media data when you connect your accounts.
+                How we handle your social media data, including YouTube API Services.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -156,7 +156,59 @@ export default function PrivacyPolicyPage() {
                   </li>
                 </ul>
               </div>
-              
+
+              <div>
+                <h3 className="font-semibold mb-2">Google & YouTube Data</h3>
+                <p className="text-muted-foreground mb-3">
+                  Campzeo uses YouTube API Services. By using our YouTube integration, you agree to be bound by the <Link href="https://www.youtube.com/t/terms" className="text-primary hover:underline" target="_blank">YouTube Terms of Service</Link> and the <Link href="https://policies.google.com/privacy" className="text-primary hover:underline" target="_blank">Google Privacy Policy</Link>.
+                </p>
+                <p className="text-muted-foreground mb-2">
+                  In addition to our general data practices, for YouTube data:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                  <li>We access your YouTube channel information to allow you to select channels for posting.</li>
+                  <li>We upload video files you provide directly to your selected YouTube channel.</li>
+                  <li>We employ the data only to provide the video scheduling and uploading features of Campzeo.</li>
+                  <li>We do not share your Google user data with third parties (e.g., AI models, advertising networks) except as necessary to provide the service or comply with the law.</li>
+                  <li>You can revoke Campzeo's access to your data via the <Link href="https://security.google.com/settings/security/permissions" className="text-primary hover:underline" target="_blank">Google Security Settings</Link> page.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-semibold mb-2">Meta (Facebook, Instagram) Data</h3>
+                <p className="text-muted-foreground mb-2">
+                  When you connect your Facebook or Instagram accounts, we process data in accordance with the <Link href="https://www.facebook.com/privacy/policy" className="text-primary hover:underline" target="_blank">Meta Privacy Policy</Link>.
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                  <li>We access your basic profile information and Page insights to display analytics.</li>
+                  <li>We collect data necessary to publish posts, stories, and reels on your behalf.</li>
+                  <li>You can manage your off-Facebook activity and permissions in your <Link href="https://www.facebook.com/settings" className="text-primary hover:underline" target="_blank">Facebook Settings</Link>.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-semibold mb-2">LinkedIn Data</h3>
+                <p className="text-muted-foreground mb-2">
+                  Our integration with LinkedIn adheres to the <Link href="https://www.linkedin.com/legal/privacy-policy" className="text-primary hover:underline" target="_blank">LinkedIn Privacy Policy</Link>.
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                  <li>We access your profile and organization page data to enable content management.</li>
+                  <li>We do not store your LinkedIn connections or private messages.</li>
+                  <li>You can revoke access at any time via your <Link href="https://www.linkedin.com/psettings/permitted-services" className="text-primary hover:underline" target="_blank">LinkedIn Settings</Link>.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="font-semibold mb-2">Pinterest Data</h3>
+                <p className="text-muted-foreground mb-2">
+                  For Pinterest integration:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                  <li>Pinterest data is handled according to the <Link href="https://policy.pinterest.com/en/privacy-policy" className="text-primary hover:underline" target="_blank">Pinterest Privacy Policy</Link>.</li>
+                  <li>We only access necessary permissions to upload video/image content and view public analytics.</li>
+                </ul>
+              </div>
+
               <div>
                 <h3 className="font-semibold mb-2">Data We Collect from Social Media</h3>
                 <ul className="list-disc list-inside space-y-1 text-muted-foreground">

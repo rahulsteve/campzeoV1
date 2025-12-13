@@ -281,43 +281,43 @@ export default function CalendarView({ posts }: CalendarViewProps) {
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <h2 className="text-2xl font-bold">
+                        <h2 className="text-2xl font-bold ">
                             {view === 'month' && format(currentDate, 'MMMM yyyy')}
                             {view === 'week' && `Week of ${format(startOfWeek(currentDate), 'MMM d, yyyy')}`}
                             {view === 'day' && format(currentDate, 'MMMM d, yyyy')}
                         </h2>
-                        <div className="flex items-center gap-1">
-                            <Button variant="outline" size="icon" onClick={goToPrevious}>
-                                <ChevronLeft className="w-4 h-4" />
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={goToToday}>
-                                Today
-                            </Button>
-                            <Button variant="outline" size="icon" onClick={goToNext}>
-                                <ChevronRight className="w-4 h-4" />
-                            </Button>
-                        </div>
                     </div>
 
                     {/* View Toggle */}
                     <div className="flex gap-2">
+                        <div className="flex items-center gap-1">
+                            <Button variant="outline" size="icon" className="cursor-pointer" onClick={goToPrevious}>
+                                <ChevronLeft className="w-4 h-4" />
+                            </Button>
+                            <Button variant="outline" size="sm" className="cursor-pointer" onClick={goToToday}>
+                                Today
+                            </Button>
+                            <Button variant="outline" size="icon" className="cursor-pointer" onClick={goToNext}>
+                                <ChevronRight className="w-4 h-4" />
+                            </Button>
+                        </div>
                         <Button
                             variant={view === 'month' ? 'default' : 'outline'}
-                            size="sm"
+                            size="sm" className="cursor-pointer"
                             onClick={() => setView('month')}
                         >
                             Month
                         </Button>
                         <Button
                             variant={view === 'week' ? 'default' : 'outline'}
-                            size="sm"
+                            size="sm" className="cursor-pointer"
                             onClick={() => setView('week')}
                         >
                             Week
                         </Button>
                         <Button
                             variant={view === 'day' ? 'default' : 'outline'}
-                            size="sm"
+                            size="sm" className="cursor-pointer"
                             onClick={() => setView('day')}
                         >
                             Day

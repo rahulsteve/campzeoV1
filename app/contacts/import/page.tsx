@@ -230,6 +230,7 @@ export default function ImportContactsPage() {
                         <div className="flex items-center gap-4">
                             <Button
                                 variant="ghost"
+                                className="cursor-pointer"
                                 size="icon"
                                 onClick={() => router.push('/contacts')}
                             >
@@ -252,7 +253,7 @@ export default function ImportContactsPage() {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <Button onClick={handleDownloadTemplate} variant="outline">
+                                <Button onClick={handleDownloadTemplate} className="cursor-pointer" variant="outline">
                                     <Download className="size-4 mr-2" />
                                     Download CSV Template
                                 </Button>
@@ -293,7 +294,7 @@ export default function ImportContactsPage() {
                                         id="file-upload"
                                     />
                                     <label htmlFor="file-upload">
-                                        <Button variant="outline" asChild>
+                                        <Button variant="outline" className="cursor-pointer" asChild>
                                             <span>
                                                 <FileText className="size-4 mr-2" />
                                                 Browse Files
@@ -365,7 +366,7 @@ export default function ImportContactsPage() {
                                         onClick={handleImport}
                                         disabled={importing}
                                         size="lg"
-                                        className="w-full"
+                                        className="w-full cursor-pointer"
                                     >
                                         {importing ? (
                                             <>
@@ -443,6 +444,7 @@ export default function ImportContactsPage() {
                                         <Button
                                             size="sm"
                                             variant="outline"
+                                            className="cursor-pointer"
                                             onClick={handleDownloadErrors}
                                         >
                                             <Download className="size-4 mr-2" />

@@ -136,16 +136,21 @@ export async function sendCampaignPost(
                     throw new Error('No Instagram Business Account found');
                 }
 
+                const mediaToUse = post.mediaUrls.length > 0 ? post.mediaUrls : post.videoUrl;
+                // If using videoUrl logic or isReel is set, treat as video
+                const isVideoContent = (!post.mediaUrls.length && !!post.videoUrl) || (post.metadata as any)?.isReel;
+
                 const platformResponse = await postToInstagram(
                     {
                         accessToken: dbUser.instagramAccessToken,
                         userId: dbUser.instagramUserId,
                     },
                     post.message || post.subject || "",
-                    post.mediaUrls.length > 0 ? post.mediaUrls : post.videoUrl,
+                    mediaToUse,
                     {
                         isReel: (post.metadata as any)?.isReel,
-                        shareToFeed: true
+                        shareToFeed: true,
+                        isVideo: isVideoContent
                     }
                 );
 
@@ -228,7 +233,7 @@ export async function sendCampaignPost(
                         accountId: 'youtube-channel',
                         message: post.message || post.subject || "",
                         mediaUrls: post.mediaUrls.length > 0 ? post.mediaUrls[0] : post.videoUrl,
-                        postType: media && media.match(/\.(mp4|mov|webm)$/i) ? (platformResponse.isShort ? 'SHORT' : 'VIDEO') : 'TEXT',
+                        postType: media && media.match(/\.(mp4|mov|webm)$/i) ? ((platformResponse as any).isShort ? 'SHORT' : 'VIDEO') : 'TEXT',
                         accessToken: dbUser.youtubeAccessToken,
                         published: true,
                         publishedAt: new Date(),

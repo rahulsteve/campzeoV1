@@ -257,11 +257,11 @@ export default function ContactListPage() {
                                 </p>
                             </div>
                             <div className="flex gap-2">
-                                <Button onClick={() => router.push('/contacts/import')} variant="outline">
+                                <Button className="cursor-pointer" onClick={() => router.push('/contacts/import')} variant="outline">
                                     <Upload className="size-4 mr-2" />
                                     Import Contacts
                                 </Button>
-                                <Button onClick={() => router.push('/contacts/new')}>
+                                <Button className="cursor-pointer" onClick={() => router.push('/contacts/new')}>
                                     <Plus className="size-4 mr-2" />
                                     Add Contact
                                 </Button>
@@ -310,6 +310,7 @@ export default function ContactListPage() {
                                     {/* Export */}
                                     <Button
                                         variant="outline"
+                                        className="cursor-pointer"
                                         onClick={() => handleExport(false)}
                                         disabled={exporting}
                                     >
@@ -330,6 +331,7 @@ export default function ContactListPage() {
                                         </span>
                                         <Button
                                             size="sm"
+                                            className="cursor-pointer"
                                             variant="outline"
                                             onClick={() => handleExport(true)}
                                             disabled={exporting}
@@ -339,6 +341,7 @@ export default function ContactListPage() {
                                         </Button>
                                         <Button
                                             size="sm"
+                                            className="cursor-pointer"
                                             variant="destructive"
                                             onClick={() => setShowDeleteDialog(true)}
                                         >
@@ -449,6 +452,7 @@ export default function ContactListPage() {
                                                                 <div className="flex items-center justify-end gap-2">
                                                                     <Button
                                                                         size="sm"
+                                                                        className="cursor-pointer"
                                                                         variant="ghost"
                                                                         onClick={() => handleQuickView(contact)}
                                                                     >
@@ -457,6 +461,7 @@ export default function ContactListPage() {
                                                                     <Button
                                                                         size="sm"
                                                                         variant="ghost"
+                                                                        className="cursor-pointer"
                                                                         onClick={() => router.push(`/contacts/${contact.id}/edit`)}
                                                                     >
                                                                         <Edit className="size-4" />
@@ -464,6 +469,7 @@ export default function ContactListPage() {
                                                                     <Button
                                                                         size="sm"
                                                                         variant="ghost"
+                                                                        className="cursor-pointer"
                                                                         onClick={() => {
                                                                             setDeleteContactId(contact.id);
                                                                             setShowDeleteDialog(true);
@@ -509,6 +515,7 @@ export default function ContactListPage() {
                                                 <div className="flex gap-1">
                                                     <Button
                                                         size="sm"
+                                                        className="cursor-pointer"
                                                         variant="outline"
                                                         onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                                                         disabled={currentPage === 1}
@@ -517,6 +524,7 @@ export default function ContactListPage() {
                                                     </Button>
                                                     <Button
                                                         size="sm"
+                                                        className="cursor-pointer"
                                                         variant="outline"
                                                         onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                                                         disabled={currentPage === totalPages}

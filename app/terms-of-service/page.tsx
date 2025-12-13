@@ -11,7 +11,7 @@ export default function TermsOfServicePage() {
     <div className="min-h-screen">
       {/* Navigation */}
       <Header />
-      
+
       {/* Hero Section */}
       <section className="pt-32 pb-12 px-4 sm:px-6 lg:px-8 bg-muted/30">
         <div className="max-w-4xl mx-auto">
@@ -21,16 +21,16 @@ export default function TermsOfServicePage() {
               Back to Home
             </Button>
           </Link>
-          
+
           <div className="flex items-center gap-3 mb-4">
             <FileText className="size-12 text-primary" />
             <h1 className="text-4xl font-bold">Terms of Service</h1>
           </div>
-          
+
           <p className="text-muted-foreground text-lg mb-2">
             Last Updated: December 4, 2025
           </p>
-          
+
           <p className="text-muted-foreground">
             Please read these Terms of Service carefully before using Campzeo. By accessing or using our service, you agree to be bound by these terms.
           </p>
@@ -40,7 +40,7 @@ export default function TermsOfServicePage() {
       {/* Main Content */}
       <section className="py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto space-y-8">
-          
+
           {/* Acceptance of Terms */}
           <Card>
             <CardHeader>
@@ -232,7 +232,15 @@ export default function TermsOfServicePage() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary mt-1">•</span>
-                  <span>You must comply with each platform's terms of service and community guidelines</span>
+                  <span>
+                    You must comply with each platform's terms of service and community guidelines. specifically:
+                    <ul className="list-disc list-inside mt-2 ml-2 space-y-1">
+                      <li><strong>YouTube:</strong> <Link href="https://www.youtube.com/t/terms" className="text-primary hover:underline" target="_blank">Terms of Service</Link> & <Link href="https://policies.google.com/privacy" className="text-primary hover:underline" target="_blank">Google Privacy Policy</Link></li>
+                      <li><strong>Meta (FB/Insta):</strong> <Link href="https://www.facebook.com/terms.php" className="text-primary hover:underline" target="_blank">Terms of Service</Link></li>
+                      <li><strong>LinkedIn:</strong> <Link href="https://www.linkedin.com/legal/user-agreement" className="text-primary hover:underline" target="_blank">User Agreement</Link></li>
+                      <li><strong>Pinterest:</strong> <Link href="https://policy.pinterest.com/en/terms-of-service" className="text-primary hover:underline" target="_blank">Terms of Service</Link></li>
+                    </ul>
+                  </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary mt-1">•</span>

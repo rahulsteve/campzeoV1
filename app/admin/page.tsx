@@ -72,7 +72,17 @@ export default function AdminDashboard() {
   const [pageSize, setPageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
   const [searchText, setSearchText] = useState("");
+  const [debouncedSearchText, setDebouncedSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState("all"); // 'all', 'active', 'suspended'
+
+  // Debounce search text
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPageNumber(1);
+      setDebouncedSearchText(searchText);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchText]);
 
   // Enquiry Filter State
   const [enquirySearch, setEnquirySearch] = useState("");
@@ -159,7 +169,7 @@ export default function AdminDashboard() {
       const params = new URLSearchParams({
         pageNumber: pageNumber.toString(),
         pageSize: pageSize.toString(),
-        searchText: searchText,
+        searchText: debouncedSearchText,
         sortBy: 'createdAt',
         sortDesc: 'true'
       });
@@ -169,6 +179,7 @@ export default function AdminDashboard() {
         params.append('isDeleted', 'true');
       } else if (statusFilter === 'active') {
         params.append('isDeleted', 'false');
+        params.append('isApproved', 'true');
       }
       // For 'all', don't add isDeleted parameter to show both
 
@@ -248,7 +259,7 @@ export default function AdminDashboard() {
     } else {
       fetchOtherData();
     }
-  }, [activeTab, pageNumber, pageSize, statusFilter, logsPage, logsKeyword, logsLevel, logsDateFrom, logsDateTo]); // Search text handled separately with debounce ideally, or on enter
+  }, [activeTab, pageNumber, pageSize, statusFilter, logsPage, logsKeyword, logsLevel, logsDateFrom, logsDateTo, debouncedSearchText]);
 
   // Handle Search Enter
   const handleSearch = (e: React.KeyboardEvent) => {
@@ -940,7 +951,7 @@ export default function AdminDashboard() {
                     <Button
                       key={tab}
                       variant="ghost"
-                      className={`justify-start text-slate-400 hover:text-white hover:bg-slate-800 ${activeTab === tab ? 'bg-primary text-white' : ''}`}
+                      className={`justify-start cursor-pointer text-slate-400 hover:text-white hover:bg-slate-800 ${activeTab === tab ? 'bg-primary text-white' : ''}`}
                       onClick={() => setActiveTab(tab)}
                     >
                       <span className="capitalize">{tab}</span>
@@ -966,22 +977,22 @@ export default function AdminDashboard() {
         </div>
 
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="text-muted-foreground hidden sm:flex">
+          <Button variant="ghost" size="icon" className="text-muted-foreground cursor-pointer hidden sm:flex">
             <Mail className="size-5" />
           </Button>
           <div className="flex  items-center gap-3">
-            <div className="text-right hidden  md:block">
+            {/* <div className="text-right hidden  md:block">
               <p className="text-sm font-medium leading-none">Admin User</p>
               <p className="text-xs text-muted-foreground">Administrator</p>
-            </div>
+            </div> */}
 
-            Hi, {user?.firstName || user?.username || "User"}  <UserButton afterSignOutUrl="/" />
+            Hi,  {user?.firstName  + " " + user?.lastName || user?.username || "User"}   <UserButton afterSignOutUrl="/" />
           </div>
         </div>
       </header>
 
       {/* Main Layout - Sidebar + Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} orientation="vertical" className="flex-1 flex flex-row overflow-hidden" style={{ minHeight: "87vh" }}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} orientation="vertical" className="flex-1 flex flex-row overflow-hidden">
         {/* Sidebar - Desktop */}
         <div className="hidden md:flex w-64 shrink-0   text-white flex-col border-r border-slate-300 overflow-y-auto">
           <div className="p-4 py-6">
@@ -1012,11 +1023,11 @@ export default function AdminDashboard() {
         </div>
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto p-8 md:p-24" style={{ paddingBlock: "20px" }}>
+        <main className="flex-1 overflow-y-auto p-8 md:p-24" >
           <div className=" mx-auto space-y-6">
 
             {/* 1. Organisation Management */}
-            <TabsContent value="organisations" className="m-0 space-y-6 focus-visible:outline-none" style={{ minHeight: "calc(60vh)" }}>
+            <TabsContent value="organisations" className="m-0 space-y-6 focus-visible:outline-none" >
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-bold tracking-tight text-slate-900">Organisations</h2>
@@ -1033,7 +1044,7 @@ export default function AdminDashboard() {
                           <CardTitle>{formData.id ? 'Edit Organisation' : 'Add Organisation'}</CardTitle>
                           <CardDescription>Enter the details for the organisation.</CardDescription>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => setIsAddingOrg(false)}>
+                        <Button variant="ghost" className="cursor-pointer" size="sm" onClick={() => setIsAddingOrg(false)}>
                           <ArrowLeft className="mr-2 size-4" /> Back to List
                         </Button>
                       </div>
@@ -1215,8 +1226,8 @@ export default function AdminDashboard() {
                         </div>
 
                         <div className="flex gap-4 pt-4 border-t">
-                          <Button type="submit" disabled={isCreatingOrg}>Submit</Button>
-                          <Button type="button" variant="outline" onClick={() => setIsAddingOrg(false)}>Cancel</Button>
+                          <Button type="submit" className="cursor-pointer" disabled={isCreatingOrg}>Submit</Button>
+                          <Button type="button" className="cursor-pointer" variant="outline" onClick={() => setIsAddingOrg(false)}>Cancel</Button>
                         </div>
                       </form>
                     </CardContent>
@@ -1232,12 +1243,11 @@ export default function AdminDashboard() {
                             className="pl-9 bg-white"
                             value={searchText}
                             onChange={(e) => setSearchText(e.target.value)}
-                            onKeyDown={handleSearch}
                           />
                         </div>
-                        <div className="hidden sm:block">
+                        <div className="hidden border border-1 rounded-md sm:block">
                           <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[140px] bg-white">
+                            <SelectTrigger className="w-[140px] bg-white border">
                               <SelectValue placeholder="All Status" />
                             </SelectTrigger>
                             <SelectContent>
@@ -1249,7 +1259,7 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                       <div className="flex  gap-2 w-1/2 md:w-auto justify-end">
-                        <Button size="sm" onClick={() => {
+                        <Button size="sm" className="cursor-pointer" onClick={() => {
                           setFormData({
                             id: "",
                             name: "",
@@ -1285,37 +1295,47 @@ export default function AdminDashboard() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {organisations.map((org) => (
-                            <TableRow key={org.id} className="hover:bg-slate-50/50">
-                              <TableCell className="font-medium">{org.name}</TableCell>
-                              <TableCell className=" md:table-cell">{org.phone || 'N/A'}</TableCell>
-                              <TableCell className=" lg:table-cell">{org.email || org.users?.[0]?.email || 'N/A'}</TableCell>
-                              <TableCell className="max-w-[200px] truncate  xl:table-cell" title={org.address}>{org.address || 'N/A'}</TableCell>
-                              <TableCell>{org.ownerName || org.users?.[0]?.firstName || 'N/A'}</TableCell>
-                              <TableCell>
-                                <div className="flex gap-1">
-                                  <Badge variant={org.isApproved ? 'default' : 'secondary'} className="rounded-md font-normal">
-                                    {org.isApproved ? 'Approved' : 'Pending'}
-                                  </Badge>
-                                  {org.isDeleted && <Badge variant="destructive" className="rounded-md font-normal">Suspended</Badge>}
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex items-center justify-end gap-2 ">
-                                  {!org.isApproved && (
-                                    <Button style={{ color: "darkgreen", backgroundColor: "lightgreen" }} size="sm" className="h-8 px-2 bg-green-600 hover:bg-green-700" onClick={() => handleApproveClick(org)}>Approve</Button>
-                                  )}
-                                  <Button style={{ color: "blue", backgroundColor: "lightblue" }} size="sm" className="h-8 px-2 bg-blue-600 hover:bg-blue-700" onClick={() => handleImpersonate(org.id)}>Login</Button>
-                                  <Button style={{ color: "indigo", backgroundColor: "lightindigo" }} size="sm" className="h-8 px-2 bg-indigo-500 hover:bg-indigo-600" onClick={() => handleEditOrg(org)}>Edit</Button>
-                                  {org.isApproved && (
-                                    <Button size="sm" variant={org.isDeleted ? "outline" : "destructive"} className="h-8 px-2" onClick={() => handleSuspendOrg(org.id)}>
-                                      {org.isDeleted ? "Recover" : "Suspend"}
-                                    </Button>
-                                  )}
+                          {isLoading ? (
+                            <TableRow>
+                              <TableCell colSpan={7} className="h-24 text-center">
+                                <div className="flex justify-center items-center gap-2">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                                  Loading organisations...
                                 </div>
                               </TableCell>
                             </TableRow>
-                          ))}
+                          ) : (
+                            organisations.map((org) => (
+                              <TableRow key={org.id} className="hover:bg-slate-50/50">
+                                <TableCell className="font-medium">{org.name}</TableCell>
+                                <TableCell className=" md:table-cell">{org.phone || 'N/A'}</TableCell>
+                                <TableCell className=" lg:table-cell">{org.email || org.users?.[0]?.email || 'N/A'}</TableCell>
+                                <TableCell className="max-w-[200px] truncate  xl:table-cell" title={org.address}>{org.address || 'N/A'}</TableCell>
+                                <TableCell>{org.ownerName || org.users?.[0]?.firstName || 'N/A'}</TableCell>
+                                <TableCell>
+                                  <div className="flex gap-1">
+                                    <Badge variant={org.isApproved ? 'default' : 'secondary'} className="rounded-md font-normal">
+                                      {org.isApproved ? 'Approved' : 'Pending'}
+                                    </Badge>
+                                    {org.isDeleted && <Badge variant="destructive" className="rounded-md font-normal">Suspended</Badge>}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex items-center justify-end gap-2 ">
+                                    {!org.isApproved && (
+                                      <Button size="sm" className="h-8 px-2 cursor-pointer bg-green-600 hover:bg-green-700" onClick={() => handleApproveClick(org)}>Approve</Button>
+                                    )}
+                                    <Button size="sm" className="h-8 px-2 cursor-pointer bg-blue-600 hover:bg-blue-700" onClick={() => handleImpersonate(org.id)}>Login</Button>
+                                    <Button size="sm" className="h-8 px-2 cursor-pointer bg-indigo-500 hover:bg-indigo-600" onClick={() => handleEditOrg(org)}>Edit</Button>
+                                    {org.isApproved && (
+                                      <Button size="sm" variant={org.isDeleted ? "outline" : "destructive"} className="h-8 px-2 cursor-pointer" onClick={() => handleSuspendOrg(org.id)}>
+                                        {org.isDeleted ? "Recover" : "Suspend"}
+                                      </Button>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )))}
                           {organisations.length === 0 && !isLoading && (
                             <TableRow>
                               <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
@@ -1394,15 +1414,15 @@ export default function AdminDashboard() {
                             </div>
 
                             <div className="flex justify-end gap-3 pt-4">
-                              <Button type="button" variant="outline" onClick={() => setApprovalModalOpen(false)}>Cancel</Button>
-                              <Button type="submit">Approve & Create User</Button>
+                              <Button type="button" className="cursor-pointer" variant="outline" onClick={() => setApprovalModalOpen(false)}>Cancel</Button>
+                              <Button className="cursor-pointer" type="submit">Approve & Create User</Button>
                             </div>
                           </form>
                         </DialogContent>
                       </Dialog>
 
                       {/* Pagination Controls */}
-                      <div className="flex items-center justify-between px-4 py-4 border-t bg-slate-50/30" style={{ paddingTop: "10px" }}>
+                      <div className="flex items-center justify-between px-4 py-4 border-t bg-slate-50/30">
                         <div className="text-sm text-muted-foreground">
                           Showing {1 + ((pageNumber - 1) * pageSize)} to {Math.min(pageNumber * pageSize, totalCount)} of {totalCount} entries
                         </div>
@@ -1412,7 +1432,7 @@ export default function AdminDashboard() {
                           </span>
                           <div className="flex items-center gap-2">
                             <Button
-                              variant="outline"
+                              variant="outline" className="cursor-pointer"
                               size="sm"
                               onClick={() => setPageNumber(p => Math.max(1, p - 1))}
                               disabled={pageNumber === 1}
@@ -1421,7 +1441,7 @@ export default function AdminDashboard() {
                               Previous
                             </Button>
                             <Button
-                              variant="outline"
+                              variant="outline" className="cursor-pointer"
                               size="sm"
                               onClick={() => setPageNumber(p => p + 1)}
                               disabled={pageNumber >= Math.ceil(totalCount / pageSize)}
@@ -1445,20 +1465,12 @@ export default function AdminDashboard() {
                   <h2 className="text-2xl font-bold tracking-tight text-slate-900">Enquiry Management</h2>
                   <p className="text-muted-foreground">Review and convert leads from sign-up enquiries.</p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={exportEnquiriesToCSV}
-                  className="gap-2"
-                >
-                  <Download className="size-4" />
-                  Export to CSV
-                </Button>
+                
               </div>
               <Card className="border shadow-sm">
                 {/* Filter Section */}
                 <div className="p-4 border-b bg-slate-50/50">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="flex flex-col md:flex-row md:items-center gap-4">
                     <div className="md:col-span-2">
                       < Label htmlFor="enquiry-search" className="text-sm font-medium mb-2 block" >
                         Search Enquiries
@@ -1470,7 +1482,7 @@ export default function AdminDashboard() {
                           placeholder="Search by name, email, or organisation..."
                           value={enquirySearch}
                           onChange={(e) => setEnquirySearch(e.target.value)}
-                          className="pl-9"
+                          className="pl-9 "
                         />
                       </div>
                     </div>
@@ -1482,6 +1494,7 @@ export default function AdminDashboard() {
                         id="date-from"
                         type="date"
                         value={dateFrom}
+                        className="md:w-auto"
                         onChange={(e) => setDateFrom(e.target.value)}
                       />
                     </div>
@@ -1493,21 +1506,31 @@ export default function AdminDashboard() {
                         id="date-to"
                         type="date"
                         value={dateTo}
+                        className="md:w-auto"
                         onChange={(e) => setDateTo(e.target.value)}
                       />
                     </div>
+                    <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportEnquiriesToCSV}
+                  className="gap-2 text-white cursor-pointer bg-red-500 md:ms-auto"
+                >
+                  <Download className="size-4" />
+                  Export to CSV
+                </Button>
                   </div>
                   {(enquirySearch || dateFrom || dateTo) && (
                     <div className="mt-3 flex items-center gap-2">
                       <Button
-                        variant="ghost"
+                        variant="ghost" 
                         size="sm"
                         onClick={() => {
                           setEnquirySearch("");
                           setDateFrom("");
                           setDateTo("");
                         }}
-                        className="h-8 text-xs"
+                        className="h-8 text-xs cursor-pointer"
                       >
                         Clear Filters
                       </Button>
@@ -1532,7 +1555,16 @@ export default function AdminDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredEnquiries.length === 0 ? (
+                      {isLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="h-24 text-center">
+                            <div className="flex justify-center items-center gap-2">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                              Loading enquiries...
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : filteredEnquiries.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                             {enquiries.length === 0 ? "No enquiries found." : "No enquiries match your filters."}
@@ -1549,7 +1581,7 @@ export default function AdminDashboard() {
                               {enq.enquiryText ? (
                                 <Dialog>
                                   <DialogTrigger asChild>
-                                    <Button variant="outline" size="sm" className="h-8 px-3 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-800 hover:border-blue-300">
+                                    <Button variant="outline" size="sm" className="h-8 cursor-pointer px-3 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-800 hover:border-blue-300">
                                       View Details
                                     </Button>
                                   </DialogTrigger>
@@ -1622,7 +1654,7 @@ export default function AdminDashboard() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-8 px-3 bg-green-50 text-green-700 border-green-200 cursor-not-allowed"
+                                  className="h-8 px-3 cursor-pointer bg-green-50 text-green-700 border-green-200 cursor-not-allowed"
                                   disabled
                                 >
                                   <CheckCircle className="mr-1 size-3" />
@@ -1632,7 +1664,7 @@ export default function AdminDashboard() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-8 px-2 hover:bg-primary/10"
+                                  className="h-8 px-2 cursor-pointer hover:bg-primary/10"
                                   onClick={() => handleConvertToOrg(enq)}
                                 >
                                   Create Organisation
@@ -1672,7 +1704,7 @@ export default function AdminDashboard() {
                         <Button
                           key={p.platform}
                           variant="outline"
-                          className="h-24 flex flex-col items-center justify-center gap-2 hover:border-primary hover:bg-primary/5"
+                          className="h-24 flex flex-col items-center cursor-pointer justify-center gap-2 hover:border-primary hover:bg-primary/5"
                           onClick={() => setSelectedPlatform(p.platform)}
                         >
                           <p.icon className="size-8 text-muted-foreground" />
@@ -1683,7 +1715,7 @@ export default function AdminDashboard() {
                   ) : (
                     <div className="space-y-6">
                       <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedPlatform(null)}>
+                        <Button variant="ghost" className="cursor-pointer" size="sm" onClick={() => setSelectedPlatform(null)}>
                           <ArrowLeft className="mr-2 size-4" /> Back
                         </Button>
                         <h3 className="text-lg font-semibold">
@@ -1827,7 +1859,7 @@ export default function AdminDashboard() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <Textarea placeholder="Type your message here..." id="broadcast-msg" />
-                    <Button className="w-full" onClick={() => {
+                    <Button className="w-full cursor-pointer" onClick={() => {
                       const msg = (document.getElementById('broadcast-msg') as HTMLTextAreaElement).value;
                       handleSendNotification(msg);
                     }}>
@@ -1847,25 +1879,27 @@ export default function AdminDashboard() {
                       <h2 className="text-2xl font-bold tracking-tight text-slate-900">Billing Plans</h2>
                       <p className="text-muted-foreground">Manage subscription plans and pricing</p>
                     </div>
-                    <Button onClick={handleCreatePlanClick}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create Plan
-                    </Button>
+                  
                   </div>
 
                   {/* Search and Filter */}
-                  <Card className="border shadow-sm mb-4">
+                  <Card className="border border-1 l shadow-sm mb-4">
                     <CardContent className="p-4">
-                      <div className="flex gap-4">
-                        <div className="flex-1">
+                      <div className="flex flex-col md:flex-row justify-between ">
+                       <div className="flex">
+
+                        <div className="">
                           <Input
                             placeholder="Search plans..."
                             value={plansSearch}
+                            className="w-auto"
                             onChange={(e) => setPlansSearch(e.target.value)}
-                          />
+                            />
                         </div>
+                        <div className="border mx-2 border-1 rounded-md">
+                          
                         <Select value={plansStatusFilter} onValueChange={setPlansStatusFilter}>
-                          <SelectTrigger className="w-[180px]">
+                          <SelectTrigger className="w-auto border rounded">
                             <SelectValue placeholder="Filter by status" />
                           </SelectTrigger>
                           <SelectContent>
@@ -1874,7 +1908,16 @@ export default function AdminDashboard() {
                             <SelectItem value="inactive">Inactive Only</SelectItem>
                           </SelectContent>
                         </Select>
+                        </div>
                       </div>
+                      <div>
+                        
+                        <Button className="cursor-pointer" onClick={handleCreatePlanClick}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Plan
+                    </Button>
+                      </div>
+                            </div>
                     </CardContent>
                   </Card>
 
@@ -1929,6 +1972,7 @@ export default function AdminDashboard() {
                               <TableCell className="text-right">
                                 <div className="flex gap-2 justify-end">
                                   <Button
+                                   className="h-8 px-2 cursor-pointer bg-indigo-500 hover:text-white text-white hover:bg-indigo-600"
                                     variant="outline"
                                     size="sm"
                                     onClick={() => handleEditPlanClick(plan)}
@@ -1938,9 +1982,10 @@ export default function AdminDashboard() {
                                   <Button
                                     variant="outline"
                                     size="sm"
+                                    className="bg-red-600  text-white hover:bg-red-500 cursor-pointer"
                                     onClick={() => handleDeletePlanClick(plan)}
                                   >
-                                    <Trash className="h-4 w-4" />
+                                    <Trash className="h-4 text-white   w-4" />
                                   </Button>
                                 </div>
                               </TableCell>
@@ -1964,7 +2009,7 @@ export default function AdminDashboard() {
                     <Button
                       variant="ghost"
                       onClick={handleCancelPlanForm}
-                      className="mb-4"
+                      className="mb-4 cursor-pointer"
                     >
                       <ArrowLeft className="h-4 w-4 mr-2" />
                       Back to Plans
@@ -2032,6 +2077,7 @@ export default function AdminDashboard() {
                             value={planFormData.description}
                             onChange={(e) => setPlanFormData({ ...planFormData, description: e.target.value })}
                             placeholder="Describe the plan benefits..."
+                            className="border border-1 rounded-md border-gray-300"
                             rows={3}
                           />
                         </div>
@@ -2070,7 +2116,10 @@ export default function AdminDashboard() {
                             <Label htmlFor="planBillingCycle">
                               Billing Cycle <span className="text-red-500">*</span>
                             </Label>
+                           <div   className="border border-1 rounded-md border-gray-300">
+
                             <Select
+                         
                               value={planFormData.billingCycle}
                               onValueChange={(value) => setPlanFormData({ ...planFormData, billingCycle: value })}
                               disabled={hasActiveSubscriptions && !!editingPlanId}
@@ -2083,6 +2132,7 @@ export default function AdminDashboard() {
                                 <SelectItem value="YEARLY">Yearly</SelectItem>
                               </SelectContent>
                             </Select>
+                            </div>
                             {hasActiveSubscriptions && editingPlanId && (
                               <p className="text-xs text-muted-foreground">
                                 Cannot be changed (plan has active subscriptions)
@@ -2093,17 +2143,18 @@ export default function AdminDashboard() {
 
                         {/* Features */}
                         <div className="space-y-2">
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center  justify-between">
                             <Label>
                               Features <span className="text-red-500">*</span>
                             </Label>
                             <Button
+                            className="text-white cursor-pointer bg-red-500"
                               type="button"
                               variant="outline"
                               size="sm"
                               onClick={handleAddPlanFeature}
                             >
-                              <Plus className="h-4 w-4 mr-1" />
+                              <Plus className="h-4 text-white w-4 mr-1" />
                               Add Feature
                             </Button>
                           </div>
@@ -2119,7 +2170,7 @@ export default function AdminDashboard() {
                                 />
                                 {planFeatures.length > 1 && (
                                   <Button
-                                    type="button"
+                                    type="button" className="cursor-pointer"
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => handleRemovePlanFeature(index)}
@@ -2176,13 +2227,14 @@ export default function AdminDashboard() {
                     <div className="flex justify-end gap-4 mt-6">
                       <Button
                         type="button"
+                        className="cursor-pointer"
                         variant="outline"
                         onClick={handleCancelPlanForm}
                         disabled={isSavingPlan}
                       >
                         Cancel
                       </Button>
-                      <Button type="submit" disabled={isSavingPlan}>
+                      <Button type="submit" disabled={isSavingPlan} className="cursor-pointer">
                         {isSavingPlan ? "Saving..." : (editingPlanId ? "Save Changes" : "Create Plan")}
                       </Button>
                     </div>
@@ -2316,6 +2368,7 @@ export default function AdminDashboard() {
                 <div className="flex justify-end gap-3 mt-4">
                   <Button
                     variant="outline"
+                    className="cursor-pointer"
                     onClick={handleCancelDelete}
                     disabled={isDeletingPlan}
                   >
@@ -2324,6 +2377,7 @@ export default function AdminDashboard() {
                   <Button
                     variant="destructive"
                     onClick={handleConfirmDelete}
+                    className="cursor-pointer"
                     disabled={isDeletingPlan}
                   >
                     {isDeletingPlan ? "Deleting..." : (affectedOrganisations.length > 0 ? "Migrate & Delete" : "Delete Plan")}
@@ -2361,6 +2415,8 @@ export default function AdminDashboard() {
                     {/* Log Level Filter */}
                     <div className="space-y-2">
                       <Label htmlFor="logsLevel">Log Level</Label>
+                     <div className="border border-1 rounded-md">
+
                       <Select value={logsLevel} onValueChange={(value) => {
                         setLogsLevel(value);
                         setLogsPage(1);
@@ -2375,6 +2431,7 @@ export default function AdminDashboard() {
                           <SelectItem value="Error">Error</SelectItem>
                         </SelectContent>
                       </Select>
+                        </div>
                     </div>
 
                     {/* Date From */}
@@ -2410,6 +2467,7 @@ export default function AdminDashboard() {
                   {(logsKeyword || logsLevel !== 'all' || logsDateFrom || logsDateTo) && (
                     <div className="mt-4">
                       <Button
+                        className="cursor-pointer"
                         variant="outline"
                         size="sm"
                         onClick={() => {
@@ -2491,6 +2549,7 @@ export default function AdminDashboard() {
                         <div className="flex items-center gap-2">
                           <Button
                             variant="outline"
+                            className="cursor-pointer"
                             size="sm"
                             onClick={() => setLogsPage(p => Math.max(1, p - 1))}
                             disabled={logsPage === 1}
@@ -2501,6 +2560,7 @@ export default function AdminDashboard() {
                           <Button
                             variant="outline"
                             size="sm"
+                            className="cursor-pointer"
                             onClick={() => setLogsPage(p => Math.min(logsTotalPages, p + 1))}
                             disabled={logsPage >= logsTotalPages}
                           >

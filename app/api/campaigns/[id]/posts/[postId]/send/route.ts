@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { sendCampaignPost } from '@/lib/send-campaign-post';
+import { logError, logWarning } from '@/lib/audit-logger';
 
 export async function POST(
     req: Request,
@@ -25,7 +26,7 @@ export async function POST(
         const { contactIds } = await req.json();
 
         // Fetch post and campaign
-        const post = await prisma.campaignPost.findUnique({
+        const post = await prisma.campaignPost.findFirst({
             where: {
                 id: parseInt(postId),
                 campaignId: parseInt(id),

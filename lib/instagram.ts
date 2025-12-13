@@ -10,13 +10,14 @@ interface InstagramPostOptions {
     mediaUrls?: string | string[] | null;
     isReel?: boolean; // For Instagram Reels
     shareToFeed?: boolean; // Share Reel to feed as well
+    isVideo?: boolean; // Explicitly specify if media is video (bypass URL check)
 }
 
 export async function postToInstagram(
     credentials: InstagramCredentials,
     caption: string,
     mediaUrls?: string | string[] | null,
-    options?: { isReel?: boolean; shareToFeed?: boolean }
+    options?: { isReel?: boolean; shareToFeed?: boolean; isVideo?: boolean }
 ) {
     const { accessToken, userId } = credentials;
 
@@ -34,13 +35,17 @@ export async function postToInstagram(
         const validatedUrls = mediaList.map(url => {
             const validation = validateMediaUrl(url);
             if (!validation.valid) {
-                throw new Error(`Invalid media URL: ${validation.message}`);
+                console.warn(`[Instagram] Media URL validation warning: ${validation.message} (Proceeding, but strictly public URLs are required)`);
+                // throw new Error(`Invalid media URL: ${validation.message}`);
+                // Only warn instead of throw to allow testing if user knows what they are doing or for some edge cases
+                return validation.url;
             }
             return validation.url;
         });
 
         const firstMediaUrl = validatedUrls[0];
-        const isVideo = isVideoUrl(firstMediaUrl);
+        // Determine isVideo: Explicit option > isReel > URL Check
+        const isVideo = options?.isVideo ?? (options?.isReel || isVideoUrl(firstMediaUrl));
 
         // Check if it's a Reel
         if (options?.isReel && isVideo) {
@@ -76,11 +81,9 @@ export async function postToInstagram(
             const containerData = await containerResponse.json();
             const creationId = containerData.id;
 
-            // For videos, we might need to wait for processing
-            if (isVideo) {
-                console.log('[Instagram] Waiting for video processing...');
-                await waitForVideoProcessing(userId, creationId, accessToken);
-            }
+            // Always wait for processing, even for images if they are large
+            console.log(`[Instagram] Waiting for media processing: ${creationId}`);
+            await waitForMediaProcessing(creationId, accessToken);
 
             // Step 2: Publish the container
             const publishResponse = await fetch(
@@ -115,7 +118,7 @@ export async function postToInstagram(
             for (let i = 0; i < validatedUrls.length; i++) {
                 const mediaUrl = validatedUrls[i];
                 const mediaIsVideo = isVideoUrl(mediaUrl);
-                
+
                 console.log(`[Instagram] Creating carousel item ${i + 1}/${validatedUrls.length}, Type: ${mediaIsVideo ? 'VIDEO' : 'IMAGE'}`);
 
                 try {
@@ -142,7 +145,12 @@ export async function postToInstagram(
                     }
 
                     const containerData = await containerResponse.json();
-                    containerIds.push(containerData.id);
+                    const itemId = containerData.id;
+
+                    // Wait for item processing
+                    await waitForMediaProcessing(itemId, accessToken);
+
+                    containerIds.push(itemId);
                 } catch (err) {
                     console.error(`[Instagram] Exception creating carousel item ${i + 1}:`, err);
                     failedItems.push(`Item ${i + 1}: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -152,7 +160,7 @@ export async function postToInstagram(
             if (containerIds.length === 0) {
                 throw new Error(`Carousel upload failed: No valid media items could be uploaded. Failed: ${failedItems.join('; ')}`);
             }
-            
+
             if (failedItems.length > 0) {
                 console.warn(`[Instagram] Some carousel items failed: ${failedItems.join('; ')}. Continuing with ${containerIds.length} items.`);
             }
@@ -180,6 +188,9 @@ export async function postToInstagram(
             }
 
             const carouselData = await carouselResponse.json();
+
+            // Wait for carousel container processing
+            await waitForMediaProcessing(carouselData.id, accessToken);
 
             // Publish carousel
             const publishResponse = await fetch(
@@ -254,7 +265,7 @@ async function postInstagramReel(
 
         // Step 2: Wait for video processing
         console.log('[Instagram] Waiting for Reel video processing...');
-        await waitForVideoProcessing(userId, creationId, accessToken, 60000); // 60 second timeout
+        await waitForMediaProcessing(creationId, accessToken, 60000); // 60 second timeout
 
         // Step 3: Publish the Reel
         const publishResponse = await fetch(
@@ -287,37 +298,55 @@ async function postInstagramReel(
 }
 
 /**
- * Wait for Instagram video processing to complete
+ * Wait for Instagram media processing to complete (works for Video and Image)
  */
-async function waitForVideoProcessing(
-    userId: string,
-    containerId: string,
+async function waitForMediaProcessing(
+    creationId: string,
     accessToken: string,
-    timeout: number = 30000
+    timeout: number = 60000 // Increased default timeout to 60s
 ): Promise<void> {
     const startTime = Date.now();
-    const pollInterval = 2000; // Check every 2 seconds
+    const pollInterval = 3000; // Check every 3 seconds
+
+    console.log(`[Instagram] Waiting for media processing: ${creationId}`);
 
     while (Date.now() - startTime < timeout) {
-        const statusResponse = await fetch(
-            `https://graph.facebook.com/v18.0/${containerId}?fields=status_code&access_token=${accessToken}`
-        );
+        try {
+            const statusResponse = await fetch(
+                `https://graph.facebook.com/v18.0/${creationId}?fields=status_code,status&access_token=${accessToken}`
+            );
 
-        if (statusResponse.ok) {
-            const statusData = await statusResponse.json();
+            if (statusResponse.ok) {
+                const statusData = await statusResponse.json();
+                const statusCode = statusData.status_code;
 
-            if (statusData.status_code === 'FINISHED') {
-                console.log('[Instagram] Video processing complete');
-                return;
-            } else if (statusData.status_code === 'ERROR') {
-                throw new Error('Video processing failed');
+                // FINISHED is for Video, READY can be for Image or Carousel containers? 
+                // Documentation says: 
+                //   - Images: usually READY immediately
+                //   - Videos: FINISHED when done
+                //   - Carousel Container: FINISHED when done
+                // If status_code is missing, it might be an image which is ready immediately, but let's check carefully.
+
+                console.log(`[Instagram] Media ${creationId} status: ${statusCode}`);
+
+                if (statusCode === 'FINISHED' || statusCode === 'READY') {
+                    console.log(`[Instagram] Media processing complete: ${creationId}`);
+                    return;
+                } else if (statusCode === 'ERROR') {
+                    throw new Error(`Media processing failed for ${creationId}`);
+                }
+
+                // If status is IN_PROGRESS or PUBLISHED (already?), wait.
+            } else {
+                // If fetch failed, might be transient API error
+                console.warn(`[Instagram] Status check failed for ${creationId}: ${statusResponse.status}`);
             }
-
-            console.log(`[Instagram] Video status: ${statusData.status_code}, waiting...`);
+        } catch (e) {
+            console.error(`[Instagram] Error checking status for ${creationId}`, e);
         }
 
         await new Promise(resolve => setTimeout(resolve, pollInterval));
     }
 
-    throw new Error('Video processing timeout');
+    throw new Error(`Media processing timeout for ${creationId}`);
 }

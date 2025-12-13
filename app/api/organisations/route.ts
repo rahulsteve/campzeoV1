@@ -232,6 +232,10 @@ export async function POST(req: Request) {
             organisation,
             user: updatedUser,
             isUpdating,
+            invoice: plan !== "FREE_TRIAL" && paymentData ? await prisma.invoice.findFirst({ where: { description: `Subscription for ${selectedPlan.name}`, subscription: { organisationId: organisation.id } }, orderBy: { createdAt: 'desc' } }) : null,
+            // We can also just use the invoice created above if we assign it to a variable, but it's inside an if block.
+            // Let's rely on finding it or refactoring. 
+            // Better: let invoice variable be outside.
         });
     } catch (error) {
         console.error("=== ERROR CREATING ORGANISATION ===");

@@ -183,6 +183,7 @@ export default function EditContactPage() {
                         <div className="flex items-center gap-4">
                             <Button
                                 variant="ghost"
+                                className="cursor-pointer"
                                 size="icon"
                                 onClick={() => router.push('/contacts')}
                             >
@@ -296,7 +297,7 @@ export default function EditContactPage() {
 
                                     {/* Actions */}
                                     <div className="flex gap-3 pt-4 border-t">
-                                        <Button type="submit" disabled={loading}>
+                                        <Button type="submit" className="cursor-pointer" disabled={loading}>
                                             {loading ? (
                                                 <>
                                                     <Loader2 className="size-4 mr-2 animate-spin" />
@@ -308,6 +309,7 @@ export default function EditContactPage() {
                                         </Button>
                                         <Button
                                             type="button"
+                                            className="cursor-pointer"
                                             variant="outline"
                                             onClick={() => router.push('/contacts')}
                                             disabled={loading}

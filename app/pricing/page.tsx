@@ -15,7 +15,11 @@ export default function PricingPage() {
     const router = useRouter();
 
     const handlePlanSelect = (plan: Plan) => {
-        router.push("/sign-up");
+        if (plan.price === 0) {
+            router.push("/sign-up");
+        } else {
+            router.push(`/purchase?planId=${plan.id}`);
+        }
     };
 
     return (

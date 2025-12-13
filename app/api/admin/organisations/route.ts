@@ -40,6 +40,7 @@ export async function GET(req: Request) {
         const pageNumber = parseInt(searchParams.get("pageNumber") || "1");
         const searchText = searchParams.get("searchText") || "";
         const isDeletedParam = searchParams.get("isDeleted");
+        const isApprovedParam = searchParams.get("isApproved");
         const sortBy = searchParams.get("sortBy") || "createdAt";
         const sortDesc = searchParams.get("sortDesc") === "true";
 
@@ -51,6 +52,10 @@ export async function GET(req: Request) {
         // Only add isDeleted filter if parameter is provided
         if (isDeletedParam !== null) {
             whereClause.isDeleted = isDeletedParam === "true";
+        }
+
+        if (isApprovedParam !== null) {
+            whereClause.isApproved = isApprovedParam === "true";
         }
 
         if (searchText) {
