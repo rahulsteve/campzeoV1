@@ -8,7 +8,7 @@ import { SignInButton, SignedOut, SignedIn, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TestimonialCarousel } from "@/components/testimonial-carousel";
-n
+
 export default function LandingPage() {
   const router = useRouter();
 
@@ -29,7 +29,7 @@ export default function LandingPage() {
                 Testimonials
               </a>
               <a href="#how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">
-                  How It Works
+                How It Works
               </a>
               <Link href="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">
                 Pricing
