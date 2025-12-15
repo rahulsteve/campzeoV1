@@ -313,6 +313,31 @@ export async function createYouTubePlaylist(
     }
 }
 
+// Get YouTube Playlists
+export async function getYouTubePlaylists(accessToken: string) {
+    try {
+        const response = await fetch('https://www.googleapis.com/youtube/v3/playlists?part=snippet,contentDetails&mine=true&maxResults=50', {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+            },
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            if (response.status === 401) {
+                throw new Error('YouTube access token expired. Please reconnect your YouTube account.');
+            }
+            throw new Error(`YouTube API error: ${JSON.stringify(error)}`);
+        }
+
+        const data: any = await response.json();
+        return data.items || [];
+    } catch (error) {
+        console.error('YouTube playlists fetch error:', error);
+        throw error;
+    }
+}
+
 // Add video to YouTube Playlist
 export async function addVideoToPlaylist(
     credentials: YouTubeCredentials,
@@ -402,5 +427,91 @@ export async function getYouTubeChannelInfo(accessToken: string) {
     } catch (error) {
         console.error('YouTube channel info error:', error);
         throw error;
+    }
+}
+
+export interface YouTubeVideoInsights {
+    likes: number;
+    comments: number;
+    impressions: number;
+    reach: number;
+    engagementRate: number;
+    views: number;
+    isDeleted?: boolean;
+}
+
+export async function getYouTubeVideoInsights(
+    videoId: string,
+    accessToken: string
+): Promise<YouTubeVideoInsights> {
+    try {
+        const part = 'statistics';
+        const response = await fetch(
+            `https://www.googleapis.com/youtube/v3/videos?part=${part}&id=${videoId}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+            }
+        );
+
+        if (!response.ok) {
+            const error = await response.json();
+            // 404 is rare for List endpoint, usually returns empty items
+            throw new Error(`Failed to fetch video details: ${JSON.stringify(error)}`);
+        }
+
+        const data = await response.json();
+        const item = data.items?.[0];
+
+        if (!item) {
+            // If items array is empty, video is deleted or private/not accessible
+            return {
+                likes: 0,
+                comments: 0,
+                impressions: 0,
+                reach: 0,
+                engagementRate: 0,
+                views: 0,
+                isDeleted: true
+            };
+        }
+
+        const stats = item.statistics;
+        const likes = parseInt(stats.likeCount || '0');
+        const comments = parseInt(stats.commentCount || '0');
+        const views = parseInt(stats.viewCount || '0');
+
+        // YouTube API doesn't provide reach/impressions via the public Data API for individual videos easily.
+        // It requires YouTube Analytics API which is much more complex and requires meaningful reporting.
+        // We will map 'views' to 'impressions' for now as a proxy.
+        const impressions = views;
+        const reach = views; // Proxy
+
+        // Engagement rate
+        const totalEngagements = likes + comments;
+        const engagementRate = views > 0 ? (totalEngagements / views) * 100 : 0;
+
+        return {
+            likes,
+            comments,
+            impressions,
+            reach,
+            engagementRate,
+            views,
+            isDeleted: false
+        };
+
+    } catch (error) {
+        console.error(`[YouTube] Error fetching insights for ${videoId}:`, error);
+        return {
+            likes: 0,
+            comments: 0,
+            impressions: 0,
+            reach: 0,
+            engagementRate: 0,
+            views: 0,
+            isDeleted: false
+        };
     }
 }

@@ -294,7 +294,7 @@ export default function ContactListPage() {
                                             setCurrentPage(1);
                                         }}
                                     >
-                                        <SelectTrigger className="w-[200px]">
+                                        <SelectTrigger className="w-[200px] border  border-gray-200">
                                             <SelectValue placeholder="Filter by campaign" />
                                         </SelectTrigger>
                                         <SelectContent>

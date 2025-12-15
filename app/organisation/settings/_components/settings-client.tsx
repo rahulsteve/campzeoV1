@@ -471,7 +471,7 @@ export function SettingsClient({ userData, assignedPlatforms }: SettingsClientPr
                                     <Settings className="h-4 w-4" />
                                 </Button>
                             )} */}
-                            <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDisconnect(platform.id)}>
+                            <Button variant="ghost" size="sm" className="text-red-500 cursor-pointer hover:text-red-600 hover:bg-red-50" onClick={() => handleDisconnect(platform.id)}>
                               Disconnect
                             </Button>
                             {/* {platform.id === 'FACEBOOK' && (
@@ -481,7 +481,7 @@ export function SettingsClient({ userData, assignedPlatforms }: SettingsClientPr
                             )} */}
                           </div>
                         ) : (
-                          <Button variant="outline" onClick={() => handleConnect(platform.id)}>
+                          <Button className="cursor-pointer" variant="outline" onClick={() => handleConnect(platform.id)}>
                             Connect
                           </Button>
                         )}

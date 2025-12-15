@@ -70,7 +70,7 @@ export function WYSIWYGPreview({
                                     <p className="font-semibold text-gray-900">{userName}</p>
                                     <p className="text-xs text-gray-500">Just now · 🌎</p>
                                 </div>
-                                <button type="button" className="text-gray-500 hover:bg-gray-100 rounded-full p-1">
+                                <button type="button" className="text-gray-500 cursor-pointer hover:bg-gray-100 rounded-full p-1">
                                     <MoreHorizontal className="size-5" />
                                 </button>
                             </div>
@@ -91,7 +91,7 @@ export function WYSIWYGPreview({
                                             <>
                                                 <video src={mediaUrls[0]} className="size-full object-cover opacity-80" />
                                                 <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                                                    <button type="button" className="flex items-center gap-2 rounded-full bg-black/60 px-4 py-2 text-sm font-medium text-white hover:bg-black/80 backdrop-blur-sm transition-all">
+                                                    <button type="button" className="flex cursor-pointer items-center gap-2 rounded-full bg-black/60 px-4 py-2 text-sm font-medium text-white hover:bg-black/80 backdrop-blur-sm transition-all">
                                                         <Play className="size-4 fill-current" />
                                                         Watch Video
                                                     </button>
@@ -154,7 +154,7 @@ export function WYSIWYGPreview({
                                 <div className="flex-1">
                                     <p className="text-sm font-semibold text-gray-900">{userName.toLowerCase().replace(/\s/g, '')}</p>
                                 </div>
-                                <button type="button" className="text-gray-900">
+                                <button type="button" className="text-gray-900 cursor-pointer">
                                     <MoreHorizontal className="size-5" />
                                 </button>
                             </div>
@@ -236,7 +236,7 @@ export function WYSIWYGPreview({
                                     <p className="font-semibold text-gray-900">{userName}</p>
                                     <p className="text-xs text-gray-500">Company · 1m</p>
                                 </div>
-                                <button type="button" className="text-gray-500">
+                                <button type="button" className="text-gray-500 cursor-pointer">
                                     <MoreHorizontal className="size-5" />
                                 </button>
                             </div>
@@ -261,7 +261,7 @@ export function WYSIWYGPreview({
                                             <>
                                                 <video src={mediaUrls[0]} className="size-full object-cover opacity-80" />
                                                 <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                                                    <button type="button" className="flex items-center gap-2 rounded-md bg-white/90 px-4 py-2 text-sm font-semibold text-black hover:bg-white transition-all">
+                                                    <button type="button" className="flex cursor-pointer items-center gap-2 rounded-md bg-white/90 px-4 py-2 text-sm font-semibold text-black hover:bg-white transition-all">
                                                         <Play className="size-4 fill-current" />
                                                         Watch Video
                                                     </button>
@@ -288,13 +288,13 @@ export function WYSIWYGPreview({
                             )}
 
                             <div className="flex items-center gap-2 border-t pt-2 text-sm text-gray-600">
-                                <button type="button" className="flex items-center gap-1 hover:bg-gray-100 rounded px-3 py-1">
+                                <button type="button" className="flex cursor-pointer items-center gap-1 hover:bg-gray-100 rounded px-3 py-1">
                                     <ThumbsUp className="size-4" /> Like
                                 </button>
-                                <button type="button" className="flex items-center gap-1 hover:bg-gray-100 rounded px-3 py-1">
+                                <button type="button" className="flex cursor-pointer items-center gap-1 hover:bg-gray-100 rounded px-3 py-1">
                                     <MessageCircle className="size-4" /> Comment
                                 </button>
-                                <button type="button" className="flex items-center gap-1 hover:bg-gray-100 rounded px-3 py-1">
+                                <button type="button" className="flex cursor-pointer items-center gap-1 hover:bg-gray-100 rounded px-3 py-1">
                                     <Share2 className="size-4" /> Share
                                 </button>
                             </div>
@@ -356,7 +356,7 @@ export function WYSIWYGPreview({
                                         type="button"
                                         onClick={() => setIsPlayingVideo(true)}
                                         disabled={!mediaUrls.length || !isVideo(mediaUrls[0])}
-                                        className="absolute inset-0 flex items-center justify-center disabled:cursor-not-allowed"
+                                        className="absolute cursor-pointer inset-0 flex items-center justify-center disabled:cursor-not-allowed"
                                     >
                                         <div className="flex size-16 items-center justify-center rounded-full bg-red-600/90 shadow-lg backdrop-blur-sm transition-transform hover:scale-110 disabled:opacity-50">
                                             <div className="ml-1 size-0 border-y-8 border-l-12 border-y-transparent border-l-white"></div>

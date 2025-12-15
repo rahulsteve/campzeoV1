@@ -386,6 +386,7 @@ export default function CampaignPostsPage() {
                         {/* Header */}
                         <div className="flex items-center gap-4">
                             <Button
+                            className='cursor-pointer'
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => router.push('/organisation/campaigns')}
@@ -402,7 +403,7 @@ export default function CampaignPostsPage() {
                                     {campaign?.description || 'Manage posts for this campaign'}
                                 </p>
                             </div>
-                            <Button onClick={() => router.push(`/organisation/campaigns/${campaignId}/posts/new`)}>
+                            <Button className='cursor-pointer' onClick={() => router.push(`/organisation/campaigns/${campaignId}/posts/new`)}>
                                 <Plus className="size-4 mr-2" />
                                 Add Post
                             </Button>
@@ -412,10 +413,10 @@ export default function CampaignPostsPage() {
                         <Card>
                             <CardContent className="pt-6">
                                 <div className="flex flex-col md:flex-row gap-4">
-                                    <div className="flex items-center gap-2 flex-1">
+                                    <div className="flex items-center gap-2 flex-1 ">
                                         <Filter className="size-4 text-muted-foreground" />
                                         <Select value={filterPlatform} onValueChange={setFilterPlatform}>
-                                            <SelectTrigger className="w-[200px]">
+                                            <SelectTrigger className="w-[200px] border border-gray-200">
                                                 <SelectValue placeholder="Filter by platform" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -432,7 +433,7 @@ export default function CampaignPostsPage() {
                                     </div>
 
                                     <Select value={filterStatus} onValueChange={setFilterStatus}>
-                                        <SelectTrigger className="w-[200px]">
+                                        <SelectTrigger className="w-[200px] border border-gray-200">
                                             <SelectValue placeholder="Filter by status" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -454,7 +455,7 @@ export default function CampaignPostsPage() {
                                     <p className="text-muted-foreground mb-4">
                                         {posts.length === 0 ? 'No posts yet' : 'No posts match your filters'}
                                     </p>
-                                    <Button onClick={() => router.push(`/organisation/campaigns/${campaignId}/posts/new`)}>
+                                    <Button className='cursor-pointer' onClick={() => router.push(`/organisation/campaigns/${campaignId}/posts/new`)}>
                                         <Plus className="size-4 mr-2" />
                                         Add Your First Post
                                     </Button>
@@ -513,6 +514,7 @@ export default function CampaignPostsPage() {
                                                     </div>
                                                     <div className="flex items-center gap-2 ml-4">
                                                         <Button
+                                                        className='cursor-pointer'      
                                                             size="sm"
                                                             variant="ghost"
                                                             onClick={() => setPreviewPost(post)}
@@ -521,6 +523,7 @@ export default function CampaignPostsPage() {
                                                             <Eye className="size-4" />
                                                         </Button>
                                                         <Button
+                                                        className='cursor-pointer'      
                                                             size="sm"
                                                             variant="ghost"
                                                             onClick={() => {
@@ -532,6 +535,7 @@ export default function CampaignPostsPage() {
                                                             {isSocialPlatform ? <Send className="size-4" /> : <Share2 className="size-4" />}
                                                         </Button>
                                                         <Button
+                                                        className='cursor-pointer'      
                                                             size="sm"
                                                             variant="ghost"
                                                             onClick={() => handleDuplicatePost(post)}
@@ -540,6 +544,7 @@ export default function CampaignPostsPage() {
                                                             <Copy className="size-4" />
                                                         </Button>
                                                         <Button
+                                                        className='cursor-pointer'      
                                                             size="sm"
                                                             variant="ghost"
                                                             onClick={() => router.push(`/organisation/campaigns/${campaignId}/posts/${post.id}/edit`)}
@@ -549,6 +554,7 @@ export default function CampaignPostsPage() {
                                                             <Edit className="size-4" />
                                                         </Button>
                                                         <Button
+                                                        className='cursor-pointer'      
                                                             size="sm"
                                                             variant="ghost"
                                                             onClick={() => {
@@ -669,7 +675,7 @@ export default function CampaignPostsPage() {
                             <>
                                 <div className="flex items-center justify-between">
                                     <h4 className="text-sm font-medium">Select Contacts</h4>
-                                    <Button variant="outline" size="sm" onClick={toggleAllContacts}>
+                                    <Button className='cursor-pointer' variant="outline" size="sm" onClick={toggleAllContacts}>
                                         {selectedContacts.length === (campaign?.contacts?.length || 0) ? 'Deselect All' : 'Select All'}
                                     </Button>
                                 </div>
@@ -718,8 +724,8 @@ export default function CampaignPostsPage() {
                         )}
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setSharePost(null)}>Cancel</Button>
-                        <Button onClick={handleSendShare} disabled={sendingShare || (!isSocialPlatform && selectedContacts.length === 0)}>
+                        <Button className='cursor-pointer' variant="outline" onClick={() => setSharePost(null)}>Cancel</Button>
+                        <Button className='cursor-pointer' onClick={handleSendShare} disabled={sendingShare || (!isSocialPlatform && selectedContacts.length === 0)}>
                             {sendingShare ? (
                                 <>
                                     <Loader2 className="size-4 mr-2 animate-spin" />

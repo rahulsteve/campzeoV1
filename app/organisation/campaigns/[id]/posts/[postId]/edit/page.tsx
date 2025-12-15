@@ -417,6 +417,7 @@ export default function EditPostPage() {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <Button
+                                className='cursor-pointer'
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => router.back()}
@@ -431,7 +432,7 @@ export default function EditPostPage() {
                                     </p>
                                 </div>
                             </div>
-                            <Button variant="outline" onClick={() => setShowPreview(true)}>
+                            <Button  className='cursor-pointer' variant="outline" onClick={() => setShowPreview(true)}>
                                 <Eye className="size-4 mr-2" />
                                 Preview
                             </Button>
@@ -525,7 +526,7 @@ export default function EditPostPage() {
                                                     type="button"
                                                     size="icon"
                                                     variant="ghost"
-                                                    className="absolute bottom-2 right-2 size-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
+                                                    className="absolute cursor-pointer bottom-2 right-2 size-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
                                                     onClick={() => setShowAIAssistant(true)}
                                                     title="Generate content with AI"
                                                 >
@@ -568,7 +569,7 @@ export default function EditPostPage() {
                                                         <button
                                                             type="button"
                                                             onClick={() => removeMedia(index)}
-                                                            className="absolute top-0.5 right-0.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                                                            className="absolute cursor-pointer top-0.5 right-0.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
                                                             title="Remove media"
                                                         >
                                                             <Trash2 className="size-3" />
@@ -608,13 +609,14 @@ export default function EditPostPage() {
                                             <div className="flex flex-wrap gap-2">
                                                 {['POST', 'REEL'].map((cType) => (
                                                     <button
+                                                    
                                                         key={cType}
                                                         type="button"
                                                         onClick={() => {
                                                             setContentType(cType);
                                                             setIsReel(cType === 'REEL');
                                                         }}
-                                                        className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-all ${contentType === cType
+                                                        className={`rounded-md cursor-pointer border px-3 py-1.5 text-sm font-medium transition-all ${contentType === cType
                                                             ? 'border-primary bg-primary/10 text-primary'
                                                             : 'border-border bg-background hover:bg-muted'
                                                             }`}
@@ -633,7 +635,7 @@ export default function EditPostPage() {
                                                             variant="outline"
                                                             onClick={() => document.getElementById('reel-cover-upload')?.click()}
                                                             disabled={uploadingMedia}
-                                                            className="gap-2 w-full"
+                                                            className="gap-2 w-full cursor-pointer"
                                                         >
                                                             <Upload className="size-4" />
                                                             {uploadingMedia ? "Uploading..." : "Upload Cover"}
@@ -652,7 +654,7 @@ export default function EditPostPage() {
                                                             <button
                                                                 type="button"
                                                                 onClick={() => setThumbnailUrl(null)}
-                                                                className="absolute right-1 top-1 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
+                                                                className="absolute right-1 top-1 cursor-pointer rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
                                                             >
                                                                 <X className="size-3" />
                                                             </button>
@@ -683,7 +685,7 @@ export default function EditPostPage() {
                                                             key={yType}
                                                             type="button"
                                                             onClick={() => setYoutubeContentType(yType)}
-                                                            className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-all ${youtubeContentType === yType
+                                                            className={`rounded-md cursor-pointer border px-3 py-1.5 text-sm font-medium transition-all ${youtubeContentType === yType
                                                                 ? 'border-primary bg-primary/10 text-primary'
                                                                 : 'border-border bg-background hover:bg-muted'
                                                                 }`}
@@ -867,6 +869,7 @@ export default function EditPostPage() {
                             {/* Actions */}
                             <div className="flex justify-end gap-4">
                                 <Button
+                                className='cursor-pointer'
                                     type="button"
                                     variant="outline"
                                     onClick={() => router.back()}
@@ -874,7 +877,7 @@ export default function EditPostPage() {
                                 >
                                     Cancel
                                 </Button>
-                                <Button type="submit" disabled={saving}>
+                                <Button className='cursor-pointer' type="submit" disabled={saving}>
                                     {saving ? (
                                         <>
                                             <Loader2 className="size-4 mr-2 animate-spin" />

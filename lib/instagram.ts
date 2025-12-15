@@ -350,3 +350,114 @@ async function waitForMediaProcessing(
 
     throw new Error(`Media processing timeout for ${creationId}`);
 }
+
+export interface InstagramPostInsights {
+    likes: number;
+    comments: number;
+    impressions: number;
+    reach: number;
+    engagementRate: number;
+    isDeleted?: boolean;
+}
+
+export async function getInstagramPostInsights(
+    mediaId: string,
+    accessToken: string
+): Promise<InstagramPostInsights> {
+    try {
+        // 1. Get Media Object (for likes, comments, and media_type)
+        const fields = 'like_count,comments_count,media_type';
+        const mediaResponse = await fetch(
+            `https://graph.facebook.com/v18.0/${mediaId}?fields=${fields}&access_token=${accessToken}`
+        );
+
+        if (!mediaResponse.ok) {
+            const error = await mediaResponse.json();
+            // Code 100 with subcode 33: Object does not exist
+            const errorCode = error.error?.code;
+
+            if (errorCode === 100 || errorCode === 210) {
+                return {
+                    likes: 0,
+                    comments: 0,
+                    impressions: 0,
+                    reach: 0,
+                    engagementRate: 0,
+                    isDeleted: true
+                };
+            }
+            throw new Error(`Failed to fetch media details: ${JSON.stringify(error)}`);
+        }
+
+        const mediaData = await mediaResponse.json();
+        const likes = mediaData.like_count || 0;
+        const comments = mediaData.comments_count || 0;
+        // Instagram API doesn't expose shares on the media object directly for all types
+
+        // 2. Get Insights (Reach, Impressions)
+        let impressions = 0;
+        let reach = 0;
+
+        try {
+            // Metrics depend on media type
+            // IMAGE/CAROUSEL_ALBUM: impressions, reach, saved
+            // VIDEO: reach, total_interactions (?), saved, video_views. Video posts NO LONGER support impressions in v19.0? 
+            // Using v18.0.
+            // Let's try common metrics.
+            let metrics = 'impressions,reach';
+
+            // Note: For Reels, metrics might correspond to 'plays' etc.
+            // But we will try fetching standard ones.
+
+            const insightsResponse = await fetch(
+                `https://graph.facebook.com/v18.0/${mediaId}/insights?metric=${metrics}&access_token=${accessToken}`
+            );
+
+            if (insightsResponse.ok) {
+                const insightsData = await insightsResponse.json();
+                const data = insightsData.data || [];
+
+                const impressionsMetric = data.find((m: any) => m.name === 'impressions');
+                const reachMetric = data.find((m: any) => m.name === 'reach');
+
+                if (impressionsMetric) {
+                    impressions = impressionsMetric.values[0]?.value || 0;
+                }
+                if (reachMetric) {
+                    reach = reachMetric.values[0]?.value || 0;
+                }
+            } else {
+                // Maybe it's a Reel or Video where 'impressions' is not supported?
+                // Try 'plays' or 'views' if needed, but for now we fallback gracefully.
+                console.warn(`[Instagram] Insights fetch returned status ${insightsResponse.status}`);
+            }
+        } catch (insightError) {
+            console.warn(`[Instagram] Could not fetch insights for media ${mediaId}`, insightError);
+        }
+
+        // Calculate engagement rate
+        const totalEngagements = likes + comments;
+        const base = reach > 0 ? reach : impressions;
+        const engagementRate = base > 0 ? (totalEngagements / base) * 100 : 0;
+
+        return {
+            likes,
+            comments,
+            impressions,
+            reach,
+            engagementRate,
+            isDeleted: false
+        };
+
+    } catch (error) {
+        console.error(`[Instagram] Error fetching insights for ${mediaId}:`, error);
+        return {
+            likes: 0,
+            comments: 0,
+            impressions: 0,
+            reach: 0,
+            engagementRate: 0,
+            isDeleted: false
+        };
+    }
+}

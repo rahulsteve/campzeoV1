@@ -185,7 +185,7 @@ export default function CampaignsPage() {
                                     Manage your marketing campaigns and posts
                                 </p>
                             </div>
-                            <Button onClick={handleAddCampaign}>
+                            <Button className='cursor-pointer' onClick={handleAddCampaign}>
                                 <Plus className="size-4 mr-2" />
                                 New Campaign
                             </Button>
@@ -229,7 +229,7 @@ export default function CampaignsPage() {
                                     <div className="text-center py-12">
                                         <FileText className="size-12 mx-auto text-muted-foreground mb-4" />
                                         <p className="text-muted-foreground">No campaigns found</p>
-                                        <Button onClick={handleAddCampaign} className="mt-4">
+                                        <Button  onClick={handleAddCampaign} className="  cursor-pointer mt-4">
                                             <Plus className="size-4 mr-2" />
                                             Create Your First Campaign
                                         </Button>
@@ -291,6 +291,7 @@ export default function CampaignsPage() {
                                                                 <TableCell className="text-right">
                                                                     <div className="flex items-center justify-end gap-2">
                                                                         <Button
+                                                                            className='cursor-pointer'
                                                                             size="sm"
                                                                             variant="outline"
                                                                             onClick={() => handleManagePosts(campaign)}
@@ -298,6 +299,7 @@ export default function CampaignsPage() {
                                                                             {campaign._count.posts === 0 ? 'Add Post' : 'Posts'}
                                                                         </Button>
                                                                         <Button
+                                                                        className='cursor-pointer'
                                                                             size="sm"
                                                                             variant="ghost"
                                                                             onClick={() => handleEditCampaign(campaign)}
@@ -305,6 +307,7 @@ export default function CampaignsPage() {
                                                                             <Edit className="size-4" />
                                                                         </Button>
                                                                         <Button
+                                                                        className='cursor-pointer'
                                                                             size="sm"
                                                                             variant="ghost"
                                                                             onClick={() => {
@@ -352,6 +355,7 @@ export default function CampaignsPage() {
                                                 </span>
                                                 <div className="flex gap-1">
                                                     <Button
+                                                    className='cursor-pointer'
                                                         size="sm"
                                                         variant="outline"
                                                         onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -360,6 +364,7 @@ export default function CampaignsPage() {
                                                         <ChevronLeft className="size-4" />
                                                     </Button>
                                                     <Button
+                                                    className='cursor-pointer'
                                                         size="sm"
                                                         variant="outline"
                                                         onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}

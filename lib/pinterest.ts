@@ -158,3 +158,117 @@ export async function createPinterestBoard(accessToken: string, name: string, de
         throw error;
     }
 }
+
+export interface PinterestPostInsights {
+    likes: number; // 'saves' in Pinterest
+    comments: number; // Not always available in API v5 standard analytics
+    impressions: number;
+    reach: number; // Not directly 'reach', usually 'impression' or 'outbound_click'
+    engagementRate: number;
+    saves: number;
+    pinClicks: number;
+    outboundClicks: number;
+    isDeleted?: boolean;
+}
+
+export async function getPinterestPostInsights(
+    pinId: string,
+    accessToken: string
+): Promise<PinterestPostInsights> {
+    try {
+        let comments = 0;
+
+        // 1. Get Pin Details to get comment count (not available in analytics endpoint)
+        try {
+            const detailsResponse = await fetch(`https://api.pinterest.com/v5/pins/${pinId}`, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+            });
+
+            if (detailsResponse.ok) {
+                const details = await detailsResponse.json();
+                comments = details.comment_count || 0;
+            } else {
+                console.warn(`[Pinterest] Failed to fetch pin details for ${pinId}: ${detailsResponse.status}`);
+            }
+        } catch (detailError) {
+            console.warn(`[Pinterest] Error fetching pin details:`, detailError);
+        }
+
+        // 2. Get Analytics
+        const endDate = new Date().toISOString().split('T')[0];
+        const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // Last 30 days
+
+        const metrics = 'IMPRESSION,With_Pin_Click,Save,OUTBOUND_CLICK';
+
+        const analyticsUrl = `https://api.pinterest.com/v5/pins/${pinId}/analytics?start_date=${startDate}&end_date=${endDate}&metric_types=${metrics}`;
+
+        const response = await fetch(analyticsUrl, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+            },
+        });
+
+        if (!response.ok) {
+            console.warn(`[Pinterest] Failed to fetch analytics for pin ${pinId}: ${response.status}`);
+            if (response.status === 404) {
+                return {
+                    likes: 0,
+                    comments: 0,
+                    impressions: 0,
+                    reach: 0,
+                    engagementRate: 0,
+                    saves: 0,
+                    pinClicks: 0,
+                    outboundClicks: 0,
+                    isDeleted: true
+                };
+            }
+            return { likes: 0, comments: 0, impressions: 0, reach: 0, engagementRate: 0, saves: 0, pinClicks: 0, outboundClicks: 0, isDeleted: false };
+        }
+
+        const data = await response.json();
+
+        const impressions = data.IMPRESSION || 0;
+        const saves = data.SAVE || 0;
+        const pinClicks = data.PIN_CLICK || 0;
+        const outboundClicks = data.OUTBOUND_CLICK || 0;
+
+        // Map to standard interface
+        // Note: Pinterest 'Saves' are conceptually 'Likes' in other platforms (user validation)
+        const likes = saves;
+        const reach = impressions; // Proxy
+
+        // Engagement Rate calculation
+        // (Saves + Pin Clicks + Outbound Clicks + Comments) / Impressions
+        const totalEngagements = saves + pinClicks + outboundClicks + comments;
+        const engagementRate = impressions > 0 ? (totalEngagements / impressions) * 100 : 0;
+
+        return {
+            likes,
+            comments,
+            impressions,
+            reach,
+            engagementRate,
+            saves,
+            pinClicks,
+            outboundClicks,
+            isDeleted: false
+        };
+
+    } catch (error) {
+        console.error(`[Pinterest] Error fetching insights for ${pinId}:`, error);
+        return {
+            likes: 0,
+            comments: 0,
+            impressions: 0,
+            reach: 0,
+            engagementRate: 0,
+            saves: 0,
+            pinClicks: 0,
+            outboundClicks: 0,
+            isDeleted: false
+        };
+    }
+}

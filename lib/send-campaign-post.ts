@@ -3,7 +3,7 @@ import { sendCampaignEmail } from '@/lib/email';
 import { postToLinkedIn } from '@/lib/linkedin';
 import { postToFacebook } from '@/lib/facebook';
 import { postToInstagram } from '@/lib/instagram';
-import { postToYouTube, postYouTubeCommunity } from '@/lib/youtube';
+import { postToYouTube, postYouTubeCommunity, createYouTubePlaylist, addVideoToPlaylist } from '@/lib/youtube';
 import { postToPinterest, createPinterestBoard } from '@/lib/pinterest';
 import { sendSms, sendWhatsapp } from '@/lib/twilio';
 
@@ -200,6 +200,9 @@ export async function sendCampaignPost(
                 let platformResponse;
 
                 if (media && media.match(/\.(mp4|mov|webm)$/i)) {
+                    // Determine isShort from metadata
+                    const isShort = metadata?.postType === 'SHORT' || metadata?.isShort || false;
+
                     platformResponse = await postToYouTube(
                         { accessToken: dbUser.youtubeAccessToken },
                         post.subject || 'Video Post',
@@ -208,10 +211,45 @@ export async function sendCampaignPost(
                         {
                             tags: metadata?.tags || [],
                             privacy: metadata?.privacy || 'public',
-                            isShort: metadata?.isShort || false,
+                            isShort: isShort,
                             thumbnailUrl: metadata?.thumbnailUrl || undefined,
                         }
                     );
+
+                    // Handle Playlist Creation if requested
+                    // Handle Playlist (Existing or New)
+                    if (metadata?.postType === 'PLAYLIST' || metadata?.playlistId || metadata?.playlistTitle) {
+                        try {
+                            let targetPlaylistId = metadata?.playlistId;
+
+                            // Create new playlist if no ID but Title provided
+                            if (!targetPlaylistId && metadata?.playlistTitle) {
+                                const playlist = await createYouTubePlaylist(
+                                    { accessToken: dbUser.youtubeAccessToken },
+                                    metadata.playlistTitle,
+                                    post.message || '', // Use description
+                                    metadata?.privacy || 'public'
+                                );
+                                targetPlaylistId = playlist.id;
+                                console.log(`[YouTube] Created new playlist: ${metadata.playlistTitle}`);
+                            }
+
+                            if (targetPlaylistId) {
+                                await addVideoToPlaylist(
+                                    { accessToken: dbUser.youtubeAccessToken },
+                                    targetPlaylistId,
+                                    platformResponse.id,
+                                    0, // Position
+                                    { isShort }
+                                );
+                                console.log(`[YouTube] Added video to playlist: ${targetPlaylistId}`);
+                            }
+                        } catch (playlistError) {
+                            console.error('[YouTube] Failed to handle playlist (non-blocking):', playlistError);
+                            // We don't fail the whole post if playlist fails, as the video is uploaded
+                        }
+                    }
+
                 } else {
                     platformResponse = await postYouTubeCommunity(
                         { accessToken: dbUser.youtubeAccessToken },
@@ -233,7 +271,7 @@ export async function sendCampaignPost(
                         accountId: 'youtube-channel',
                         message: post.message || post.subject || "",
                         mediaUrls: post.mediaUrls.length > 0 ? post.mediaUrls[0] : post.videoUrl,
-                        postType: media && media.match(/\.(mp4|mov|webm)$/i) ? ((platformResponse as any).isShort ? 'SHORT' : 'VIDEO') : 'TEXT',
+                        postType: media && media.match(/\.(mp4|mov|webm)$/i) ? ((platformResponse as any).isShort || metadata?.postType === 'SHORT' ? 'SHORT' : 'VIDEO') : 'TEXT',
                         accessToken: dbUser.youtubeAccessToken,
                         published: true,
                         publishedAt: new Date(),
@@ -335,8 +373,10 @@ export async function sendCampaignPost(
         }
 
         if (contacts.length === 0) {
-            throw new Error('No contacts found');
+            throw new Error('No valid recipients found');
         }
+
+        const campaignTag = `campaign-${post.id}`;
 
         let successCount = 0;
         let failCount = 0;
@@ -369,7 +409,8 @@ export async function sendCampaignPost(
                     to: contact.contactEmail,
                     subject: subject,
                     html: message,
-                    replyTo: post.senderEmail || undefined
+                    replyTo: post.senderEmail || undefined,
+                    tags: [campaignTag]
                 });
 
                 if (sent) successCount++;
@@ -435,6 +476,38 @@ export async function sendCampaignPost(
             await prisma.campaignPost.update({
                 where: { id: post.id },
                 data: { isPostSent: true }
+            });
+
+            // Create PostTransaction for Analytics (Email/SMS/WhatsApp)
+            // For Email, we use the tag as the ID to fetch analytics later
+            const internalPostId = post.type === 'EMAIL' ? campaignTag : `${post.type.toLowerCase()}-${post.id}-${Date.now()}`;
+
+            const transaction = await prisma.postTransaction.create({
+                data: {
+                    refId: post.id,
+                    platform: post.type,
+                    postId: internalPostId,
+                    accountId: post.senderEmail || 'system',
+                    message: post.message || post.subject || "",
+                    mediaUrls: '', // No media for these usually
+                    postType: 'TEXT',
+                    accessToken: 'system',
+                    published: true,
+                    publishedAt: new Date(),
+                }
+            });
+
+            // Create initial PostInsight with reach = sent count
+            await prisma.postInsight.create({
+                data: {
+                    postId: internalPostId,
+                    likes: 0,
+                    comments: 0,
+                    reach: successCount,
+                    impressions: successCount, // Approximate 'opens' as sent for now
+                    engagementRate: 0,
+                    lastUpdated: new Date()
+                }
             });
         }
 

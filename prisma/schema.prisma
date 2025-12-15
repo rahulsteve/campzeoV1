@@ -245,6 +245,7 @@ model PostInsight {
   reach          Int      @default(0)
   impressions    Int      @default(0)
   engagementRate Float    @default(0)
+  isDeleted      Boolean  @default(false)
   lastUpdated    DateTime
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

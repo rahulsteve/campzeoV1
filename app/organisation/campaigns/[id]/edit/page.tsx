@@ -243,6 +243,7 @@ export default function EditCampaignPage() {
                         {/* Header */}
                         <div className="flex items-center gap-4">
                             <Button
+                            className='cursor-pointer'
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => router.back()}
@@ -394,6 +395,7 @@ export default function EditCampaignPage() {
                             {/* Actions */}
                             <div className="flex justify-end gap-4">
                                 <Button
+                                className='cursor-pointer'
                                     type="button"
                                     variant="outline"
                                     onClick={() => router.back()}
@@ -401,7 +403,7 @@ export default function EditCampaignPage() {
                                 >
                                     Cancel
                                 </Button>
-                                <Button type="submit" disabled={saving}>
+                                <Button className='cursor-pointer' type="submit" disabled={saving}>
                                     {saving ? (
                                         <>
                                             <Loader2 className="size-4 mr-2 animate-spin" />

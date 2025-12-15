@@ -190,6 +190,7 @@ interface CampaignEmailParams {
     subject: string;
     html: string;
     replyTo?: string;
+    tags?: string[];
 }
 
 /**
@@ -197,7 +198,7 @@ interface CampaignEmailParams {
  * @param params - Email parameters
  */
 export async function sendCampaignEmail(params: CampaignEmailParams): Promise<boolean> {
-    const { to, subject, html, replyTo } = params;
+    const { to, subject, html, replyTo, tags } = params;
     const { apiKey, domain, fromEmail } = await getEmailConfig();
 
     if (apiKey && domain && fromEmail) {
@@ -215,9 +216,13 @@ export async function sendCampaignEmail(params: CampaignEmailParams): Promise<bo
             msg['h:Reply-To'] = replyTo;
         }
 
+        if (tags && tags.length > 0) {
+            msg['o:tag'] = tags;
+        }
+
         try {
             await mg.messages.create(domain, msg);
-            console.log(`✅ Campaign email sent to ${to}`);
+            console.log(`✅ Campaign email sent to ${to} with tags: ${tags?.join(', ')}`);
             return true;
         } catch (error: any) {
             console.error('Error sending campaign email via Mailgun:', error);
@@ -232,11 +237,68 @@ export async function sendCampaignEmail(params: CampaignEmailParams): Promise<bo
     console.log(`To: ${to}`);
     console.log(`Subject: ${subject}`);
     if (replyTo) console.log(`Reply-To: ${replyTo}`);
+    if (tags) console.log(`Tags: ${tags.join(', ')}`);
     console.log('\nBody:');
     console.log(html);
     console.log('='.repeat(60));
 
     return true; // Return true for mock success
+}
+
+export interface EmailAnalytics {
+    accepted: number;
+    delivered: number;
+    opened: number;
+    clicked: number;
+}
+
+export async function getMailgunAnalytics(tag: string): Promise<EmailAnalytics> {
+    const { apiKey, domain } = await getEmailConfig();
+
+    if (apiKey && domain) {
+        // Mailgun Analytics API for Tags
+        // usage: GET /v3/{domain}/tags/{tag}/stats
+        // Docs: https://documentation.mailgun.com/docs/mailgun/api-reference/openapi-final/tag/action-get-tag-stats/
+
+        try {
+            const auth = Buffer.from(`api:${apiKey}`).toString('base64');
+            const response = await fetch(`https://api.mailgun.net/v3/${domain}/tags/${tag}/stats?event=accepted&event=delivered&event=opened&event=clicked`, {
+                headers: {
+                    'Authorization': `Basic ${auth}`
+                }
+            });
+
+            if (!response.ok) {
+                console.warn(`[Mailgun] Failed to fetch stats for tag ${tag}: ${response.status}`);
+                return { accepted: 0, delivered: 0, opened: 0, clicked: 0 };
+            }
+
+            const data = await response.json();
+            // data.stats is an array, e.g. [{ time: ..., accepted: { total: 10 }, ... }]
+            // We need to aggregate the totals
+
+            let accepted = 0;
+            let delivered = 0;
+            let opened = 0;
+            let clicked = 0;
+
+            if (data.stats && Array.isArray(data.stats)) {
+                data.stats.forEach((stat: any) => {
+                    accepted += stat.accepted?.total || 0;
+                    delivered += stat.delivered?.total || 0;
+                    opened += stat.opened?.total || 0;
+                    clicked += stat.clicked?.total || 0;
+                });
+            }
+
+            return { accepted, delivered, opened, clicked };
+        } catch (error) {
+            console.error('[Mailgun] Error fetching analytics:', error);
+            return { accepted: 0, delivered: 0, opened: 0, clicked: 0 };
+        }
+    }
+
+    return { accepted: 0, delivered: 0, opened: 0, clicked: 0 };
 }
 
 interface PaymentReceiptParams {

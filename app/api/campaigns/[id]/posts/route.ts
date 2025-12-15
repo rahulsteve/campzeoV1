@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { currentUser } from '@clerk/nextjs/server';
 import { postToLinkedIn } from '@/lib/linkedin';
+import { sendCampaignPost } from '@/lib/send-campaign-post';
 import { logError, logWarning, logInfo } from '@/lib/audit-logger';
 
 // GET - Fetch all posts for a campaign
@@ -115,6 +116,7 @@ export async function POST(
             youtubePrivacy,
             youtubeContentType,
             youtubePlaylistTitle,
+            youtubePlaylistId,
             pinterestBoardId,
             pinterestLink,
             isReel,
@@ -139,7 +141,8 @@ export async function POST(
                 privacy: youtubePrivacy,
                 thumbnailUrl,
                 postType: youtubeContentType,
-                playlistTitle: youtubePlaylistTitle
+                playlistTitle: youtubePlaylistTitle,
+                playlistId: youtubePlaylistId
             };
         } else if (type === 'PINTEREST') {
             metadata = { boardId: pinterestBoardId, link: pinterestLink };
@@ -165,48 +168,39 @@ export async function POST(
                 mediaUrls: mediaUrls || [],
                 metadata,
             },
+            include: {
+                campaign: {
+                    include: {
+                        organisation: true,
+                    }
+                }
+            }
         });
 
-        // If it's a LinkedIn post and not scheduled, send it immediately
-        if (type === 'LINKEDIN' && !scheduledPostTime) {
-            if (!dbUser.linkedInAccessToken || !dbUser.linkedInAuthUrn) {
-                console.warn("Missing LinkedIn credentials for user", user.id);
-            } else {
-                try {
-                    const linkedInResponse = await postToLinkedIn(
-                        {
-                            accessToken: dbUser.linkedInAccessToken,
-                            authorUrn: dbUser.linkedInAuthUrn,
-                        },
-                        message || subject || "",
-                        mediaUrls
-                    );
+        // If it's a social post and not scheduled, send it immediately
+        const isSocialPlatform = ['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'PINTEREST'].includes(type);
 
-                    // Update post status
-                    await prisma.campaignPost.update({
-                        where: { id: post.id },
-                        data: { isPostSent: true }
-                    });
+        if (isSocialPlatform && !scheduledPostTime) {
+            // Run in background to avoid Vercel timeout for immediate response, 
+            // or await if we want to return the result. 
+            // Given the original code awaited the LinkedIn post, we should probably await here too 
+            // to return error if it fails immediately?
+            // The original code only logged error but returned success for the creation.
 
-                    // Create Transaction Record
-                    await prisma.postTransaction.create({
-                        data: {
-                            refId: post.id,
-                            platform: 'LINKEDIN',
-                            postId: linkedInResponse.id,
-                            accountId: dbUser.linkedInAuthUrn,
-                            message: message || subject || "",
-                            mediaUrls: mediaUrls && mediaUrls.length > 0 ? mediaUrls[0] : null,
-                            postType: mediaUrls && mediaUrls.length > 0 ? (mediaUrls[0].match(/\.(mp4|mov|webm)$/i) ? 'VIDEO' : 'IMAGE') : 'TEXT',
-                            accessToken: dbUser.linkedInAccessToken,
-                            published: true,
-                            publishedAt: new Date(),
-                        }
-                    });
+            try {
+                // We don't await the result to block the UI? 
+                // Using waitUntil would be better but not available here easily without Vercel SDK context or Next.js experimental.
+                // But since we want to ensure it works for the "demo", let's await it but catch errors.
 
-                } catch (postError) {
-                    console.error("Failed to post to LinkedIn:", postError);
-                }
+                // Note: sendCampaignPost expects dbUser to be fetched inside it? 
+                // No, sendCampaignPost fetches the user based on organisationId.
+
+                await sendCampaignPost(post);
+
+            } catch (postError) {
+                console.error(`Failed to post to ${type}:`, postError);
+                // We log the error but still return the created post with 201, 
+                // maybe with a warning or we rely on the PostTransaction status/logs.
             }
         }
 

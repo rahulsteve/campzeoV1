@@ -137,7 +137,7 @@ function FacebookPreview({ subject, message, mediaUrls, thumbnailUrl, user }: an
                     <p className="font-semibold text-sm">{user?.name || 'Your Page Name'}</p>
                     <p className="text-xs text-muted-foreground">Just now · <span className="text-xs">🌎</span></p>
                 </div>
-                <Button variant="ghost" size="icon" className="ml-auto h-8 w-8">
+                <Button variant="ghost" size="icon" className="ml-auto cursor-pointer h-8 w-8">
                     <MoreHorizontal className="size-4" />
                 </Button>
             </div>
@@ -147,13 +147,13 @@ function FacebookPreview({ subject, message, mediaUrls, thumbnailUrl, user }: an
                 <MediaGrid mediaUrls={mediaUrls} thumbnailUrl={thumbnailUrl} />
             )}
             <div className="flex items-center justify-between pt-2 border-t text-muted-foreground">
-                <Button variant="ghost" size="sm" className="flex-1 gap-2">
+                <Button variant="ghost" size="sm" className="flex-1 gap-2 cursor-pointer">
                     <ThumbsUp className="size-4" /> Like
                 </Button>
-                <Button variant="ghost" size="sm" className="flex-1 gap-2">
+                <Button variant="ghost" size="sm" className="flex-1 gap-2 cursor-pointer">
                     <MessageCircle className="size-4" /> Comment
                 </Button>
-                <Button variant="ghost" size="sm" className="flex-1 gap-2">
+                <Button variant="ghost" size="sm" className="flex-1 gap-2 cursor-pointer">
                     <Share2 className="size-4" /> Share
                 </Button>
             </div>
@@ -174,7 +174,7 @@ function LinkedInPreview({ subject, message, mediaUrls, user }: any) {
                     <p className="text-xs text-muted-foreground">1,234 followers</p>
                     <p className="text-xs text-muted-foreground">Just now • <span className="text-xs">🌐</span></p>
                 </div>
-                <Button variant="ghost" size="icon" className="ml-auto h-8 w-8">
+                <Button variant="ghost" size="icon" className="ml-auto cursor-pointer h-8 w-8">
                     <MoreHorizontal className="size-4" />
                 </Button>
             </div>
@@ -184,16 +184,16 @@ function LinkedInPreview({ subject, message, mediaUrls, user }: any) {
                 <MediaGrid mediaUrls={mediaUrls} />
             )}
             <div className="flex items-center justify-between pt-2 border-t text-muted-foreground">
-                <Button variant="ghost" size="sm" className="flex-col h-auto py-2 gap-1 text-xs">
+                <Button variant="ghost" size="sm" className="flex-col h-auto cursor-pointer py-2 gap-1 text-xs">
                     <ThumbsUp className="size-4" /> Like
                 </Button>
-                <Button variant="ghost" size="sm" className="flex-col h-auto py-2 gap-1 text-xs">
+                <Button variant="ghost" size="sm" className="flex-col h-auto cursor-pointer py-2 gap-1 text-xs">
                     <MessageCircle className="size-4" /> Comment
                 </Button>
-                <Button variant="ghost" size="sm" className="flex-col h-auto py-2 gap-1 text-xs">
+                <Button variant="ghost" size="sm" className="flex-col h-auto cursor-pointer py-2 gap-1 text-xs">
                     <Repeat className="size-4" /> Repost
                 </Button>
-                <Button variant="ghost" size="sm" className="flex-col h-auto py-2 gap-1 text-xs">
+                <Button variant="ghost" size="sm" className="flex-col h-auto cursor-pointer py-2 gap-1 text-xs">
                     <Send className="size-4" /> Send
                 </Button>
             </div>
@@ -210,7 +210,7 @@ function InstagramPreview({ subject, message, mediaUrls, thumbnailUrl, user }: a
                     <AvatarFallback>U</AvatarFallback>
                 </Avatar>
                 <p className="font-semibold text-sm">{user?.name || 'username'}</p>
-                <Button variant="ghost" size="icon" className="ml-auto h-8 w-8">
+                <Button variant="ghost" size="icon" className="ml-auto cursor-pointer h-8 w-8">
                     <MoreHorizontal className="size-4" />
                 </Button>
             </div>
@@ -250,7 +250,7 @@ function TwitterPreview({ subject, message, mediaUrls, user }: any) {
                     <div className="flex items-center gap-1">
                         <p className="font-bold text-sm">{user?.name || 'Name'}</p>
                         <p className="text-sm text-muted-foreground">@{user?.name?.toLowerCase().replace(/\s/g, '') || 'handle'} · Just now</p>
-                        <Button variant="ghost" size="icon" className="ml-auto h-8 w-8">
+                        <Button variant="ghost" size="icon" className="ml-auto cursor-pointer h-8 w-8">
                             <MoreHorizontal className="size-4" />
                         </Button>
                     </div>

@@ -112,6 +112,10 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
     const [templates, setTemplates] = useState<any[]>([]);
     const [pinterestBoards, setPinterestBoards] = useState<{ id: string; name: string }[]>([]);
     const [loadingPinterestBoards, setLoadingPinterestBoards] = useState(false);
+    const [youtubePlaylists, setYoutubePlaylists] = useState<{ id: string; title: string }[]>([]);
+    const [loadingYoutubePlaylists, setLoadingYoutubePlaylists] = useState(false);
+    const [youtubePlaylistId, setYoutubePlaylistId] = useState<string>('');
+    const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
 
     // New Board State
     const [isCreatingBoard, setIsCreatingBoard] = useState(false);
@@ -199,6 +203,24 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
             };
 
             fetchBoards();
+        } else if (selectedPlatform === 'YOUTUBE') {
+            const fetchPlaylists = async () => {
+                try {
+                    setLoadingYoutubePlaylists(true);
+                    const response = await fetch('/api/youtube/playlists');
+                    if (response.ok) {
+                        const data = await response.json();
+                        setYoutubePlaylists(data.playlists || []);
+                    }
+                } catch (error) {
+                    console.error('Error fetching YouTube playlists:', error);
+                    toast.error('Failed to fetch YouTube playlists');
+                } finally {
+                    setLoadingYoutubePlaylists(false);
+                }
+            };
+
+            fetchPlaylists();
         }
     }, [selectedPlatform]);
 
@@ -429,6 +451,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                     youtubePrivacy,
                     youtubeContentType, // NEW: YouTube content type (VIDEO, SHORT, PLAYLIST)
                     youtubePlaylistTitle, // NEW: Playlist title if creating playlist
+                    youtubePlaylistId, // NEW: Existing Playlist ID
                     pinterestBoardId,
                     pinterestLink,
                     isReel, // Send isReel flag
@@ -560,6 +583,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                         {/* Header */}
                         <div className="flex items-center gap-4">
                             <Button
+                                className='cursor-pointer'
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => router.back()}
@@ -608,7 +632,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                                     onClick={() => togglePlatform(platform)}
                                                                     className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all min-w-[100px] ${isSelected
                                                                         ? 'border-primary bg-primary/10 shadow-sm'
-                                                                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                                                                        : 'border-border hover:border-primary/50 hover:bg-muted/50 cursor-pointer'
                                                                         }`}
                                                                 >
                                                                     <Icon className={`size-6 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
@@ -692,7 +716,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                             type="button"
                                                             size="icon"
                                                             variant="ghost"
-                                                            className="absolute bottom-2 right-2 size-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
+                                                            className="absolute bottom-2 right-2 size-8 rounded-full bg-primary text-primary-foreground cursor-pointer hover:bg-primary/90 shadow-lg"
                                                             onClick={() => setShowAIAssistant(true)}
                                                             title="Generate content with AI"
                                                         >
@@ -753,7 +777,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                         <Label htmlFor="message">Message Body *</Label>
                                                         <Dialog>
                                                             <DialogTrigger asChild>
-                                                                <Button type="button" variant="outline" size="sm">
+                                                                <Button className='cursor-pointer' type="button" variant="outline" size="sm">
                                                                     <Eye className="size-4 mr-2" />
                                                                     Preview
                                                                 </Button>
@@ -793,6 +817,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                             Insert variables:
                                                         </p>
                                                         <Button
+                                                            className='cursor-pointer'
                                                             type="button"
                                                             variant="outline"
                                                             size="sm"
@@ -801,6 +826,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                             {'{{name}}'}
                                                         </Button>
                                                         <Button
+                                                            className='cursor-pointer'
                                                             type="button"
                                                             variant="outline"
                                                             size="sm"
@@ -809,6 +835,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                             {'{{email}}'}
                                                         </Button>
                                                         <Button
+                                                            className='cursor-pointer'
                                                             type="button"
                                                             variant="outline"
                                                             size="sm"
@@ -817,6 +844,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                             {'{{phone}}'}
                                                         </Button>
                                                         <Button
+                                                            className='cursor-pointer'
                                                             type="button"
                                                             variant="outline"
                                                             size="sm"
@@ -868,7 +896,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => removeMedia(index)}
-                                                                        className="absolute top-0.5 right-0.5 bg-black/50 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                        className="absolute top-0.5 right-0.5 bg-black/50 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                                                                     >
                                                                         <X className="size-3" />
                                                                     </button>
@@ -910,8 +938,8 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                                         setIsReel(type === 'REEL');
                                                                     }}
                                                                     className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-all ${contentType === type
-                                                                        ? 'border-primary bg-primary/10 text-primary'
-                                                                        : 'border-border bg-background hover:bg-muted'
+                                                                        ? 'border-primary bg-primary/10 text-primary cursor-pointer'
+                                                                        : 'border-border bg-background hover:bg-muted cursor-pointer'
                                                                         }`}
                                                                 >
                                                                     {type === 'POST' ? 'Standard Post' : 'Reel / Short Video'}
@@ -928,7 +956,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                                         variant="outline"
                                                                         onClick={() => document.getElementById('reel-cover-upload')?.click()}
                                                                         disabled={uploadingMedia}
-                                                                        className="gap-2 w-full"
+                                                                        className="gap-2 w-full cursor-pointer"
                                                                     >
                                                                         <ImageIcon className="size-4" />
                                                                         {uploadingMedia ? "Uploading..." : "Upload Cover"}
@@ -947,7 +975,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => setThumbnailUrl(null)}
-                                                                            className="absolute right-1 top-1 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
+                                                                            className="absolute right-1 top-1 rounded-full bg-black/50 p-1 text-white hover:bg-black/70 cursor-pointer"
                                                                         >
                                                                             <X className="size-3" />
                                                                         </button>
@@ -979,8 +1007,8 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                                         type="button"
                                                                         onClick={() => setYoutubeContentType(type)}
                                                                         className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-all ${youtubeContentType === type
-                                                                            ? 'border-primary bg-primary/10 text-primary'
-                                                                            : 'border-border bg-background hover:bg-muted'
+                                                                            ? 'border-primary bg-primary/10 text-primary cursor-pointer'
+                                                                            : 'border-border bg-background hover:bg-muted cursor-pointer'
                                                                             }`}
                                                                     >
                                                                         {type === 'VIDEO' ? 'Standard Video' : type === 'SHORT' ? 'YouTube Short' : 'Playlist'}
@@ -991,18 +1019,66 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                             {/* Playlist Options */}
                                                             {youtubeContentType === 'PLAYLIST' && (
                                                                 <div className="space-y-3 pt-2">
-                                                                    <div className="space-y-2">
-                                                                        <Label htmlFor="playlistTitle">New Playlist Title</Label>
-                                                                        <Input
-                                                                            id="playlistTitle"
-                                                                            placeholder="Enter playlist title"
-                                                                            value={youtubePlaylistTitle}
-                                                                            onChange={(e) => setYoutubePlaylistTitle(e.target.value)}
-                                                                        />
-                                                                        <p className="text-xs text-muted-foreground">
-                                                                            A new playlist will be created with this title
-                                                                        </p>
-                                                                    </div>
+                                                                    {loadingYoutubePlaylists ? (
+                                                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                                            <Loader2 className="size-3 animate-spin" />
+                                                                            Loading playlists...
+                                                                        </div>
+                                                                    ) : (
+                                                                        <>
+                                                                            <Select
+                                                                                value={isCreatingPlaylist ? 'create_new' : (youtubePlaylistId || 'select')}
+                                                                                onValueChange={(val) => {
+                                                                                    if (val === 'create_new') {
+                                                                                        setIsCreatingPlaylist(true);
+                                                                                        setYoutubePlaylistId('');
+                                                                                        return;
+                                                                                    }
+                                                                                    // Explicitly handle "select" to clear value, though it shouldn't be selectable if disabled
+                                                                                    if (val === 'select') {
+                                                                                        setYoutubePlaylistId('');
+                                                                                        return;
+                                                                                    }
+
+                                                                                    setIsCreatingPlaylist(false);
+                                                                                    setYoutubePlaylistId(val);
+                                                                                }}
+                                                                            >
+                                                                                <SelectTrigger id="youtubePlaylist">
+                                                                                    <SelectValue placeholder="Select a playlist" />
+                                                                                </SelectTrigger>
+                                                                                <SelectContent>
+                                                                                    <SelectItem value="select" disabled>Select a playlist...</SelectItem>
+                                                                                    <SelectItem value="create_new" className="text-primary font-medium cursor-pointer bg-primary/5 focus:bg-primary/10">
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <Plus className="size-4" />
+                                                                                            Create New Playlist
+                                                                                        </div>
+                                                                                    </SelectItem>
+                                                                                    {youtubePlaylists.map(playlist => (
+                                                                                        <SelectItem key={playlist.id} value={playlist.id}>
+                                                                                            {playlist.title}
+                                                                                        </SelectItem>
+                                                                                    ))}
+                                                                                </SelectContent>
+                                                                            </Select>
+                                                                        </>
+                                                                    )}
+
+                                                                    {isCreatingPlaylist && (
+                                                                        <div className="space-y-2 pt-2 border-l-2 border-primary pl-4 ml-1">
+                                                                            <Label htmlFor="playlistTitle">New Playlist Title</Label>
+                                                                            <Input
+                                                                                id="playlistTitle"
+                                                                                placeholder="Enter playlist title"
+                                                                                value={youtubePlaylistTitle}
+                                                                                onChange={(e) => setYoutubePlaylistTitle(e.target.value)}
+                                                                            />
+                                                                            <p className="text-xs text-muted-foreground">
+                                                                                A new playlist will be created with this title
+                                                                            </p>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             )}
                                                         </div>
@@ -1039,7 +1115,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                                     variant="outline"
                                                                     onClick={() => document.getElementById('yt-thumbnail-upload')?.click()}
                                                                     disabled={uploadingMedia}
-                                                                    className="gap-2"
+                                                                    className="gap-2 cursor-pointer"
                                                                 >
                                                                     <ImageIcon className="size-4" />
                                                                     {uploadingMedia ? "Uploading..." : "Upload Thumbnail"}
@@ -1052,7 +1128,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                                     className="hidden"
                                                                 />
                                                                 {thumbnailUrl && (
-                                                                    <div className="relative aspect-video w-32 overflow-hidden rounded border bg-muted group">
+                                                                    <div className="relative aspect-video w-32 overflow-hidden rounded border bg-muted group cursor-pointer">
                                                                         <Image src={thumbnailUrl} alt="Thumbnail" fill className="object-cover" unoptimized />
                                                                         <button
                                                                             type="button"
@@ -1144,8 +1220,8 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                                                     </div>
                                                                                 </div>
                                                                                 <div className="flex justify-end gap-3">
-                                                                                    <Button variant="outline" onClick={() => setIsCreatingBoard(false)}>Cancel</Button>
-                                                                                    <Button onClick={handleCreateBoard} disabled={creatingBoard || !newBoardName.trim()}>
+                                                                                    <Button className='cursor-pointer' variant="outline" onClick={() => setIsCreatingBoard(false)}>Cancel</Button>
+                                                                                    <Button className='cursor-pointer' onClick={handleCreateBoard} disabled={creatingBoard || !newBoardName.trim()}>
                                                                                         {creatingBoard && <Loader2 className="size-4 mr-2 animate-spin" />}
                                                                                         Create Board
                                                                                     </Button>
@@ -1208,6 +1284,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
 
                                 <div className="flex  justify-end gap-4">
                                     <Button
+                                        className='cursor-pointer'
                                         type="button"
                                         variant="outline"
                                         onClick={() => router.back()}
@@ -1215,7 +1292,9 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                     >
                                         Cancel
                                     </Button>
-                                    <Button type="submit" disabled={saving || !selectedPlatform || uploadingMedia}>
+                                    <Button
+                                        className='cursor-pointer'
+                                        type="submit" disabled={saving || !selectedPlatform || uploadingMedia}>
                                         {saving ? (
                                             <>
                                                 <Loader2 className="size-4 mr-2 animate-spin" />

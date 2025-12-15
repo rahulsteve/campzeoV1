@@ -389,3 +389,113 @@ export async function getFacebookPagePosts(
         throw error;
     }
 }
+
+export interface FacebookPostInsights {
+    likes: number;
+    comments: number;
+    impressions: number;
+    reach: number;
+    engagementRate: number;
+    isDeleted?: boolean;
+}
+
+export async function getFacebookPostInsights(
+    postId: string,
+    accessToken: string
+): Promise<FacebookPostInsights> {
+    try {
+        // 1. Get basic interaction counts (likes, comments)
+        const fields = 'likes.summary(true),comments.summary(true),shares';
+        const postResponse = await fetch(
+            `https://graph.facebook.com/v18.0/${postId}?fields=${fields}&access_token=${accessToken}`
+        );
+
+        if (!postResponse.ok) {
+            const error = await postResponse.json();
+            // Check for specific error codes or status
+            // Code 100 with subcode 33: "Object with ID '...' does not exist" -> Deleted
+            // Code 803: "Some of the aliases you requested do not exist" -> Deleted
+            // Status 400 or 404 often implies it's gone if the ID format is correct.
+            const errorCode = error.error?.code;
+            const errorSubcode = error.error?.error_subcode;
+
+            if (errorCode === 100 || errorCode === 803 || errorCode === 210) {
+                console.warn(`[Facebook] Post ${postId} marked as deleted. Error code: ${errorCode}, Subcode: ${errorSubcode}`);
+                return {
+                    likes: 0,
+                    comments: 0,
+                    impressions: 0,
+                    reach: 0,
+                    engagementRate: 0,
+                    isDeleted: true
+                };
+            }
+
+            throw new Error(`Failed to fetch post details: ${JSON.stringify(error)}`);
+        }
+
+        const postData = await postResponse.json();
+        const likes = postData.likes?.summary?.total_count || 0;
+        const comments = postData.comments?.summary?.total_count || 0;
+        const shares = postData.shares?.count || 0;
+
+        // 2. Get Insights (Reach, Impressions)
+        // Note: Insights might not be available for all posts (e.g. personal profile posts vs page posts)
+        // We try to fetch them, but handle failure gracefully
+        let impressions = 0;
+        let reach = 0;
+
+        try {
+            const metrics = 'post_impressions,post_impressions_unique,post_engaged_users';
+            const insightsResponse = await fetch(
+                `https://graph.facebook.com/v18.0/${postId}/insights?metric=${metrics}&access_token=${accessToken}`
+            );
+
+            if (insightsResponse.ok) {
+                const insightsData = await insightsResponse.json();
+                const data = insightsData.data || [];
+
+                const impressionsMetric = data.find((m: any) => m.name === 'post_impressions');
+                const reachMetric = data.find((m: any) => m.name === 'post_impressions_unique');
+
+                if (impressionsMetric) {
+                    impressions = impressionsMetric.values[0]?.value || 0;
+                }
+                if (reachMetric) {
+                    reach = reachMetric.values[0]?.value || 0;
+                }
+            }
+        } catch (insightError) {
+            console.warn(`[Facebook] Could not fetch (deep) insights for post ${postId}`, insightError);
+        }
+
+        // Calculate engagement rate
+        // (Likes + Comments + Shares) / Reach * 100
+        // If reach is 0, use impressions. If both 0, rate is 0.
+        const totalEngagements = likes + comments + shares;
+        const base = reach > 0 ? reach : impressions;
+        const engagementRate = base > 0 ? (totalEngagements / base) * 100 : 0;
+
+        return {
+            likes,
+            comments,
+            impressions,
+            reach,
+            engagementRate,
+            isDeleted: false
+        };
+
+    } catch (error) {
+        console.error(`[Facebook] Error fetching insights for ${postId}:`, error);
+        // Return zeros on error to prevent crashing the whole feed
+        // Default to not deleted, just error
+        return {
+            likes: 0,
+            comments: 0,
+            impressions: 0,
+            reach: 0,
+            engagementRate: 0,
+            isDeleted: false
+        };
+    }
+}

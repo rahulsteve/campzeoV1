@@ -174,7 +174,7 @@ export async function postToLinkedIn(
                     }
                 ];
                 console.log(`[LinkedIn] Posting 1 video`);
-                
+
                 // Log if there are multiple videos
                 if (videos.length > 1) {
                     console.warn(`[LinkedIn] Multiple videos provided (${videos.length}), but only 1 video can be posted. Posting first video only.`);
@@ -204,5 +204,89 @@ export async function postToLinkedIn(
     } catch (error) {
         console.error("LinkedIn posting error:", error);
         throw error;
+    }
+}
+
+export interface LinkedInPostInsights {
+    likes: number;
+    comments: number;
+    impressions: number;
+    reach: number;
+    engagementRate: number;
+    isDeleted?: boolean;
+}
+
+export async function getLinkedInPostInsights(
+    urn: string,
+    accessToken: string
+): Promise<LinkedInPostInsights> {
+    try {
+        // LinkedIn URN format: urn:li:share:123 or urn:li:ugcPost:123
+        // Social Actions API supports both.
+
+        const encodedUrn = encodeURIComponent(urn);
+        const url = `https://api.linkedin.com/v2/socialActions/${encodedUrn}`;
+
+        const response = await fetch(url, {
+            headers: {
+                "Authorization": `Bearer ${accessToken}`,
+                "X-Restli-Protocol-Version": "2.0.0",
+            }
+        });
+
+        if (!response.ok) {
+            // If the post is old or not found, it might 404.
+            console.warn(`[LinkedIn] Failed to fetch social actions for ${urn}: ${response.status}`);
+
+            if (response.status === 404) {
+                return {
+                    likes: 0,
+                    comments: 0,
+                    impressions: 0,
+                    reach: 0,
+                    engagementRate: 0,
+                    isDeleted: true
+                };
+            }
+
+            return { likes: 0, comments: 0, impressions: 0, reach: 0, engagementRate: 0, isDeleted: false };
+        }
+
+        const data = await response.json();
+
+        const likes = data.likesSummary?.totalLikes || 0;
+        const comments = data.commentsSummary?.totalComments || 0;
+
+        // Impressions are not available via simple API for all post types without specific partner programs or organization stats API which is complex.
+        // We will default to 0 for impressions/reach unless we implement the specialized Analytics API.
+        const impressions = 0;
+        const reach = 0;
+
+        // Engagement rate
+        // Without reach/impressions, we cannot calculate a true rate.
+        const engagementRate = 0;
+
+        // Log raw response for debugging
+        // console.log(`[LinkedIn] Raw insights for ${urn}:`, JSON.stringify(data, null, 2));
+
+        return {
+            likes,
+            comments,
+            impressions,
+            reach,
+            engagementRate,
+            isDeleted: false
+        };
+
+    } catch (error) {
+        console.error(`[LinkedIn] Error fetching insights for ${urn}:`, error);
+        return {
+            likes: 0,
+            comments: 0,
+            impressions: 0,
+            reach: 0,
+            engagementRate: 0,
+            isDeleted: false
+        };
     }
 }
