@@ -8,7 +8,7 @@ import { SignInButton, SignedOut, SignedIn, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TestimonialCarousel } from "@/components/testimonial-carousel";
-
+n
 export default function LandingPage() {
   const router = useRouter();
 

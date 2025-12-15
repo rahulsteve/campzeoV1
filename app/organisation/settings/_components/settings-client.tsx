@@ -15,12 +15,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { 
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 
 // Schema for profile form
@@ -59,6 +59,28 @@ export function SettingsClient({ userData, assignedPlatforms }: SettingsClientPr
   const [showInstagramDialog, setShowInstagramDialog] = useState(false);
   const [linkedInPages, setLinkedInPages] = useState<any[]>([]);
   const [loadingPages, setLoadingPages] = useState(false);
+  const [showFacebookPostsDialog, setShowFacebookPostsDialog] = useState(false);
+  const [facebookPosts, setFacebookPosts] = useState<any[]>([]);
+  const [loadingFacebookPosts, setLoadingFacebookPosts] = useState(false);
+
+  const handleViewFacebookPosts = async () => {
+    setShowFacebookPostsDialog(true);
+    setLoadingFacebookPosts(true);
+    try {
+      const res = await fetch("/api/socialmedia/facebook/posts");
+      if (res.ok) {
+        const data = await res.json();
+        setFacebookPosts(data.posts || []);
+      } else {
+        toast.error("Failed to fetch posts");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to fetch posts");
+    } finally {
+      setLoadingFacebookPosts(false);
+    }
+  };
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -128,51 +150,51 @@ export function SettingsClient({ userData, assignedPlatforms }: SettingsClientPr
 
   const handleConnect = async (platform: string) => {
     if (['EMAIL', 'SMS', 'WHATSAPP'].includes(platform)) {
-        toast.info(`To enable ${platform} (via Twilio), please contact support.`);
-        return;
+      toast.info(`To enable ${platform} (via Twilio), please contact support.`);
+      return;
     }
 
     // Show Instagram connection method dialog
     if (platform === 'INSTAGRAM') {
-        setShowInstagramDialog(true);
-        return;
+      setShowInstagramDialog(true);
+      return;
     }
 
     try {
-        const res = await fetch(`/api/socialmedia/auth-url?platform=${platform}`);
-        const data = await res.json();
-        
-        if (data.error) {
-            toast.error(data.error);
-            return;
-        }
+      const res = await fetch(`/api/socialmedia/auth-url?platform=${platform}`);
+      const data = await res.json();
 
-        if (data.url) {
-            window.location.href = data.url;
-        }
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      if (data.url) {
+        window.location.href = data.url;
+      }
     } catch (error) {
-        console.error(error);
-        toast.error(`Failed to initiate connection for ${platform}`);
+      console.error(error);
+      toast.error(`Failed to initiate connection for ${platform}`);
     }
   };
 
   const handleDisconnect = async (platform: string) => {
     try {
-        const res = await fetch("/api/socialmedia/disconnect", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ platform })
-        });
-        
-        if (res.ok) {
-            toast.success(`Disconnected ${platform} successfully`);
-            window.location.reload(); 
-        } else {
-            toast.error("Failed to disconnect");
-        }
-    } catch (error) {
-        console.error(error);
+      const res = await fetch("/api/socialmedia/disconnect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform })
+      });
+
+      if (res.ok) {
+        toast.success(`Disconnected ${platform} successfully`);
+        window.location.reload();
+      } else {
         toast.error("Failed to disconnect");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to disconnect");
     }
   };
 
@@ -180,37 +202,37 @@ export function SettingsClient({ userData, assignedPlatforms }: SettingsClientPr
     setShowLinkedInDialog(true);
     setLoadingPages(true);
     try {
-        const res = await fetch("/api/socialmedia/linkedin/pages");
-        if (res.ok) {
-            const data = await res.json();
-            setLinkedInPages(data.organizations || []);
-        }
+      const res = await fetch("/api/socialmedia/linkedin/pages");
+      if (res.ok) {
+        const data = await res.json();
+        setLinkedInPages(data.organizations || []);
+      }
     } catch (error) {
-        console.error(error);
-        toast.error("Failed to fetch LinkedIn pages");
+      console.error(error);
+      toast.error("Failed to fetch LinkedIn pages");
     } finally {
-        setLoadingPages(false);
+      setLoadingPages(false);
     }
   };
 
   const handleSelectPage = async (urn: string) => {
     try {
-        const res = await fetch("/api/user/linkedin-page", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ urn })
-        });
-        
-        if (res.ok) {
-            toast.success("LinkedIn page updated");
-            setShowLinkedInDialog(false);
-            window.location.reload(); 
-        } else {
-            toast.error("Failed to update page");
-        }
-    } catch (error) {
-        console.error(error);
+      const res = await fetch("/api/user/linkedin-page", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ urn })
+      });
+
+      if (res.ok) {
+        toast.success("LinkedIn page updated");
+        setShowLinkedInDialog(false);
+        window.location.reload();
+      } else {
         toast.error("Failed to update page");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to update page");
     }
   };
 
@@ -270,47 +292,47 @@ export function SettingsClient({ userData, assignedPlatforms }: SettingsClientPr
       description: "Upload videos and manage your YouTube channel.",
     },
     {
-        id: "PINTEREST",
-        name: "Pinterest",
-        icon: CheckCircle2,
-        color: "text-red-500",
-        connected: userData.pinterestConnected,
-        accountName: socialStatus?.pinterest?.name,
-        description: "Pin your visual content to Pinterest boards.",
+      id: "PINTEREST",
+      name: "Pinterest",
+      icon: CheckCircle2,
+      color: "text-red-500",
+      connected: userData.pinterestConnected,
+      accountName: socialStatus?.pinterest?.name,
+      description: "Pin your visual content to Pinterest boards.",
     },
     {
-        id: "EMAIL",
-        name: "Email (Twilio SendGrid)",
-        icon: Mail,
-        color: "text-slate-600",
-        connected: userData.emailConnected,
-        accountName: null,
-        description: "Send emails via Twilio SendGrid.",
+      id: "EMAIL",
+      name: "Email (Twilio SendGrid)",
+      icon: Mail,
+      color: "text-slate-600",
+      connected: userData.emailConnected,
+      accountName: null,
+      description: "Send emails via Twilio SendGrid.",
     },
     {
-        id: "SMS",
-        name: "SMS (Twilio)",
-        icon: Smartphone,
-        color: "text-red-500",
-        connected: userData.smsConnected,
-        accountName: null,
-        description: "Send SMS messages via Twilio.",
+      id: "SMS",
+      name: "SMS (Twilio)",
+      icon: Smartphone,
+      color: "text-red-500",
+      connected: userData.smsConnected,
+      accountName: null,
+      description: "Send SMS messages via Twilio.",
     },
     {
-        id: "WHATSAPP",
-        name: "WhatsApp (Twilio)",
-        icon: MessageSquare,
-        color: "text-green",
-        connected: userData.whatsappConnected,
-        accountName: null,
-        description: "Send WhatsApp messages via Twilio.",
+      id: "WHATSAPP",
+      name: "WhatsApp (Twilio)",
+      icon: MessageSquare,
+      color: "text-green",
+      connected: userData.whatsappConnected,
+      accountName: null,
+      description: "Send WhatsApp messages via Twilio.",
     }
   ];
 
   const filteredPlatforms = platforms.filter(platform => {
     // 1. Exclude EMAIL, SMS, WHATSAPP from the list entirely as they are admin-managed
     if (['EMAIL', 'SMS', 'WHATSAPP'].includes(platform.id)) {
-        return false;
+      return false;
     }
     // 2. Only show platforms that are assigned to the organisation
     return assignedPlatforms.includes(platform.id);
@@ -418,31 +440,31 @@ export function SettingsClient({ userData, assignedPlatforms }: SettingsClientPr
             <CardContent>
               <div className="space-y-4">
                 {filteredPlatforms.length > 0 ? (
-                    filteredPlatforms.map((platform) => (
-                  <div key={platform.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className={`p-2 rounded-full bg-muted ${platform.color}`}>
-                        <platform.icon className="h-6 w-6" />
+                  filteredPlatforms.map((platform) => (
+                    <div key={platform.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <div className={`p-2 rounded-full bg-muted ${platform.color}`}>
+                          <platform.icon className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <h3 className="font-medium">{platform.name}</h3>
+                          <p className="text-sm text-muted-foreground">{platform.description}</p>
+                          {platform.connected && platform.accountName && (
+                            <p className="text-xs text-green-600 font-medium mt-1">
+                              Connected as: {platform.accountName}
+                              {(platform as any).followerCount !== undefined && (platform as any).followerCount !== null && (
+                                <span> • {(platform as any).followerCount} followers</span>
+                              )}
+                            </p>
+                          )}
+                        </div>
                       </div>
                       <div>
-                        <h3 className="font-medium">{platform.name}</h3>
-                        <p className="text-sm text-muted-foreground">{platform.description}</p>
-                        {platform.connected && platform.accountName && (
-                            <p className="text-xs text-green-600 font-medium mt-1">
-                                Connected as: {platform.accountName}
-                                {(platform as any).followerCount !== undefined && (platform as any).followerCount !== null && (
-                                    <span> • {(platform as any).followerCount} followers</span>
-                                )}
-                            </p>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      {platform.connected ? (
-                        <div className="flex items-center gap-2">
+                        {platform.connected ? (
+                          <div className="flex items-center gap-2">
                             <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-100">
-                                <CheckCircle2 className="mr-1 h-3 w-3" />
-                                Connected
+                              <CheckCircle2 className="mr-1 h-3 w-3" />
+                              Connected
                             </Badge>
                             {/* {platform.id === 'LINKEDIN' && (
                                 <Button variant="ghost" size="sm" onClick={handleConfigureLinkedIn} title="Configure Page">
@@ -450,21 +472,26 @@ export function SettingsClient({ userData, assignedPlatforms }: SettingsClientPr
                                 </Button>
                             )} */}
                             <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDisconnect(platform.id)}>
-                                Disconnect
+                              Disconnect
                             </Button>
-                        </div>
-                      ) : (
-                        <Button variant="outline" onClick={() => handleConnect(platform.id)}>
-                          Connect
-                        </Button>
-                      )}
+                            {platform.id === 'FACEBOOK' && (
+                              <Button variant="outline" size="sm" onClick={handleViewFacebookPosts} title="View Recent Posts">
+                                View Posts
+                              </Button>
+                            )}
+                          </div>
+                        ) : (
+                          <Button variant="outline" onClick={() => handleConnect(platform.id)}>
+                            Connect
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))
                 ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                        No social platforms are assigned to your organisation. Please contact your administrator.
-                    </div>
+                  <div className="text-center py-8 text-muted-foreground">
+                    No social platforms are assigned to your organisation. Please contact your administrator.
+                  </div>
                 )}
               </div>
             </CardContent>
@@ -514,6 +541,49 @@ export function SettingsClient({ userData, assignedPlatforms }: SettingsClientPr
         </DialogContent>
       </Dialog> */}
 
+      {/* Facebook Posts Dialog */}
+      <Dialog open={showFacebookPostsDialog} onOpenChange={setShowFacebookPostsDialog}>
+        <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Recent Facebook Posts</DialogTitle>
+            <DialogDescription>
+              Recent content published to your connected Page.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {loadingFacebookPosts ? (
+              <div className="flex justify-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            ) : facebookPosts.length > 0 ? (
+              facebookPosts.map((post: any) => (
+                <div key={post.id} className="border rounded-lg p-4 space-y-2">
+                  <div className="flex justify-between items-start">
+                    <p className="text-xs text-muted-foreground">{new Date(post.created_time).toLocaleString()}</p>
+                    <a href={post.permalink_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">
+                      View on Facebook
+                    </a>
+                  </div>
+                  {post.full_picture && (
+                    <div className="relative aspect-video w-full overflow-hidden rounded-md bg-muted">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={post.full_picture} alt="Post media" className="object-cover w-full h-full" />
+                    </div>
+                  )}
+                  <p className="text-sm whitespace-pre-wrap">{post.message || "(No caption)"}</p>
+                  <div className="flex gap-4 text-xs text-muted-foreground pt-2">
+                    <span>👍 {post.likes?.summary?.total_count || 0} Likes</span>
+                    <span>💬 {post.comments?.summary?.total_count || 0} Comments</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-muted-foreground p-4">No recent posts found.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Instagram Connection Method Dialog */}
       <Dialog open={showInstagramDialog} onOpenChange={setShowInstagramDialog}>
         <DialogContent className="sm:max-w-md">
@@ -525,7 +595,7 @@ export function SettingsClient({ userData, assignedPlatforms }: SettingsClientPr
           </DialogHeader>
           <div className="space-y-4 py-4">
             {/* Option 1: Via Facebook (Business Account) */}
-            <div 
+            <div
               className="flex items-start gap-4 p-4 border-2 rounded-lg cursor-pointer hover:border-primary hover:bg-accent transition-colors"
               onClick={async () => {
                 setShowInstagramDialog(false);
@@ -544,7 +614,7 @@ export function SettingsClient({ userData, assignedPlatforms }: SettingsClientPr
               <div className="flex-1">
                 <h4 className="font-semibold text-sm">Via Facebook (Recommended)</h4>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Connect your Instagram Business or Creator account through Facebook. 
+                  Connect your Instagram Business or Creator account through Facebook.
                   Enables posting, Reels, and analytics.
                 </p>
                 <div className="mt-2">
@@ -557,7 +627,7 @@ export function SettingsClient({ userData, assignedPlatforms }: SettingsClientPr
             </div>
 
             {/* Option 2: Instagram Basic Display (Limited) */}
-            <div 
+            <div
               className="flex items-start gap-4 p-4 border-2 rounded-lg cursor-pointer hover:border-primary hover:bg-accent transition-colors opacity-60"
               onClick={() => {
                 toast.info('Instagram Basic Display is coming soon. Please use Facebook connection for now.');
@@ -579,7 +649,7 @@ export function SettingsClient({ userData, assignedPlatforms }: SettingsClientPr
               </div>
             </div>
           </div>
-          
+
           <div className="bg-muted p-3 rounded-lg">
             <p className="text-xs text-muted-foreground">
               <strong>Note:</strong> To post content and use Reels, you need an Instagram Business or Creator account connected via Facebook.

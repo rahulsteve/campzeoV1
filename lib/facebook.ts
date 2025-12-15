@@ -353,3 +353,39 @@ async function setFacebookVideoThumbnail(
         throw error;
     }
 }
+
+export interface FacebookPost {
+    id: string;
+    message?: string;
+    created_time: string;
+    full_picture?: string;
+    permalink_url: string;
+    likes?: { summary: { total_count: number } };
+    comments?: { summary: { total_count: number } };
+}
+
+export async function getFacebookPagePosts(
+    credentials: FacebookCredentials,
+    limit: number = 5
+): Promise<FacebookPost[]> {
+    const { accessToken, pageId } = credentials;
+
+    try {
+        const fields = 'id,message,created_time,full_picture,permalink_url,likes.summary(true),comments.summary(true)';
+        const response = await fetch(
+            `https://graph.facebook.com/v18.0/${pageId}/feed?fields=${fields}&limit=${limit}&access_token=${accessToken}`,
+            { method: 'GET' }
+        );
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(`Failed to fetch posts: ${JSON.stringify(error)}`);
+        }
+
+        const data = await response.json();
+        return data.data || [];
+    } catch (error) {
+        console.error('Facebook fetch posts error:', error);
+        throw error;
+    }
+}
