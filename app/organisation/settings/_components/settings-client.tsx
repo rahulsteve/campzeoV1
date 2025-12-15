@@ -474,11 +474,11 @@ export function SettingsClient({ userData, assignedPlatforms }: SettingsClientPr
                             <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDisconnect(platform.id)}>
                               Disconnect
                             </Button>
-                            {platform.id === 'FACEBOOK' && (
+                            {/* {platform.id === 'FACEBOOK' && (
                               <Button variant="outline" size="sm" onClick={handleViewFacebookPosts} title="View Recent Posts">
                                 View Posts
                               </Button>
-                            )}
+                            )} */}
                           </div>
                         ) : (
                           <Button variant="outline" onClick={() => handleConnect(platform.id)}>
