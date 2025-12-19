@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { currentUser } from '@clerk/nextjs/server';
-import { getFacebookPostInsights } from '@/lib/facebook';
-import { getInstagramPostInsights } from '@/lib/instagram';
-import { getLinkedInPostInsights } from '@/lib/linkedin';
-import { getYouTubeVideoInsights } from '@/lib/youtube';
-import { getPinterestPostInsights } from '@/lib/pinterest';
+import { getFacebookPagePosts, getFacebookPostInsights } from '@/lib/facebook';
+import { getInstagramUserMedia, getInstagramPostInsights } from '@/lib/instagram';
+import { getLinkedInUserPosts, getLinkedInPostInsights } from '@/lib/linkedin';
+import { getYouTubeChannelVideos, getYouTubeVideoInsights } from '@/lib/youtube';
+import { getPinterestUserPins, getPinterestPostInsights } from '@/lib/pinterest';
 import { getMailgunAnalytics } from '@/lib/email';
 
 export async function GET(request: NextRequest) {
@@ -30,7 +30,9 @@ export async function GET(request: NextRequest) {
                 organisationId: true,
                 facebookAccessToken: true,
                 facebookPageAccessToken: true,
+                facebookPageId: true,
                 instagramAccessToken: true,
+                instagramUserId: true,
                 linkedInAccessToken: true,
                 youtubeAccessToken: true,
                 pinterestAccessToken: true
@@ -71,7 +73,7 @@ export async function GET(request: NextRequest) {
         }
 
         // 3. Get PostTransactions for these posts and the specified platform
-        const transactions = await prisma.postTransaction.findMany({
+        let transactions = await prisma.postTransaction.findMany({
             where: {
                 refId: { in: campaignPostIds },
                 platform: platform.toUpperCase(),
@@ -82,6 +84,124 @@ export async function GET(request: NextRequest) {
                 createdAt: 'desc'
             }
         });
+
+        // 3.5 Fallback: If no transactions are found, fetch directly from platform API
+        if (transactions.length === 0) {
+            console.log(`[Analytics] No transactions found for ${platform}. Fetching directly from platform API...`);
+
+            try {
+                const platformUpper = platform.toUpperCase();
+                let platformPosts: any[] = [];
+
+                if (platformUpper === 'FACEBOOK' && (dbUser.facebookPageAccessToken || dbUser.facebookAccessToken)) {
+                    const fbPosts = await getFacebookPagePosts({
+                        accessToken: (dbUser.facebookPageAccessToken || dbUser.facebookAccessToken)!,
+                        pageId: dbUser.facebookPageId || ''
+                    }, 10);
+                    platformPosts = fbPosts.map(p => ({
+                        id: -1, // Virtual ID indicator
+                        refId: 0,
+                        platform: 'FACEBOOK',
+                        postId: p.id,
+                        accountId: dbUser.facebookPageId || '',
+                        message: p.message || '',
+                        mediaUrls: p.full_picture || '',
+                        postType: 'POST',
+                        accessToken: '',
+                        published: true,
+                        publishedAt: p.created_time,
+                        createdAt: p.created_time,
+                        updatedAt: p.created_time
+                    }));
+                } else if (platformUpper === 'INSTAGRAM' && dbUser.instagramAccessToken && dbUser.instagramUserId) {
+                    const igMedia = await getInstagramUserMedia({
+                        accessToken: dbUser.instagramAccessToken,
+                        userId: dbUser.instagramUserId
+                    }, 10);
+                    platformPosts = igMedia.map(m => ({
+                        id: 0,
+                        refId: 0,
+                        platform: 'INSTAGRAM',
+                        postId: m.id,
+                        accountId: dbUser.instagramUserId || '',
+                        message: m.caption || '',
+                        mediaUrls: m.media_url,
+                        postType: m.media_type,
+                        accessToken: '',
+                        published: true,
+                        publishedAt: m.timestamp,
+                        createdAt: m.timestamp,
+                        updatedAt: m.timestamp
+                    }));
+                } else if (platformUpper === 'LINKEDIN' && dbUser.linkedInAccessToken) {
+                    // Need authorUrn from somewhere, assuming it's linked to the user or we can fetch it?
+                    // Usually we store it in linkedInAuthUrn
+                    const dbUserFull = await prisma.user.findUnique({ where: { clerkId: user.id } });
+                    if (dbUserFull?.linkedInAuthUrn) {
+                        const liPosts = await getLinkedInUserPosts({
+                            accessToken: dbUser.linkedInAccessToken,
+                            authorUrn: dbUserFull.linkedInAuthUrn
+                        }, 10);
+                        platformPosts = liPosts.map(p => ({
+                            id: 0,
+                            refId: 0,
+                            platform: 'LINKEDIN',
+                            postId: p.id,
+                            accountId: dbUserFull.linkedInAuthUrn || '',
+                            message: p.text || '',
+                            mediaUrls: p.media?.[0]?.originalUrl || '',
+                            postType: 'POST',
+                            accessToken: '',
+                            published: true,
+                            publishedAt: p.createdAt,
+                            createdAt: p.createdAt,
+                            updatedAt: p.createdAt
+                        }));
+                    }
+                } else if (platformUpper === 'YOUTUBE' && dbUser.youtubeAccessToken) {
+                    const ytVideos = await getYouTubeChannelVideos(dbUser.youtubeAccessToken, 10);
+                    platformPosts = ytVideos.map(v => ({
+                        id: 0,
+                        refId: 0,
+                        platform: 'YOUTUBE',
+                        postId: v.id,
+                        accountId: '',
+                        message: v.title,
+                        mediaUrls: v.thumbnails?.high?.url || '',
+                        postType: 'VIDEO',
+                        accessToken: '',
+                        published: true,
+                        publishedAt: v.publishedAt,
+                        createdAt: v.publishedAt,
+                        updatedAt: v.publishedAt
+                    }));
+                } else if (platformUpper === 'PINTEREST' && dbUser.pinterestAccessToken) {
+                    const pinPosts = await getPinterestUserPins(dbUser.pinterestAccessToken, 10);
+                    platformPosts = pinPosts.map(p => ({
+                        id: 0,
+                        refId: 0,
+                        platform: 'PINTEREST',
+                        postId: p.id,
+                        accountId: '',
+                        message: p.title || p.description || '',
+                        mediaUrls: p.media?.images?.['600x']?.url || '',
+                        postType: 'PIN',
+                        accessToken: '',
+                        published: true,
+                        publishedAt: p.createdAt,
+                        createdAt: p.createdAt,
+                        updatedAt: p.createdAt
+                    }));
+                }
+
+                // Use these as transactions
+                if (platformPosts.length > 0) {
+                    transactions = platformPosts as any;
+                }
+            } catch (fallbackError) {
+                console.error(`[Analytics] Platform fallback failed:`, fallbackError);
+            }
+        }
 
         // 4. Fetch insights for these transactions (and update if stale)
         const postsWithInsights = await Promise.all(transactions.map(async (tx) => {
@@ -216,34 +336,84 @@ export async function GET(request: NextRequest) {
                 }
 
                 // Update or Create PostInsight in DB
-                const isDeleted = insights.isDeleted ?? false;
+                let isDeleted = insights.isDeleted ?? false;
+
+                // [Smart Grace Period Fix] Handles eventual consistency (posts not immediately indexed).
+                const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+                const isVeryRecent = tx.publishedAt && (Date.now() - new Date(tx.publishedAt).getTime() < TWENTY_FOUR_HOURS);
+
+                if (isDeleted && isVeryRecent) {
+                    console.log(`[Analytics] Post ${tx.postId} on ${tx.platform} returned 'deleted' but is < 24hr old. Preserving cached data.`);
+
+                    // If we have cached data, return it instead of zeroing out
+                    if (dbInsight) {
+                        return {
+                            ...tx,
+                            insight: {
+                                ...dbInsight,
+                                isDeleted: false, // Don't show it as deleted yet
+                                lastUpdated: new Date()
+                            }
+                        };
+                    }
+                    // If no cached data, just proceed with zeros but mark not deleted
+                    isDeleted = false;
+                }
 
                 if (dbInsight) {
-                    await prisma.postInsight.update({
-                        where: { id: dbInsight.id },
-                        data: {
-                            likes: insights.likes,
-                            comments: insights.comments,
-                            reach: insights.reach,
-                            impressions: insights.impressions,
-                            engagementRate: insights.engagementRate,
-                            isDeleted: isDeleted,
-                            lastUpdated: new Date()
-                        }
-                    });
+                    const updatePromises: any[] = [
+                        prisma.postInsight.update({
+                            where: { id: dbInsight.id },
+                            data: {
+                                likes: insights.likes,
+                                comments: insights.comments,
+                                reach: insights.reach,
+                                impressions: insights.impressions,
+                                engagementRate: insights.engagementRate,
+                                isDeleted: isDeleted,
+                                lastUpdated: new Date()
+                            }
+                        })
+                    ];
+
+                    // Sync CampaignPost.isDeleted only if it's a real transaction
+                    if (tx.refId !== 0) {
+                        updatePromises.push(
+                            prisma.campaignPost.updateMany({
+                                where: { id: tx.refId },
+                                data: { isDeleted: isDeleted } as any
+                            })
+                        );
+                    }
+
+                    await prisma.$transaction(updatePromises);
                 } else {
-                    await prisma.postInsight.create({
-                        data: {
-                            postId: tx.postId,
-                            likes: insights.likes,
-                            comments: insights.comments,
-                            reach: insights.reach,
-                            impressions: insights.impressions,
-                            engagementRate: insights.engagementRate,
-                            isDeleted: isDeleted,
-                            lastUpdated: new Date()
-                        }
-                    });
+                    const createPromises: any[] = [
+                        prisma.postInsight.create({
+                            data: {
+                                postId: tx.postId,
+                                likes: insights.likes,
+                                comments: insights.comments,
+                                reach: insights.reach,
+                                impressions: insights.impressions,
+                                engagementRate: insights.engagementRate,
+                                isDeleted: isDeleted,
+                                lastUpdated: new Date()
+                            }
+                        })
+                    ];
+
+                    // Sync CampaignPost.isDeleted only if it's a real transaction
+                    if (tx.refId !== 0) {
+                        createPromises.push(
+                            prisma.campaignPost.updateMany({
+                                where: { id: tx.refId },
+                                data: { isDeleted: isDeleted } as any
+                            })
+                        );
+                    }
+
+                    await prisma.$transaction(createPromises);
                 }
 
                 // Return with fresh insights

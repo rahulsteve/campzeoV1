@@ -169,6 +169,9 @@ export interface PinterestPostInsights {
     pinClicks: number;
     outboundClicks: number;
     isDeleted?: boolean;
+    title?: string;
+    description?: string;
+    media?: any;
 }
 
 export async function getPinterestPostInsights(
@@ -177,8 +180,9 @@ export async function getPinterestPostInsights(
 ): Promise<PinterestPostInsights> {
     try {
         let comments = 0;
+        let pinMetadata = null;
 
-        // 1. Get Pin Details to get comment count (not available in analytics endpoint)
+        // 1. Get Pin Details to get comment count and metadata
         try {
             const detailsResponse = await fetch(`https://api.pinterest.com/v5/pins/${pinId}`, {
                 headers: {
@@ -187,8 +191,8 @@ export async function getPinterestPostInsights(
             });
 
             if (detailsResponse.ok) {
-                const details = await detailsResponse.json();
-                comments = details.comment_count || 0;
+                pinMetadata = await detailsResponse.json();
+                comments = pinMetadata.comment_count || 0;
             } else {
                 console.warn(`[Pinterest] Failed to fetch pin details for ${pinId}: ${detailsResponse.status}`);
             }
@@ -254,7 +258,10 @@ export async function getPinterestPostInsights(
             saves,
             pinClicks,
             outboundClicks,
-            isDeleted: false
+            isDeleted: false,
+            title: pinMetadata?.title,
+            description: pinMetadata?.description,
+            media: pinMetadata?.media
         };
 
     } catch (error) {
@@ -270,5 +277,46 @@ export async function getPinterestPostInsights(
             outboundClicks: 0,
             isDeleted: false
         };
+    }
+}
+
+export interface PinterestPin {
+    id: string;
+    title: string;
+    description: string;
+    createdAt: string;
+    media: any;
+}
+
+export async function getPinterestUserPins(
+    accessToken: string,
+    limit: number = 20
+): Promise<PinterestPin[]> {
+    try {
+        const response = await fetch(
+            `https://api.pinterest.com/v5/pins?limit=${limit}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                }
+            }
+        );
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(`Failed to fetch Pinterest pins: ${JSON.stringify(error)}`);
+        }
+
+        const data = await response.json();
+        return data.items?.map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            description: item.description,
+            createdAt: item.created_at,
+            media: item.media
+        })) || [];
+    } catch (error) {
+        console.error('Pinterest fetch pins error:', error);
+        throw error;
     }
 }

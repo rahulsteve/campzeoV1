@@ -4,8 +4,19 @@ import { generateContent, refineContent } from '@/lib/pollinations';
 
 export async function POST(request: NextRequest) {
     try {
-        // Check authentication
-        const { userId } = await auth();
+        // Check authentication (Allow Clerk or Mobile API Key)
+        let userId = null;
+        const { userId: clerkUserId } = await auth();
+        userId = clerkUserId;
+
+        if (!userId) {
+            const apiKey = request.headers.get('x-api-key');
+            const validApiKey = process.env.MOBILE_API_KEY;
+            if (apiKey && validApiKey && apiKey === validApiKey) {
+                userId = 'mobile-app-user';
+            }
+        }
+
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }

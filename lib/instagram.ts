@@ -358,6 +358,9 @@ export interface InstagramPostInsights {
     reach: number;
     engagementRate: number;
     isDeleted?: boolean;
+    caption?: string;
+    media_url?: string;
+    permalink?: string;
 }
 
 export async function getInstagramPostInsights(
@@ -366,7 +369,7 @@ export async function getInstagramPostInsights(
 ): Promise<InstagramPostInsights> {
     try {
         // 1. Get Media Object (for likes, comments, and media_type)
-        const fields = 'like_count,comments_count,media_type';
+        const fields = 'like_count,comments_count,media_type,caption,media_url,permalink';
         const mediaResponse = await fetch(
             `https://graph.facebook.com/v18.0/${mediaId}?fields=${fields}&access_token=${accessToken}`
         );
@@ -375,8 +378,15 @@ export async function getInstagramPostInsights(
             const error = await mediaResponse.json();
             // Code 100 with subcode 33: Object does not exist
             const errorCode = error.error?.code;
+            const errorSubcode = error.error?.error_subcode;
+            const errorMessage = error.error?.message || "";
 
-            if (errorCode === 100 || errorCode === 210) {
+            const isDefinitelyDeleted =
+                (errorCode === 100 && (errorSubcode === 33 || errorMessage.includes('does not exist'))) ||
+                errorCode === 210;
+
+            if (isDefinitelyDeleted) {
+                console.warn(`[Instagram] Post ${mediaId} confirmed as deleted or inaccessible.`, error.error);
                 return {
                     likes: 0,
                     comments: 0,
@@ -446,7 +456,10 @@ export async function getInstagramPostInsights(
             impressions,
             reach,
             engagementRate,
-            isDeleted: false
+            isDeleted: false,
+            caption: mediaData.caption,
+            media_url: mediaData.media_url,
+            permalink: mediaData.permalink
         };
 
     } catch (error) {
@@ -459,5 +472,40 @@ export async function getInstagramPostInsights(
             engagementRate: 0,
             isDeleted: false
         };
+    }
+}
+export interface InstagramMedia {
+    id: string;
+    caption?: string;
+    media_type: 'IMAGE' | 'VIDEO' | 'CAROUSEL_ALBUM';
+    media_url: string;
+    permalink: string;
+    timestamp: string;
+    thumbnail_url?: string;
+}
+
+export async function getInstagramUserMedia(
+    credentials: InstagramCredentials,
+    limit: number = 20
+): Promise<InstagramMedia[]> {
+    const { accessToken, userId } = credentials;
+
+    try {
+        const fields = 'id,caption,media_type,media_url,permalink,timestamp,thumbnail_url';
+        const response = await fetch(
+            `https://graph.facebook.com/v18.0/${userId}/media?fields=${fields}&limit=${limit}&access_token=${accessToken}`,
+            { method: 'GET' }
+        );
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(`Failed to fetch Instagram media: ${JSON.stringify(error)}`);
+        }
+
+        const data = await response.json();
+        return data.data || [];
+    } catch (error) {
+        console.error('Instagram fetch media error:', error);
+        throw error;
     }
 }

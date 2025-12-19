@@ -57,7 +57,16 @@ export default function PostDetailsPage({ params }: { params: Promise<{ id: stri
         const fetchPostDetails = async () => {
             try {
                 setLoading(true);
-                const response = await fetch(`/api/Analytics/post-details/${postId}?fresh=true`);
+                // Extract additional params for virtual post lookup
+                const searchParams = new URLSearchParams(window.location.search);
+                const platform = searchParams.get('platform');
+                const platformPostId = searchParams.get('postId');
+
+                let url = `/api/Analytics/post-details/${postId}?fresh=true`;
+                if (platform) url += `&platform=${platform}`;
+                if (platformPostId) url += `&postId=${platformPostId}`;
+
+                const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error('Failed to fetch post details');
                 }
@@ -79,7 +88,15 @@ export default function PostDetailsPage({ params }: { params: Promise<{ id: stri
     const handleSync = async () => {
         try {
             setSyncing(true);
-            const response = await fetch(`/api/Analytics/post-details/${postId}?fresh=true`);
+            const searchParams = new URLSearchParams(window.location.search);
+            const platform = searchParams.get('platform');
+            const platformPostId = searchParams.get('postId');
+
+            let url = `/api/Analytics/post-details/${postId}?fresh=true`;
+            if (platform) url += `&platform=${platform}`;
+            if (platformPostId) url += `&postId=${platformPostId}`;
+
+            const response = await fetch(url);
             if (!response.ok) {
                 throw new Error('Failed to sync insights');
             }
@@ -113,7 +130,7 @@ export default function PostDetailsPage({ params }: { params: Promise<{ id: stri
 
                     <main className="flex-1 p-6 flex flex-col items-center justify-center">
                         <h2 className="text-2xl font-bold">Post not found</h2>
-                        <Button  onClick={() => router.back()} className="mt-4 cursor-pointer">
+                        <Button onClick={() => router.back()} className="mt-4 cursor-pointer">
                             Go Back
                         </Button>
                     </main>
@@ -133,7 +150,7 @@ export default function PostDetailsPage({ params }: { params: Promise<{ id: stri
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <Button
-                                className="cursor-pointer"
+                                    className="cursor-pointer"
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => router.back()}
@@ -169,9 +186,9 @@ export default function PostDetailsPage({ params }: { params: Promise<{ id: stri
                                     </CardHeader>
                                     <CardContent className="space-y-4">
                                         <div className="relative aspect-video bg-muted rounded-lg overflow-hidden border">
-                                            {post.postType === 'VIDEO' ? (
-                                                <div className="flex items-center justify-center h-full">
-                                                    <Video className="size-12 text-muted-foreground" />
+                                            {post.postType === 'VIDEO' || post.mediaUrls?.toLowerCase().endsWith('.mp4') ? (
+                                                <div className="flex items-center justify-center h-full bg-slate-900">
+                                                    <Video className="size-12 text-white" />
                                                 </div>
                                             ) : (post.mediaUrls && post.mediaUrls !== '[]' && (post.mediaUrls.startsWith('http') || post.mediaUrls.startsWith('/'))) ? (
                                                 <Image
@@ -179,6 +196,7 @@ export default function PostDetailsPage({ params }: { params: Promise<{ id: stri
                                                     alt="Post media"
                                                     fill
                                                     className="object-cover"
+                                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                                 />
                                             ) : (
                                                 <div className="flex items-center justify-center h-full">

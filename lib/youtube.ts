@@ -438,6 +438,9 @@ export interface YouTubeVideoInsights {
     engagementRate: number;
     views: number;
     isDeleted?: boolean;
+    title?: string;
+    description?: string;
+    thumbnails?: any;
 }
 
 export async function getYouTubeVideoInsights(
@@ -445,7 +448,7 @@ export async function getYouTubeVideoInsights(
     accessToken: string
 ): Promise<YouTubeVideoInsights> {
     try {
-        const part = 'statistics';
+        const part = 'statistics,snippet';
         const response = await fetch(
             `https://www.googleapis.com/youtube/v3/videos?part=${part}&id=${videoId}`,
             {
@@ -499,7 +502,10 @@ export async function getYouTubeVideoInsights(
             reach,
             engagementRate,
             views,
-            isDeleted: false
+            isDeleted: false,
+            title: item.snippet?.title,
+            description: item.snippet?.description,
+            thumbnails: item.snippet?.thumbnails
         };
 
     } catch (error) {
@@ -513,5 +519,46 @@ export async function getYouTubeVideoInsights(
             views: 0,
             isDeleted: false
         };
+    }
+}
+
+export interface YouTubeVideo {
+    id: string;
+    title: string;
+    description: string;
+    publishedAt: string;
+    thumbnails: any;
+}
+
+export async function getYouTubeChannelVideos(
+    accessToken: string,
+    limit: number = 20
+): Promise<YouTubeVideo[]> {
+    try {
+        const response = await fetch(
+            `https://www.googleapis.com/youtube/v3/search?part=snippet&mine=true&type=video&maxResults=${limit}&order=date`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                }
+            }
+        );
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(`Failed to fetch YouTube videos: ${JSON.stringify(error)}`);
+        }
+
+        const data = await response.json();
+        return data.items?.map((item: any) => ({
+            id: item.id.videoId,
+            title: item.snippet.title,
+            description: item.snippet.description,
+            publishedAt: item.snippet.publishedAt,
+            thumbnails: item.snippet.thumbnails
+        })) || [];
+    } catch (error) {
+        console.error('YouTube fetch videos error:', error);
+        throw error;
     }
 }

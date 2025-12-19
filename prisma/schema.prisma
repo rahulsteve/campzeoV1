@@ -67,6 +67,8 @@ model Organisation {
   payments              Payment[]
   subscriptions         Subscription[]
   users                 User[]
+  analyticsSnapshots    AnalyticsSnapshot[]
+  chatHistories         ChatHistory[]
 }
 
 model OrganisationPlatform {
@@ -99,6 +101,7 @@ model CampaignPost {
   senderEmail          String?
   type                 PlatformType
   isAttachedToCampaign Boolean      @default(false)
+  isDeleted            Boolean      @default(false)
   campaignId           Int?
   videoUrl             String?
   videoId              String?
@@ -345,4 +348,29 @@ enum PlatformType {
   LINKEDIN
   YOUTUBE
   PINTEREST
+}
+
+model AnalyticsSnapshot {
+  id             Int          @id @default(autoincrement())
+  organisationId Int
+  data           Json
+  createdAt      DateTime     @default(now())
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+}
+
+model ChatHistory {
+  id             Int          @id @default(autoincrement())
+  organisationId Int
+  role           String
+  message        String
+  createdAt      DateTime     @default(now())
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+}
+
+model CommentSentiment {
+  id        Int      @id @default(autoincrement())
+  commentId String
+  sentiment String?
+  score     Float?
+  createdAt DateTime @default(now())
 }

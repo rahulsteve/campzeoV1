@@ -214,6 +214,8 @@ export interface LinkedInPostInsights {
     reach: number;
     engagementRate: number;
     isDeleted?: boolean;
+    text?: string;
+    media?: any[];
 }
 
 export async function getLinkedInPostInsights(
@@ -233,6 +235,24 @@ export async function getLinkedInPostInsights(
                 "X-Restli-Protocol-Version": "2.0.0",
             }
         });
+
+        // Also fetch the post itself for text/media
+        let postData = null;
+        try {
+            const postUrl = `https://api.linkedin.com/v2/posts/${encodedUrn}`;
+            const postResponse = await fetch(postUrl, {
+                headers: {
+                    "Authorization": `Bearer ${accessToken}`,
+                    "X-Restli-Protocol-Version": "2.0.0",
+                    "LinkedIn-Version": "202401",
+                }
+            });
+            if (postResponse.ok) {
+                postData = await postResponse.json();
+            }
+        } catch (e) {
+            console.warn(`[LinkedIn] Could not fetch post metadata for ${urn}`, e);
+        }
 
         if (!response.ok) {
             // If the post is old or not found, it might 404.
@@ -275,7 +295,9 @@ export async function getLinkedInPostInsights(
             impressions,
             reach,
             engagementRate,
-            isDeleted: false
+            isDeleted: false,
+            text: postData?.commentary || '',
+            media: postData?.content?.multiImage?.images || []
         };
 
     } catch (error) {
@@ -288,5 +310,54 @@ export async function getLinkedInPostInsights(
             engagementRate: 0,
             isDeleted: false
         };
+    }
+}
+
+export interface LinkedInPost {
+    id: string;
+    text: string;
+    createdAt: string;
+    media?: any[];
+}
+
+export async function getLinkedInUserPosts(
+    credentials: LinkedInCredentials,
+    limit: number = 20
+): Promise<LinkedInPost[]> {
+    const { accessToken, authorUrn } = credentials;
+    let urn = authorUrn;
+    if (urn && !urn.startsWith("urn:li:")) {
+        urn = `urn:li:person:${urn}`;
+    }
+
+    try {
+        // LinkedIn uses 'posts' or 'ugcPosts' endpoint. v2/posts is newer.
+        const response = await fetch(
+            `https://api.linkedin.com/v2/posts?author=${encodeURIComponent(urn)}&count=${limit}`,
+            {
+                method: 'GET',
+                headers: {
+                    "Authorization": `Bearer ${accessToken}`,
+                    "X-Restli-Protocol-Version": "2.0.0",
+                    "LinkedIn-Version": "202401",
+                }
+            }
+        );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to fetch LinkedIn posts: ${errorText}`);
+        }
+
+        const data = await response.json();
+        return data.elements?.map((el: any) => ({
+            id: el.id,
+            text: el.commentary || '',
+            createdAt: el.createdAt || new Date().toISOString(),
+            media: el.content?.multiImage?.images || []
+        })) || [];
+    } catch (error) {
+        console.error('LinkedIn fetch posts error:', error);
+        throw error;
     }
 }

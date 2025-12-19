@@ -38,6 +38,8 @@ export async function postToFacebook(
                 body: JSON.stringify({
                     message,
                     access_token: accessToken,
+                    privacy: { value: 'EVERYONE' }, // Ensure post is public
+                    published: true
                 }),
             });
 
@@ -67,6 +69,8 @@ export async function postToFacebook(
                     body: JSON.stringify({
                         message: message + '\n\n(Media not posted: URL not publicly accessible)',
                         access_token: accessToken,
+                        privacy: { value: 'EVERYONE' },
+                        published: true
                     }),
                 });
 
@@ -95,6 +99,7 @@ export async function postToFacebook(
                             description: message,
                             video_url: publicUrl,
                             access_token: accessToken,
+                            privacy: { value: 'EVERYONE' }
                         }),
                     });
 
@@ -121,6 +126,8 @@ export async function postToFacebook(
                             message,
                             [isVideo ? 'file_url' : 'url']: publicUrl,
                             access_token: accessToken,
+                            privacy: { value: 'EVERYONE' },
+                            published: true
                         }),
                     });
 
@@ -131,7 +138,9 @@ export async function postToFacebook(
                     }
 
                     const data = await response.json();
-                    postId = data.id;
+                    // For photos/videos, Facebook often returns 'id' (media id) and 'post_id' (actual feed post id).
+                    // We need 'post_id' for likes/comments/insights.
+                    postId = data.post_id || data.id;
                 }
             }
 
@@ -189,6 +198,8 @@ export async function postToFacebook(
                     message,
                     attached_media: mediaIds.map(id => ({ media_fbid: id })),
                     access_token: accessToken,
+                    privacy: { value: 'EVERYONE' },
+                    published: true
                 }),
             });
 
@@ -397,6 +408,9 @@ export interface FacebookPostInsights {
     reach: number;
     engagementRate: number;
     isDeleted?: boolean;
+    message?: string;
+    full_picture?: string;
+    permalink_url?: string;
 }
 
 export async function getFacebookPostInsights(
@@ -404,23 +418,76 @@ export async function getFacebookPostInsights(
     accessToken: string
 ): Promise<FacebookPostInsights> {
     try {
-        // 1. Get basic interaction counts (likes, comments)
-        const fields = 'likes.summary(true),comments.summary(true),shares';
-        const postResponse = await fetch(
+        // 1. Get basic interaction counts (likes, reactions, comments) and metadata
+        // We use both 'likes' and 'reactions' because sometimes 'likes' summary is empty for certain post types/tokens.
+        // We also handle the case where 'shares' field might not exist on some objects (like Photos).
+        let fields = 'likes.summary(true),reactions.summary(true),comments.summary(true),shares,engagement,message,full_picture,permalink_url';
+        let postResponse = await fetch(
             `https://graph.facebook.com/v18.0/${postId}?fields=${fields}&access_token=${accessToken}`
         );
 
         if (!postResponse.ok) {
             const error = await postResponse.json();
+            const errorMessage = error.error?.message || "";
+
+            // If the error is specifically about the 'shares' or 'engagement' field (common on Photo nodes), retry without them
+            if (errorMessage.includes('nonexisting field') && (errorMessage.includes('shares') || errorMessage.includes('engagement'))) {
+                console.log(`[Facebook] Retrying insights for ${postId} without incompatible fields...`);
+                fields = 'likes.summary(true),reactions.summary(true),comments.summary(true),message,full_picture,permalink_url';
+                postResponse = await fetch(
+                    `https://graph.facebook.com/v18.0/${postId}?fields=${fields}&access_token=${accessToken}`
+                );
+            }
+        }
+
+        if (!postResponse.ok) {
+            const error = await postResponse.json();
+            console.error(`[Facebook] API Error for post ${postId}:`, error);
             // Check for specific error codes or status
-            // Code 100 with subcode 33: "Object with ID '...' does not exist" -> Deleted
-            // Code 803: "Some of the aliases you requested do not exist" -> Deleted
-            // Status 400 or 404 often implies it's gone if the ID format is correct.
             const errorCode = error.error?.code;
             const errorSubcode = error.error?.error_subcode;
+            const errorMessage = error.error?.message || "";
 
-            if (errorCode === 100 || errorCode === 803 || errorCode === 210) {
-                console.warn(`[Facebook] Post ${postId} marked as deleted. Error code: ${errorCode}, Subcode: ${errorSubcode}`);
+            // Check for specific "Object Not Found" or "Does Not Exist" errors
+            const isDefinitelyDeleted =
+                (errorCode === 100 && (errorSubcode === 33 || errorMessage.includes('does not exist') || errorMessage.includes('Unsupported get request'))) ||
+                errorCode === 803 ||
+                errorCode === 210;
+
+            if (isDefinitelyDeleted) {
+                console.warn(`[Facebook] Post ${postId} not found via direct lookup. Attempting Page Feed fallback...`);
+
+                // Fallback: Check the Page Feed. Sometimes direct object lookup fails but feed works.
+                try {
+                    // Extract pageId from postId if it's in the format PAGEID_POSTID
+                    const pageId = postId.includes('_') ? postId.split('_')[0] : null;
+                    if (pageId) {
+                        const feedResponse = await fetch(
+                            `https://graph.facebook.com/v18.0/${pageId}/feed?fields=id,likes.summary(true),comments.summary(true)&limit=25&access_token=${accessToken}`
+                        );
+
+                        if (feedResponse.ok) {
+                            const feedData = await feedResponse.json();
+                            const feedPost = feedData.data?.find((p: any) => p.id === postId);
+
+                            if (feedPost) {
+                                console.log(`[Facebook] Post ${postId} found in Page Feed fallback. Using feed metrics.`);
+                                return {
+                                    likes: feedPost.likes?.summary?.total_count || 0,
+                                    comments: feedPost.comments?.summary?.total_count || 0,
+                                    impressions: 0, // Feed doesn't give insights
+                                    reach: 0,
+                                    engagementRate: 0,
+                                    isDeleted: false
+                                };
+                            }
+                        }
+                    }
+                } catch (fallbackErr) {
+                    console.error(`[Facebook] Fallback failed for ${postId}:`, fallbackErr);
+                }
+
+                console.warn(`[Facebook] Post ${postId} confirmed as deleted or inaccessible after fallback.`);
                 return {
                     likes: 0,
                     comments: 0,
@@ -435,7 +502,23 @@ export async function getFacebookPostInsights(
         }
 
         const postData = await postResponse.json();
-        const likes = postData.likes?.summary?.total_count || 0;
+
+        // Debug logging to see exactly what FB returns
+        console.log(`[Facebook] Raw data for ${postId}:`, JSON.stringify({
+            likes: postData.likes?.summary,
+            reactions: postData.reactions?.summary,
+            comments: postData.comments?.summary,
+            engagement: postData.engagement
+        }));
+
+        // Try to get like count from multiple sources
+        const likesCount = postData.likes?.summary?.total_count ?? 0;
+        const reactionsCount = postData.reactions?.summary?.total_count ?? 0;
+        const engagementLikes = postData.engagement?.reaction_count ?? 0;
+
+        // Use the highest count found (sometimes one field is 0 while others have data)
+        const likes = Math.max(likesCount, reactionsCount, engagementLikes);
+
         const comments = postData.comments?.summary?.total_count || 0;
         const shares = postData.shares?.count || 0;
 
@@ -482,7 +565,10 @@ export async function getFacebookPostInsights(
             impressions,
             reach,
             engagementRate,
-            isDeleted: false
+            isDeleted: false,
+            message: postData.message,
+            full_picture: postData.full_picture,
+            permalink_url: postData.permalink_url
         };
 
     } catch (error) {
