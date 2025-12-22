@@ -200,7 +200,8 @@ export async function GET(
                 }
 
                 // Sync Metadata (message, mediaUrls)
-                if (forceRefresh) {
+                if (forceRefresh || !dbInsight) {
+
                     const freshMessage = insights.message || insights.caption || insights.text || insights.title || transaction.message;
                     let freshMedia = transaction.mediaUrls;
 

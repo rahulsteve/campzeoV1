@@ -99,8 +99,10 @@ export async function postToFacebook(
                             description: message,
                             video_url: publicUrl,
                             access_token: accessToken,
-                            privacy: { value: 'EVERYONE' }
+                            privacy: { value: 'EVERYONE' },
+                            published: true
                         }),
+
                     });
 
                     if (!response.ok) {

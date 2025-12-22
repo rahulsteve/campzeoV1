@@ -85,9 +85,9 @@ export async function GET(request: NextRequest) {
             }
         });
 
-        // 3.5 Fallback: If no transactions are found, fetch directly from platform API
-        if (transactions.length === 0) {
-            console.log(`[Analytics] No transactions found for ${platform}. Fetching directly from platform API...`);
+        // 3.5 Fallback / Sync: If no transactions found OR force refresh requested, fetch from platform
+        if (transactions.length === 0 || forceRefresh) {
+            console.log(`[Analytics] Syncing posts for ${platform} (Transactions: ${transactions.length}, Refresh: ${forceRefresh})`);
 
             try {
                 const platformUpper = platform.toUpperCase();
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
                     const fbPosts = await getFacebookPagePosts({
                         accessToken: (dbUser.facebookPageAccessToken || dbUser.facebookAccessToken)!,
                         pageId: dbUser.facebookPageId || ''
-                    }, 10);
+                    }, 25); // Increased limit for better sync
                     platformPosts = fbPosts.map(p => ({
                         id: -1, // Virtual ID indicator
                         refId: 0,
@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
                     const igMedia = await getInstagramUserMedia({
                         accessToken: dbUser.instagramAccessToken,
                         userId: dbUser.instagramUserId
-                    }, 10);
+                    }, 25);
                     platformPosts = igMedia.map(m => ({
                         id: 0,
                         refId: 0,
@@ -194,12 +194,47 @@ export async function GET(request: NextRequest) {
                     }));
                 }
 
-                // Use these as transactions
+                // Merge with existing transactions and persist new ones
                 if (platformPosts.length > 0) {
-                    transactions = platformPosts as any;
+                    const existingPostIds = new Set(transactions.map((t: any) => t.postId));
+                    const newPosts = platformPosts.filter(p => !existingPostIds.has(p.postId));
+
+                    if (newPosts.length > 0) {
+                        console.log(`[Analytics] Found ${newPosts.length} new external posts for ${platform}. Persisting to DB...`);
+
+                        // Persist new posts to PostTransaction to give them real IDs and history
+                        const createdTransactions = await Promise.all(newPosts.map(async (p) => {
+                            try {
+                                return await prisma.postTransaction.create({
+                                    data: {
+                                        refId: 0, // 0 indicates external/imported post
+                                        platform: p.platform,
+                                        postId: p.postId,
+                                        accountId: p.accountId,
+                                        message: p.message,
+                                        mediaUrls: p.mediaUrls,
+                                        postType: p.postType,
+                                        accessToken: 'SYNCED',
+                                        published: true,
+                                        publishedAt: new Date(p.publishedAt),
+                                        createdAt: new Date(p.createdAt),
+                                        updatedAt: new Date(),
+                                        insightsFetched: false
+                                    }
+                                });
+                            } catch (err) {
+                                console.error(`[Analytics] Failed to persist post ${p.postId}:`, err);
+                                return null;
+                            }
+                        }));
+
+                        // Filter out nulls and add to transactions
+                        const validCreated = createdTransactions.filter(t => t !== null);
+                        transactions = [...transactions, ...validCreated] as any;
+                    }
                 }
             } catch (fallbackError) {
-                console.error(`[Analytics] Platform fallback failed:`, fallbackError);
+                console.error(`[Analytics] Platform sync failed:`, fallbackError);
             }
         }
 
@@ -376,8 +411,41 @@ export async function GET(request: NextRequest) {
                         })
                     ];
 
-                    // Sync CampaignPost.isDeleted only if it's a real transaction
-                    if (tx.refId !== 0) {
+                    // Sync Metadata (message, mediaUrls) if forceRefresh is true or if it's the first time
+                    if (forceRefresh) {
+                        const freshMessage = (insights as any).message || (insights as any).caption || (insights as any).text || (insights as any).title || tx.message;
+                        let freshMedia = tx.mediaUrls;
+
+                        if (tx.platform === 'FACEBOOK' && (insights as any).full_picture) freshMedia = (insights as any).full_picture;
+                        if (tx.platform === 'INSTAGRAM' && (insights as any).media_url) freshMedia = (insights as any).media_url;
+                        if (tx.platform === 'YOUTUBE' && (insights as any).thumbnails?.high?.url) freshMedia = (insights as any).thumbnails.high.url;
+                        if (tx.platform === 'PINTEREST' && (insights as any).media?.images?.['600x']?.url) freshMedia = (insights as any).media.images['600x'].url;
+
+                        updatePromises.push(
+                            prisma.postTransaction.update({
+                                where: { id: tx.id },
+                                data: { message: freshMessage, mediaUrls: freshMedia }
+                            })
+                        );
+
+                        if (tx.refId !== 0) {
+                            updatePromises.push(
+                                prisma.campaignPost.update({
+                                    where: { id: tx.refId },
+                                    data: {
+                                        message: freshMessage,
+                                        mediaUrls: freshMedia ? [freshMedia] : [],
+                                        isDeleted: isDeleted
+                                    } as any
+                                })
+                            );
+                        }
+
+                        // Update local tx object for immediate return
+                        tx.message = freshMessage;
+                        tx.mediaUrls = freshMedia;
+                    } else if (tx.refId !== 0) {
+                        // Sync CampaignPost.isDeleted only if it's a real transaction
                         updatePromises.push(
                             prisma.campaignPost.updateMany({
                                 where: { id: tx.refId },
@@ -403,18 +471,42 @@ export async function GET(request: NextRequest) {
                         })
                     ];
 
-                    // Sync CampaignPost.isDeleted only if it's a real transaction
+                    // For new insights, also sync metadata if we have it
+                    const freshMessage = (insights as any).message || (insights as any).caption || (insights as any).text || (insights as any).title || tx.message;
+                    let freshMedia = tx.mediaUrls;
+
+                    if (tx.platform === 'FACEBOOK' && (insights as any).full_picture) freshMedia = (insights as any).full_picture;
+                    if (tx.platform === 'INSTAGRAM' && (insights as any).media_url) freshMedia = (insights as any).media_url;
+                    if (tx.platform === 'YOUTUBE' && (insights as any).thumbnails?.high?.url) freshMedia = (insights as any).thumbnails.high.url;
+                    if (tx.platform === 'PINTEREST' && (insights as any).media?.images?.['600x']?.url) freshMedia = (insights as any).media.images['600x'].url;
+
+                    createPromises.push(
+                        prisma.postTransaction.update({
+                            where: { id: tx.id },
+                            data: { message: freshMessage, mediaUrls: freshMedia }
+                        })
+                    );
+
                     if (tx.refId !== 0) {
                         createPromises.push(
-                            prisma.campaignPost.updateMany({
+                            prisma.campaignPost.update({
                                 where: { id: tx.refId },
-                                data: { isDeleted: isDeleted } as any
+                                data: {
+                                    message: freshMessage,
+                                    mediaUrls: freshMedia ? [freshMedia] : [],
+                                    isDeleted: isDeleted
+                                } as any
                             })
                         );
                     }
 
+                    // Update local tx object for immediate return
+                    tx.message = freshMessage;
+                    tx.mediaUrls = freshMedia;
+
                     await prisma.$transaction(createPromises);
                 }
+
 
                 // Return with fresh insights
                 return {
