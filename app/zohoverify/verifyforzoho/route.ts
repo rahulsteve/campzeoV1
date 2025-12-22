@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-    return new NextResponse('zoho-verification=zb14536659.zmverify.zoho.in', {
+    return new NextResponse('24741287', {
         headers: {
             'Content-Type': 'text/plain',
         },
