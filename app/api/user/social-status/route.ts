@@ -203,15 +203,33 @@ export async function GET() {
         // YouTube
         if (dbUser.youtubeAccessToken) {
             try {
-                const res = await fetchWithTimeout(`https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true`, {
+                let res = await fetchWithTimeout(`https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true`, {
                     headers: { Authorization: `Bearer ${dbUser.youtubeAccessToken}` }
                 });
+
+                // If unauthorized, attempt one-time refresh
+                if (res.status === 401 && dbUser.youtubeAuthUrn) {
+                    console.log(`[Social Status] YouTube token expired for ${targetUserId}, attempting refresh...`);
+                    const { refreshUserTokens } = await import("@/lib/social-refresh");
+                    const refreshResult = await refreshUserTokens(targetUserId);
+
+                    if (refreshResult.success && refreshResult.results.youtube.refreshed) {
+                        // Retry the request with new token
+                        const refreshedUser = await prisma.user.findUnique({ where: { clerkId: targetUserId } });
+                        if (refreshedUser?.youtubeAccessToken) {
+                            res = await fetchWithTimeout(`https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true`, {
+                                headers: { Authorization: `Bearer ${refreshedUser.youtubeAccessToken}` }
+                            });
+                        }
+                    }
+                }
+
                 if (res.ok) {
                     const data = await res.json();
                     const title = data.items?.[0]?.snippet?.title;
                     status.youtube = { connected: true, name: title || "Connected" };
                 } else {
-                    status.youtube = { connected: true, name: "Connected" };
+                    status.youtube = { connected: true, name: "Connected (Session Expired)" };
                 }
             } catch (e) {
                 status.youtube = { connected: true, name: "Connected" };
@@ -224,14 +242,32 @@ export async function GET() {
         if (dbUser.pinterestAccessToken) {
             try {
                 // Use Production API
-                const res = await fetchWithTimeout(`https://api.pinterest.com/v5/user_account`, {
+                let res = await fetchWithTimeout(`https://api.pinterest.com/v5/user_account`, {
                     headers: { Authorization: `Bearer ${dbUser.pinterestAccessToken}` }
                 });
+
+                // If unauthorized, attempt one-time refresh
+                if (res.status === 401 && dbUser.pinterestAuthUrn) {
+                    console.log(`[Social Status] Pinterest token expired for ${targetUserId}, attempting refresh...`);
+                    const { refreshUserTokens } = await import("@/lib/social-refresh");
+                    const refreshResult = await refreshUserTokens(targetUserId);
+
+                    if (refreshResult.success && refreshResult.results.pinterest.refreshed) {
+                        // Retry the request with new token
+                        const refreshedUser = await prisma.user.findUnique({ where: { clerkId: targetUserId } });
+                        if (refreshedUser?.pinterestAccessToken) {
+                            res = await fetchWithTimeout(`https://api.pinterest.com/v5/user_account`, {
+                                headers: { Authorization: `Bearer ${refreshedUser.pinterestAccessToken}` }
+                            });
+                        }
+                    }
+                }
+
                 if (res.ok) {
                     const data = await res.json();
                     status.pinterest = { connected: true, name: data.username };
                 } else {
-                    status.pinterest = { connected: true, name: "Connected" };
+                    status.pinterest = { connected: true, name: "Connected (Session Expired)" };
                 }
             } catch (e) {
                 status.pinterest = { connected: true, name: "Connected" };

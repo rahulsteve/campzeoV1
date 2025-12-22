@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { currentUser } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { getImpersonatedOrganisationId } from '@/lib/admin-impersonation';
 import { sendCampaignPost } from '@/lib/send-campaign-post';
 import { logError, logWarning } from '@/lib/audit-logger';
 
@@ -10,10 +11,30 @@ export async function POST(
 ) {
     console.log("POST /api/campaigns/[id]/posts/[postId]/send hit");
     try {
-        const { userId } = await auth();
-        if (!userId) {
+        const user = await currentUser();
+        if (!user) {
             await logWarning("Unauthorized access attempt to send campaign post", { action: "send-campaign-post" });
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        // Get user from database to check organisation
+        const dbUser = await prisma.user.findUnique({
+            where: { clerkId: user.id },
+            select: { organisationId: true, role: true }
+        });
+
+        let effectiveOrganisationId = dbUser?.organisationId;
+
+        // Check for admin impersonation
+        if (dbUser?.role === 'ADMIN_USER') {
+            const impersonatedId = await getImpersonatedOrganisationId();
+            if (impersonatedId) {
+                effectiveOrganisationId = impersonatedId;
+            }
+        }
+
+        if (!effectiveOrganisationId) {
+            return NextResponse.json({ error: 'Organisation not found' }, { status: 404 });
         }
 
         // Await params before accessing properties
@@ -25,11 +46,14 @@ export async function POST(
 
         const { contactIds } = await req.json();
 
-        // Fetch post and campaign
+        // Fetch post and campaign - verify campaign belongs to the effective organisation
         const post = await prisma.campaignPost.findFirst({
             where: {
                 id: parseInt(postId),
                 campaignId: parseInt(id),
+                campaign: {
+                    organisationId: effectiveOrganisationId,
+                }
             },
             include: {
                 campaign: {
@@ -42,7 +66,7 @@ export async function POST(
         });
 
         if (!post) {
-            return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+            return NextResponse.json({ error: 'Post or Campaign not found' }, { status: 404 });
         }
 
         const isSocialPlatform = ['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'PINTEREST'].includes(post.type);

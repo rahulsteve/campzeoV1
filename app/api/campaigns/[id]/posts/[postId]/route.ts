@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { currentUser } from '@clerk/nextjs/server';
+import { getImpersonatedOrganisationId } from '@/lib/admin-impersonation';
 import { logError, logWarning, logInfo } from '@/lib/audit-logger';
 
 // GET - Fetch a single post
@@ -18,10 +19,20 @@ export async function GET(
         // Get user from database to check organisation
         const dbUser = await prisma.user.findUnique({
             where: { clerkId: user.id },
-            select: { organisationId: true }
+            select: { organisationId: true, role: true }
         });
 
-        if (!dbUser?.organisationId) {
+        let effectiveOrganisationId = dbUser?.organisationId;
+
+        // Check for admin impersonation
+        if (dbUser?.role === 'ADMIN_USER') {
+            const impersonatedId = await getImpersonatedOrganisationId();
+            if (impersonatedId) {
+                effectiveOrganisationId = impersonatedId;
+            }
+        }
+
+        if (!effectiveOrganisationId) {
             return NextResponse.json({ error: 'Organisation not found' }, { status: 404 });
         }
 
@@ -33,7 +44,7 @@ export async function GET(
         const campaign = await prisma.campaign.findFirst({
             where: {
                 id: campaignId,
-                organisationId: dbUser.organisationId,
+                organisationId: effectiveOrganisationId,
                 isDeleted: false,
             },
         });
@@ -77,10 +88,20 @@ export async function PUT(
         // Get user from database to check organisation
         const dbUser = await prisma.user.findUnique({
             where: { clerkId: user.id },
-            select: { organisationId: true }
+            select: { organisationId: true, role: true }
         });
 
-        if (!dbUser?.organisationId) {
+        let effectiveOrganisationId = dbUser?.organisationId;
+
+        // Check for admin impersonation
+        if (dbUser?.role === 'ADMIN_USER') {
+            const impersonatedId = await getImpersonatedOrganisationId();
+            if (impersonatedId) {
+                effectiveOrganisationId = impersonatedId;
+            }
+        }
+
+        if (!effectiveOrganisationId) {
             return NextResponse.json({ error: 'Organisation not found' }, { status: 404 });
         }
 
@@ -92,7 +113,7 @@ export async function PUT(
         const campaign = await prisma.campaign.findFirst({
             where: {
                 id: campaignId,
-                organisationId: dbUser.organisationId,
+                organisationId: effectiveOrganisationId,
                 isDeleted: false,
             },
         });
@@ -182,10 +203,20 @@ export async function DELETE(
         // Get user from database to check organisation
         const dbUser = await prisma.user.findUnique({
             where: { clerkId: user.id },
-            select: { organisationId: true }
+            select: { organisationId: true, role: true }
         });
 
-        if (!dbUser?.organisationId) {
+        let effectiveOrganisationId = dbUser?.organisationId;
+
+        // Check for admin impersonation
+        if (dbUser?.role === 'ADMIN_USER') {
+            const impersonatedId = await getImpersonatedOrganisationId();
+            if (impersonatedId) {
+                effectiveOrganisationId = impersonatedId;
+            }
+        }
+
+        if (!effectiveOrganisationId) {
             return NextResponse.json({ error: 'Organisation not found' }, { status: 404 });
         }
 
@@ -197,7 +228,7 @@ export async function DELETE(
         const campaign = await prisma.campaign.findFirst({
             where: {
                 id: campaignId,
-                organisationId: dbUser.organisationId,
+                organisationId: effectiveOrganisationId,
                 isDeleted: false,
             },
         });

@@ -11,7 +11,7 @@ interface YouTubeMetadata {
 }
 
 // Refresh YouTube access token using refresh token
-async function refreshYouTubeToken(refreshToken: string, clientId: string, clientSecret: string): Promise<string> {
+export async function refreshYouTubeToken(refreshToken: string, clientId: string, clientSecret: string) {
     const response = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: {
@@ -31,7 +31,7 @@ async function refreshYouTubeToken(refreshToken: string, clientId: string, clien
     }
 
     const data: any = await response.json();
-    return data.access_token;
+    return data; // Returns { access_token, refresh_token (optional), expires_in, scope, token_type }
 }
 
 // Upload video to YouTube using resumable upload

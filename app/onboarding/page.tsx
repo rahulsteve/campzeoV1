@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { usePlans } from "@/hooks/use-plans";
 
 export default function OnboardingPage() {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const router = useRouter();
   const { plans, isLoading: plansLoading } = usePlans();
   const [isLoading, setIsLoading] = useState(false);
@@ -97,15 +97,15 @@ export default function OnboardingPage() {
       }
     };
 
-    if (user) {
+    if (isLoaded && user) {
       if (!formData.email) {
         setFormData(prev => ({ ...prev, email: user.primaryEmailAddress?.emailAddress || "" }));
       }
       syncUser();
-    } else {
+    } else if (isLoaded && !user) {
       setIsSyncing(false);
     }
-  }, [user, router]); // formData dependency removed to avoid infinite loop if it changes
+  }, [isLoaded, user, router]); // formData dependency removed to avoid infinite loop if it changes
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;

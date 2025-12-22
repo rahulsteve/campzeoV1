@@ -168,9 +168,11 @@ export interface PinterestPostInsights {
     saves: number;
     pinClicks: number;
     outboundClicks: number;
-    isDeleted?: boolean;
+    isDeleted: boolean;
     title?: string;
     description?: string;
+    message?: string;
+    caption?: string;
     media?: any;
 }
 
@@ -183,21 +185,34 @@ export async function getPinterestPostInsights(
         let pinMetadata = null;
 
         // 1. Get Pin Details to get comment count and metadata
-        try {
-            const detailsResponse = await fetch(`https://api.pinterest.com/v5/pins/${pinId}`, {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                },
-            });
+        const detailsResponse = await fetch(`https://api.pinterest.com/v5/pins/${pinId}`, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+            },
+        });
 
-            if (detailsResponse.ok) {
-                pinMetadata = await detailsResponse.json();
-                comments = pinMetadata.comment_count || 0;
-            } else {
-                console.warn(`[Pinterest] Failed to fetch pin details for ${pinId}: ${detailsResponse.status}`);
+        if (detailsResponse.status === 401) {
+            throw new Error('401 Unauthorized');
+        }
+
+        if (detailsResponse.ok) {
+            pinMetadata = await detailsResponse.json();
+            comments = pinMetadata.comment_count || 0;
+        } else {
+            console.warn(`[Pinterest] Failed to fetch pin details for ${pinId}: ${detailsResponse.status}`);
+            if (detailsResponse.status === 404) {
+                return {
+                    likes: 0,
+                    comments: 0,
+                    impressions: 0,
+                    reach: 0,
+                    engagementRate: 0,
+                    saves: 0,
+                    pinClicks: 0,
+                    outboundClicks: 0,
+                    isDeleted: true
+                };
             }
-        } catch (detailError) {
-            console.warn(`[Pinterest] Error fetching pin details:`, detailError);
         }
 
         // 2. Get Analytics
@@ -213,6 +228,10 @@ export async function getPinterestPostInsights(
                 'Authorization': `Bearer ${accessToken}`,
             },
         });
+
+        if (response.status === 401) {
+            throw new Error('401 Unauthorized');
+        }
 
         if (!response.ok) {
             console.warn(`[Pinterest] Failed to fetch analytics for pin ${pinId}: ${response.status}`);
@@ -233,11 +252,12 @@ export async function getPinterestPostInsights(
         }
 
         const data = await response.json();
+        const summary = data.all?.summary_metrics || {};
 
-        const impressions = data.IMPRESSION || 0;
-        const saves = data.SAVE || 0;
-        const pinClicks = data.PIN_CLICK || 0;
-        const outboundClicks = data.OUTBOUND_CLICK || 0;
+        const impressions = summary.IMPRESSION || 0;
+        const saves = summary.SAVE || 0;
+        const pinClicks = summary.PIN_CLICK || 0;
+        const outboundClicks = summary.OUTBOUND_CLICK || 0;
 
         // Map to standard interface
         // Note: Pinterest 'Saves' are conceptually 'Likes' in other platforms (user validation)
@@ -261,6 +281,8 @@ export async function getPinterestPostInsights(
             isDeleted: false,
             title: pinMetadata?.title,
             description: pinMetadata?.description,
+            message: pinMetadata?.title || pinMetadata?.description || "",
+            caption: pinMetadata?.description || "",
             media: pinMetadata?.media
         };
 
@@ -319,4 +341,31 @@ export async function getPinterestUserPins(
         console.error('Pinterest fetch pins error:', error);
         throw error;
     }
+}
+
+/**
+ * Refresh Pinterest access token using refresh token (v5 API)
+ */
+export async function refreshPinterestToken(refreshToken: string, clientId: string, clientSecret: string) {
+    const authHeader = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    const params = new URLSearchParams();
+    params.append("grant_type", "refresh_token");
+    params.append("refresh_token", refreshToken);
+
+    const response = await fetch("https://api.pinterest.com/v5/oauth/token", {
+        method: "POST",
+        headers: {
+            "Authorization": `Basic ${authHeader}`,
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: params,
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(`Failed to refresh Pinterest token: ${JSON.stringify(error)}`);
+    }
+
+    const data = await response.json();
+    return data; // Returns { access_token, refresh_token, expires_in, refresh_token_expires_in, scope, token_type }
 }

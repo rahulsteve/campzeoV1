@@ -138,13 +138,38 @@ export async function GET(
                     case 'YOUTUBE':
                         token = dbUser.youtubeAccessToken;
                         if (token) {
-                            insights = await getYouTubeVideoInsights(transaction.postId, token);
+                            try {
+                                insights = await getYouTubeVideoInsights(transaction.postId, token);
+                            } catch (e: any) {
+                                if (e.message?.includes('401') && dbUser.youtubeAuthUrn) {
+                                    const { refreshUserTokens } = await import("@/lib/social-refresh");
+                                    const refresh = await refreshUserTokens(dbUser.clerkId);
+                                    if (refresh.success && refresh.results.youtube.refreshed) {
+                                        const updatedUser = await prisma.user.findUnique({ where: { clerkId: dbUser.clerkId } });
+                                        if (updatedUser?.youtubeAccessToken) insights = await getYouTubeVideoInsights(transaction.postId, updatedUser.youtubeAccessToken);
+                                    }
+                                } else throw e;
+                            }
                         }
                         break;
                     case 'PINTEREST':
                         token = dbUser.pinterestAccessToken;
                         if (token) {
-                            insights = await getPinterestPostInsights(transaction.postId, token);
+                            try {
+                                insights = await getPinterestPostInsights(transaction.postId, token);
+                                if (insights.isDeleted && !transaction.publishedAt) { // Handle potential 401 hidden as 404/deleted if token is bad
+                                    throw new Error('401');
+                                }
+                            } catch (e: any) {
+                                if ((e.message?.includes('401') || insights?.isDeleted) && dbUser.pinterestAuthUrn) {
+                                    const { refreshUserTokens } = await import("@/lib/social-refresh");
+                                    const refresh = await refreshUserTokens(dbUser.clerkId);
+                                    if (refresh.success && refresh.results.pinterest.refreshed) {
+                                        const updatedUser = await prisma.user.findUnique({ where: { clerkId: dbUser.clerkId } });
+                                        if (updatedUser?.pinterestAccessToken) insights = await getPinterestPostInsights(transaction.postId, updatedUser.pinterestAccessToken);
+                                    }
+                                } else throw e;
+                            }
                         }
                         break;
                 }

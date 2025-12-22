@@ -49,9 +49,10 @@ interface SettingsClientProps {
     whatsappConnected: boolean;
   };
   assignedPlatforms: string[];
+  isImpersonating?: boolean;
 }
 
-export function SettingsClient({ userData, assignedPlatforms }: SettingsClientProps) {
+export function SettingsClient({ userData, assignedPlatforms, isImpersonating = false }: SettingsClientProps) {
   const { user, isLoaded } = useUser();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -241,6 +242,9 @@ export function SettingsClient({ userData, assignedPlatforms }: SettingsClientPr
   useEffect(() => {
     const fetchSocialStatus = async () => {
       try {
+        // Proactively attempt refresh when entering settings
+        await fetch("/api/socialmedia/refresh", { method: "POST" }).catch(e => console.warn("Auto-refresh failed", e));
+
         const res = await fetch("/api/user/social-status");
         if (res.ok) {
           const data = await res.json();
@@ -299,42 +303,48 @@ export function SettingsClient({ userData, assignedPlatforms }: SettingsClientPr
       connected: userData.pinterestConnected,
       accountName: socialStatus?.pinterest?.name,
       description: "Pin your visual content to Pinterest boards.",
-    },
-    {
-      id: "EMAIL",
-      name: "Email (Twilio SendGrid)",
-      icon: Mail,
-      color: "text-slate-600",
-      connected: userData.emailConnected,
-      accountName: null,
-      description: "Send emails via Twilio SendGrid.",
-    },
-    {
-      id: "SMS",
-      name: "SMS (Twilio)",
-      icon: Smartphone,
-      color: "text-red-500",
-      connected: userData.smsConnected,
-      accountName: null,
-      description: "Send SMS messages via Twilio.",
-    },
-    {
-      id: "WHATSAPP",
-      name: "WhatsApp (Twilio)",
-      icon: MessageSquare,
-      color: "text-green",
-      connected: userData.whatsappConnected,
-      accountName: null,
-      description: "Send WhatsApp messages via Twilio.",
     }
+    // {
+    //   id: "EMAIL",
+    //   name: "Email (Twilio SendGrid)",
+    //   icon: Mail,
+    //   color: "text-slate-600",
+    //   connected: userData.emailConnected,
+    //   accountName: null,
+    //   description: "Send emails via Twilio SendGrid.",
+    // },
+    // {
+    //   id: "SMS",
+    //   name: "SMS (Twilio)",
+    //   icon: Smartphone,
+    //   color: "text-red-500",
+    //   connected: userData.smsConnected,
+    //   accountName: null,
+    //   description: "Send SMS messages via Twilio.",
+    // },
+    // {
+    //   id: "WHATSAPP",
+    //   name: "WhatsApp (Twilio)",
+    //   icon: MessageSquare,
+    //   color: "text-green",
+    //   connected: userData.whatsappConnected,
+    //   accountName: null,
+    //   description: "Send WhatsApp messages via Twilio.",
+    // }
   ];
 
   const filteredPlatforms = platforms.filter(platform => {
-    // 1. Exclude EMAIL, SMS, WHATSAPP from the list entirely as they are admin-managed
+    // 1. If impersonating, show all assigned platforms (including EMAIL, SMS, WHATSAPP)
+    if (isImpersonating) {
+      return assignedPlatforms.includes(platform.id);
+    }
+
+    // 2. Normal flow: Exclude EMAIL, SMS, WHATSAPP from the list entirely
     if (['EMAIL', 'SMS', 'WHATSAPP'].includes(platform.id)) {
       return false;
     }
-    // 2. Only show platforms that are assigned to the organisation
+
+    // 3. Only show platforms that are assigned to the organisation
     return assignedPlatforms.includes(platform.id);
   });
 
@@ -460,30 +470,33 @@ export function SettingsClient({ userData, assignedPlatforms }: SettingsClientPr
                         </div>
                       </div>
                       <div>
-                        {platform.connected ? (
+                        {['EMAIL', 'SMS', 'WHATSAPP'].includes(platform.id) ? (
+                          <Badge variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-100">
+                            <CheckCircle2 className="mr-1 h-3 w-3" />
+                            Authorized
+                          </Badge>
+                        ) : platform.connected ? (
                           <div className="flex items-center gap-2">
                             <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-100">
                               <CheckCircle2 className="mr-1 h-3 w-3" />
                               Connected
                             </Badge>
-                            {/* {platform.id === 'LINKEDIN' && (
-                                <Button variant="ghost" size="sm" onClick={handleConfigureLinkedIn} title="Configure Page">
-                                    <Settings className="h-4 w-4" />
-                                </Button>
-                            )} */}
-                            <Button variant="ghost" size="sm" className="text-red-500 cursor-pointer hover:text-red-600 hover:bg-red-50" onClick={() => handleDisconnect(platform.id)}>
-                              Disconnect
-                            </Button>
-                            {/* {platform.id === 'FACEBOOK' && (
-                              <Button variant="outline" size="sm" onClick={handleViewFacebookPosts} title="View Recent Posts">
-                                View Posts
+                            {!isImpersonating && (
+                              <Button variant="ghost" size="sm" className="text-red-500 cursor-pointer hover:text-red-600 hover:bg-red-50" onClick={() => handleDisconnect(platform.id)}>
+                                Disconnect
                               </Button>
-                            )} */}
+                            )}
                           </div>
                         ) : (
-                          <Button className="cursor-pointer" variant="outline" onClick={() => handleConnect(platform.id)}>
-                            Connect
-                          </Button>
+                          !isImpersonating ? (
+                            <Button className="cursor-pointer" variant="outline" onClick={() => handleConnect(platform.id)}>
+                              Connect
+                            </Button>
+                          ) : (
+                            <Badge variant="outline" className="text-muted-foreground whitespace-nowrap">
+                              Disconnected
+                            </Badge>
+                          )
                         )}
                       </div>
                     </div>

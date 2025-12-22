@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { currentUser } from '@clerk/nextjs/server';
-import { postToLinkedIn } from '@/lib/linkedin';
+import { getImpersonatedOrganisationId } from '@/lib/admin-impersonation';
 import { sendCampaignPost } from '@/lib/send-campaign-post';
 import { logError, logWarning, logInfo } from '@/lib/audit-logger';
 
@@ -20,10 +20,20 @@ export async function GET(
         // Get user from database to check organisation
         const dbUser = await prisma.user.findUnique({
             where: { clerkId: user.id },
-            select: { organisationId: true }
+            select: { organisationId: true, role: true }
         });
 
-        if (!dbUser?.organisationId) {
+        let effectiveOrganisationId = dbUser?.organisationId;
+
+        // Check for admin impersonation
+        if (dbUser?.role === 'ADMIN_USER') {
+            const impersonatedId = await getImpersonatedOrganisationId();
+            if (impersonatedId) {
+                effectiveOrganisationId = impersonatedId;
+            }
+        }
+
+        if (!effectiveOrganisationId) {
             return NextResponse.json({ error: 'Organisation not found' }, { status: 404 });
         }
 
@@ -34,7 +44,7 @@ export async function GET(
         const campaign = await prisma.campaign.findFirst({
             where: {
                 id: campaignId,
-                organisationId: dbUser.organisationId,
+                organisationId: effectiveOrganisationId,
                 isDeleted: false,
             },
         });
@@ -79,12 +89,23 @@ export async function POST(
             where: { clerkId: user.id },
             select: {
                 organisationId: true,
+                role: true,
                 linkedInAccessToken: true,
                 linkedInAuthUrn: true
             }
         });
 
-        if (!dbUser?.organisationId) {
+        let effectiveOrganisationId = dbUser?.organisationId;
+
+        // Check for admin impersonation
+        if (dbUser?.role === 'ADMIN_USER') {
+            const impersonatedId = await getImpersonatedOrganisationId();
+            if (impersonatedId) {
+                effectiveOrganisationId = impersonatedId;
+            }
+        }
+
+        if (!effectiveOrganisationId) {
             return NextResponse.json({ error: 'Organisation not found' }, { status: 404 });
         }
 
@@ -95,7 +116,7 @@ export async function POST(
         const campaign = await prisma.campaign.findFirst({
             where: {
                 id: campaignId,
-                organisationId: dbUser.organisationId,
+                organisationId: effectiveOrganisationId,
                 isDeleted: false,
             },
         });
@@ -108,7 +129,7 @@ export async function POST(
         const {
             subject,
             message,
-            type, // Reverted to single type
+            type,
             scheduledPostTime,
             senderEmail,
             mediaUrls,
@@ -181,26 +202,10 @@ export async function POST(
         const isSocialPlatform = ['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'PINTEREST'].includes(type);
 
         if (isSocialPlatform && !scheduledPostTime) {
-            // Run in background to avoid Vercel timeout for immediate response, 
-            // or await if we want to return the result. 
-            // Given the original code awaited the LinkedIn post, we should probably await here too 
-            // to return error if it fails immediately?
-            // The original code only logged error but returned success for the creation.
-
             try {
-                // We don't await the result to block the UI? 
-                // Using waitUntil would be better but not available here easily without Vercel SDK context or Next.js experimental.
-                // But since we want to ensure it works for the "demo", let's await it but catch errors.
-
-                // Note: sendCampaignPost expects dbUser to be fetched inside it? 
-                // No, sendCampaignPost fetches the user based on organisationId.
-
                 await sendCampaignPost(post);
-
             } catch (postError) {
                 console.error(`Failed to post to ${type}:`, postError);
-                // We log the error but still return the created post with 201, 
-                // maybe with a warning or we rely on the PostTransaction status/logs.
             }
         }
 

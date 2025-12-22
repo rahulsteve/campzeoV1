@@ -35,7 +35,9 @@ export async function GET(request: NextRequest) {
                 instagramUserId: true,
                 linkedInAccessToken: true,
                 youtubeAccessToken: true,
-                pinterestAccessToken: true
+                youtubeAuthUrn: true,
+                pinterestAccessToken: true,
+                pinterestAuthUrn: true
             }
         });
 
@@ -159,7 +161,19 @@ export async function GET(request: NextRequest) {
                         }));
                     }
                 } else if (platformUpper === 'YOUTUBE' && dbUser.youtubeAccessToken) {
-                    const ytVideos = await getYouTubeChannelVideos(dbUser.youtubeAccessToken, 10);
+                    let ytVideos: any[] = [];
+                    try {
+                        ytVideos = await getYouTubeChannelVideos(dbUser.youtubeAccessToken, 10);
+                    } catch (e: any) {
+                        if (e.message?.includes('401') && dbUser.youtubeAuthUrn) {
+                            const { refreshUserTokens } = await import("@/lib/social-refresh");
+                            const refresh = await refreshUserTokens(user.id);
+                            if (refresh.success && refresh.results.youtube.refreshed) {
+                                const updatedUser = await prisma.user.findUnique({ where: { clerkId: user.id } });
+                                if (updatedUser?.youtubeAccessToken) ytVideos = await getYouTubeChannelVideos(updatedUser.youtubeAccessToken, 10);
+                            }
+                        }
+                    }
                     platformPosts = ytVideos.map(v => ({
                         id: 0,
                         refId: 0,
@@ -176,7 +190,19 @@ export async function GET(request: NextRequest) {
                         updatedAt: v.publishedAt
                     }));
                 } else if (platformUpper === 'PINTEREST' && dbUser.pinterestAccessToken) {
-                    const pinPosts = await getPinterestUserPins(dbUser.pinterestAccessToken, 10);
+                    let pinPosts: any[] = [];
+                    try {
+                        pinPosts = await getPinterestUserPins(dbUser.pinterestAccessToken, 10);
+                    } catch (e: any) {
+                        if (e.message?.includes('401') && dbUser.pinterestAuthUrn) {
+                            const { refreshUserTokens } = await import("@/lib/social-refresh");
+                            const refresh = await refreshUserTokens(user.id);
+                            if (refresh.success && refresh.results.pinterest.refreshed) {
+                                const updatedUser = await prisma.user.findUnique({ where: { clerkId: user.id } });
+                                if (updatedUser?.pinterestAccessToken) pinPosts = await getPinterestUserPins(updatedUser.pinterestAccessToken, 10);
+                            }
+                        }
+                    }
                     platformPosts = pinPosts.map(p => ({
                         id: 0,
                         refId: 0,
@@ -193,6 +219,7 @@ export async function GET(request: NextRequest) {
                         updatedAt: p.createdAt
                     }));
                 }
+
 
                 // Merge with existing transactions and persist new ones
                 if (platformPosts.length > 0) {
@@ -339,15 +366,29 @@ export async function GET(request: NextRequest) {
                     case 'YOUTUBE':
                         token = dbUser.youtubeAccessToken;
                         if (token) {
-                            const videoInsights = await getYouTubeVideoInsights(tx.postId, token);
-                            insights = {
-                                likes: videoInsights.likes,
-                                comments: videoInsights.comments,
-                                reach: videoInsights.reach,
-                                impressions: videoInsights.impressions,
-                                engagementRate: videoInsights.engagementRate,
-                                isDeleted: videoInsights.isDeleted
-                            };
+                            try {
+                                const videoInsights = await getYouTubeVideoInsights(tx.postId, token);
+                                insights = {
+                                    likes: videoInsights.likes,
+                                    comments: videoInsights.comments,
+                                    reach: videoInsights.reach,
+                                    impressions: videoInsights.impressions,
+                                    engagementRate: videoInsights.engagementRate,
+                                    isDeleted: videoInsights.isDeleted
+                                };
+                            } catch (e: any) {
+                                if (e.message?.includes('401') && (dbUser as any).youtubeAuthUrn) {
+                                    const { refreshUserTokens } = await import("@/lib/social-refresh");
+                                    const refresh = await refreshUserTokens(user.id);
+                                    if (refresh.success && refresh.results.youtube.refreshed) {
+                                        const updatedUser = await prisma.user.findUnique({ where: { clerkId: user.id } });
+                                        if (updatedUser?.youtubeAccessToken) {
+                                            const videoInsights = await getYouTubeVideoInsights(tx.postId, updatedUser.youtubeAccessToken);
+                                            insights = { ...videoInsights };
+                                        }
+                                    }
+                                }
+                            }
                         } else {
                             console.warn('[Analytics] No YouTube access token found for user');
                         }
@@ -355,15 +396,29 @@ export async function GET(request: NextRequest) {
                     case 'PINTEREST':
                         token = dbUser.pinterestAccessToken;
                         if (token) {
-                            const pinInsights = await getPinterestPostInsights(tx.postId, token);
-                            insights = {
-                                likes: pinInsights.likes,
-                                comments: pinInsights.comments,
-                                reach: pinInsights.reach,
-                                impressions: pinInsights.impressions,
-                                engagementRate: pinInsights.engagementRate,
-                                isDeleted: pinInsights.isDeleted
-                            };
+                            try {
+                                const pinInsights = await getPinterestPostInsights(tx.postId, token);
+                                insights = {
+                                    likes: pinInsights.likes,
+                                    comments: pinInsights.comments,
+                                    reach: pinInsights.reach,
+                                    impressions: pinInsights.impressions,
+                                    engagementRate: pinInsights.engagementRate,
+                                    isDeleted: pinInsights.isDeleted
+                                };
+                            } catch (e: any) {
+                                if ((e.message?.includes('401')) && (dbUser as any).pinterestAuthUrn) {
+                                    const { refreshUserTokens } = await import("@/lib/social-refresh");
+                                    const refresh = await refreshUserTokens(user.id);
+                                    if (refresh.success && refresh.results.pinterest.refreshed) {
+                                        const updatedUser = await prisma.user.findUnique({ where: { clerkId: user.id } });
+                                        if (updatedUser?.pinterestAccessToken) {
+                                            const pinInsights = await getPinterestPostInsights(tx.postId, updatedUser.pinterestAccessToken);
+                                            insights = { ...pinInsights };
+                                        }
+                                    }
+                                }
+                            }
                         } else {
                             console.warn('[Analytics] No Pinterest access token found for user');
                         }

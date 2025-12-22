@@ -13,6 +13,16 @@ import { useSignUp, useSignIn, useClerk } from "@clerk/nextjs";
 import { usePlans } from "@/hooks/use-plans";
 import { formatPrice } from "@/lib/plans";
 import { RazorpayButton } from "@/components/razorpay-button";
+import { countries } from "@/lib/countries";
+import { Eye, EyeOff } from "lucide-react";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function PurchaseContent() {
     const searchParams = useSearchParams();
@@ -29,10 +39,16 @@ function PurchaseContent() {
     const [otp, setOtp] = useState("");
     const [invoice, setInvoice] = useState<any>(null);
 
+    const [accountType, setAccountType] = useState<"business" | "individual">("business");
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [isDetecting, setIsDetecting] = useState(false);
+
     // Data for Organization Creation
     const [formData, setFormData] = useState({
         email: "",
         password: "",
+        confirmPassword: "",
         name: "", // Owner Name
         organisationName: "",
         mobile: "",
@@ -67,14 +83,109 @@ function PurchaseContent() {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
         setFormData({ ...formData, [e.target.name]: e.target.value });
 
+    const handleSelectChange = (name: string, value: string) =>
+        setFormData({ ...formData, [name]: value });
+
+    // Pincode Auto-Detection
+    useEffect(() => {
+        const detectLocation = async () => {
+            const { postalCode, country } = formData;
+            if (!postalCode || postalCode.length < 3) return;
+
+            // Find country code if country is selected
+            const currentCountry = countries.find(c => c.name === country);
+            const countryParam = currentCountry ? `&country=${encodeURIComponent(currentCountry.name)}` : "";
+
+            setIsDetecting(true);
+            try {
+                // Primary: Nominatim (Global)
+                const url = `https://nominatim.openstreetmap.org/search?postalcode=${postalCode}${countryParam}&format=json&addressdetails=1`;
+                const res = await fetch(url, {
+                    headers: {
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'User-Agent': 'Campzeo/1.0 (Purchase Pincode Detection)'
+                    }
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.length > 0) {
+                        const address = data[0].address;
+                        const detectedCity = address.city || address.town || address.village || address.suburb || address.municipality;
+                        const detectedState = address.state || address.province || address.county || address.state_district;
+                        const detectedCountryCode = address.country_code?.toUpperCase();
+
+                        const matchedCountry = countries.find(c => c.code === detectedCountryCode);
+
+                        setFormData(prev => ({
+                            ...prev,
+                            city: detectedCity || prev.city,
+                            state: detectedState || prev.state,
+                            country: matchedCountry ? matchedCountry.name : (address.country || prev.country)
+                        }));
+                        setIsDetecting(false);
+                        return; // Success, exit
+                    }
+                }
+
+                // Fallback for India if Nominatim yields nothing but it looks like an Indian pincode
+                if (postalCode.length === 6 && (!country || country === "India")) {
+                    const resIN = await fetch(`https://api.postalpincode.in/pincode/${postalCode}`);
+                    const dataIN = await resIN.json();
+                    if (dataIN[0]?.Status === "Success") {
+                        const details = dataIN[0].PostOffice[0];
+                        setFormData(prev => ({
+                            ...prev,
+                            city: details.District,
+                            state: details.State,
+                            country: "India"
+                        }));
+                    }
+                }
+            } catch (error) {
+                console.error("Pincode detection error:", error);
+            } finally {
+                setIsDetecting(false);
+            }
+        };
+
+        const debounce = setTimeout(detectLocation, 800);
+        return () => clearTimeout(debounce);
+    }, [formData.postalCode, formData.country]);
+
     // Handle Initial Sign Up
     const handleSignUp = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!isLoaded) return;
 
         // Basic Validation
-        if (!formData.email || !formData.password || !formData.organisationName || !formData.name) {
-            toast.error("Please fill in all required fields.");
+        const requiredFields: Record<string, string> = {
+            email: "Email",
+            password: "Password",
+            confirmPassword: "Confirm Password",
+            name: "Owner Name",
+            mobile: "Mobile Number",
+            address: "Address",
+            city: "City",
+            state: "State",
+            country: "Country",
+            postalCode: "Postal Code",
+        };
+
+        if (accountType === 'business') {
+            requiredFields.organisationName = "Organisation Name";
+            requiredFields.taxNumber = "GST / Tax Number";
+        }
+
+        for (const [field, label] of Object.entries(requiredFields)) {
+            if (!formData[field as keyof typeof formData] || String(formData[field as keyof typeof formData]).trim() === "") {
+                toast.error(`${label} is required.`);
+                return;
+            }
+        }
+
+        if (formData.password !== formData.confirmPassword) {
+            toast.error("Passwords do not match.");
             return;
         }
 
@@ -193,7 +304,7 @@ function PurchaseContent() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    organizationName: formData.organisationName,
+                    organizationName: accountType === 'individual' ? formData.name : formData.organisationName,
                     email: formData.email,
                     phone: formData.mobile,
                     address: formData.address,
@@ -201,7 +312,7 @@ function PurchaseContent() {
                     state: formData.state,
                     country: formData.country,
                     postalCode: formData.postalCode,
-                    taxNumber: formData.taxNumber,
+                    taxNumber: accountType === 'individual' ? (formData.taxNumber || "N/A") : formData.taxNumber,
                     plan: selectedPlan?.name || "FREE_TRIAL",
                     planId: selectedPlanId,
                     paymentData
@@ -303,14 +414,30 @@ function PurchaseContent() {
 
                     {step === "DETAILS" && (
                         <form onSubmit={handleSignUp} className="space-y-6">
+                            <div className="space-y-2">
+                                <Label>Account Type</Label>
+                                <Tabs
+                                    defaultValue="business"
+                                    className="w-full"
+                                    onValueChange={(v) => setAccountType(v as "business" | "individual")}
+                                >
+                                    <TabsList className="grid w-full grid-cols-2">
+                                        <TabsTrigger value="business">Business</TabsTrigger>
+                                        <TabsTrigger value="individual">Individual</TabsTrigger>
+                                    </TabsList>
+                                </Tabs>
+                            </div>
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="organisationName">Organisation Name <span className="text-destructive">*</span></Label>
-                                    <Input id="organisationName" name="organisationName" required value={formData.organisationName} onChange={handleChange} placeholder="Acme Inc." />
-                                </div>
-                                <div className="space-y-2">
+                                {accountType === "business" && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="organisationName">Organisation Name <span className="text-destructive">*</span></Label>
+                                        <Input id="organisationName" name="organisationName" value={formData.organisationName} onChange={handleChange} placeholder="Acme Inc." />
+                                    </div>
+                                )}
+                                <div className={accountType === "individual" ? "col-span-1 md:col-span-2 space-y-2" : "space-y-2"}>
                                     <Label htmlFor="name">Owner Name <span className="text-destructive">*</span></Label>
-                                    <Input id="name" name="name" required value={formData.name} onChange={handleChange} placeholder="John Doe" />
+                                    <Input id="name" name="name" value={formData.name} onChange={handleChange} placeholder="John Doe" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="email">Email <span className="text-destructive">*</span></Label>
@@ -328,16 +455,59 @@ function PurchaseContent() {
 
                                 <div className="grid grid-cols-2 gap-4 col-span-1 md:col-span-2">
                                     <div className="space-y-2">
-                                        <Label htmlFor="city">City</Label>
-                                        <Input id="city" name="city" required value={formData.city} onChange={handleChange} />
+                                        <Label htmlFor="city">City <span className="text-destructive">*</span></Label>
+                                        <div className="relative">
+                                            <Input
+                                                id="city"
+                                                name="city"
+                                                required
+                                                value={formData.city}
+                                                onChange={handleChange}
+                                                className="pr-10"
+                                            />
+                                            {isDetecting && (
+                                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="state">State</Label>
-                                        <Input id="state" name="state" required value={formData.state} onChange={handleChange} />
+                                        <Label htmlFor="state">State <span className="text-destructive">*</span></Label>
+                                        <div className="relative">
+                                            <Input
+                                                id="state"
+                                                name="state"
+                                                required
+                                                value={formData.state}
+                                                onChange={handleChange}
+                                                className="pr-10"
+                                            />
+                                            {isDetecting && (
+                                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="country">Country</Label>
-                                        <Input id="country" name="country" required value={formData.country} onChange={handleChange} />
+                                        <Label htmlFor="country">Country <span className="text-destructive">*</span></Label>
+                                        <Select
+                                            name="country"
+                                            onValueChange={(v) => handleSelectChange("country", v)}
+                                            value={formData.country}
+                                        >
+                                            <SelectTrigger className="border border-gray-200 h-10">
+                                                <SelectValue placeholder="Select Country" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {countries.map((c) => (
+                                                    <SelectItem key={c.code} value={c.name}>
+                                                        {c.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="postalCode">Postal Code</Label>
@@ -345,14 +515,53 @@ function PurchaseContent() {
                                     </div>
                                 </div>
 
-                                <div className="col-span-1 md:col-span-2 space-y-2">
-                                    <Label htmlFor="taxNumber">Tax Number / GST (Optional)</Label>
-                                    <Input id="taxNumber" name="taxNumber" value={formData.taxNumber} onChange={handleChange} />
-                                </div>
+                                {accountType === "business" && (
+                                    <div className="col-span-1 md:col-span-2 space-y-2">
+                                        <Label htmlFor="taxNumber">Tax Number / GST <span className="text-destructive">*</span></Label>
+                                        <Input id="taxNumber" name="taxNumber" value={formData.taxNumber} onChange={handleChange} placeholder="GSTIN/TAX ID" />
+                                    </div>
+                                )}
 
                                 <div className="col-span-1 md:col-span-2 space-y-2">
                                     <Label htmlFor="password">Password <span className="text-destructive">*</span></Label>
-                                    <Input id="password" name="password" type="password" required value={formData.password} onChange={handleChange} />
+                                    <div className="relative">
+                                        <Input
+                                            id="password"
+                                            name="password"
+                                            type={showPassword ? "text" : "password"}
+                                            value={formData.password}
+                                            onChange={handleChange}
+                                            className="pr-10"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                        >
+                                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="col-span-1 md:col-span-2 space-y-2">
+                                    <Label htmlFor="confirmPassword">Confirm Password <span className="text-destructive">*</span></Label>
+                                    <div className="relative">
+                                        <Input
+                                            id="confirmPassword"
+                                            name="confirmPassword"
+                                            type={showConfirmPassword ? "text" : "password"}
+                                            value={formData.confirmPassword}
+                                            onChange={handleChange}
+                                            className="pr-10"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                        >
+                                            {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    </div>
                                     <p className="text-xs text-muted-foreground">Min 8 chars, 1 uppercase, 1 lowercase, 1 number.</p>
                                 </div>
                             </div>

@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getImpersonatedOrganisationId } from "@/lib/admin-impersonation";
 
 export async function GET() {
     try {
@@ -13,17 +14,27 @@ export async function GET() {
         // Get user's organization
         const dbUser = await prisma.user.findUnique({
             where: { clerkId: user.id },
-            select: { organisationId: true }
+            select: { organisationId: true, role: true }
         });
 
-        if (!dbUser?.organisationId) {
+        let effectiveOrganisationId = dbUser?.organisationId;
+
+        // Check for admin impersonation
+        if (dbUser?.role === 'ADMIN_USER') {
+            const impersonatedId = await getImpersonatedOrganisationId();
+            if (impersonatedId) {
+                effectiveOrganisationId = impersonatedId;
+            }
+        }
+
+        if (!effectiveOrganisationId) {
             return NextResponse.json({ error: "No organization found" }, { status: 404 });
         }
 
         // Get organization platforms
         const orgPlatforms = await prisma.organisationPlatform.findMany({
             where: {
-                organisationId: dbUser.organisationId
+                organisationId: effectiveOrganisationId
             },
             select: {
                 platform: true

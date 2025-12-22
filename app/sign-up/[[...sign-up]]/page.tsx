@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -9,15 +9,30 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Zap, Loader2, CheckCircle2, Star, ArrowRight } from "lucide-react";
+import { Zap, Loader2, CheckCircle2, Star, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { countries } from "@/lib/countries";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Page() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
+  const [accountType, setAccountType] = useState<"business" | "individual">("business");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isDetecting, setIsDetecting] = useState(false);
+
   const [form, setForm] = useState({
     email: "",
     password: "",
+    confirmPassword: "",
     name: "",
     organisationName: "",
     mobile: "",
@@ -33,15 +48,85 @@ export default function Page() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
+  const handleSelectChange = (name: string, value: string) =>
+    setForm({ ...form, [name]: value });
+
+  // Pincode Auto-Detection
+  useEffect(() => {
+    const detectLocation = async () => {
+      const { postalCode, country } = form;
+      if (!postalCode || postalCode.length < 3) return;
+
+      // Find country code if country is selected
+      const currentCountry = countries.find(c => c.name === country);
+      const countryParam = currentCountry ? `&country=${encodeURIComponent(currentCountry.name)}` : "";
+
+      setIsDetecting(true);
+      try {
+        // Primary: Nominatim (Global)
+        const url = `https://nominatim.openstreetmap.org/search?postalcode=${postalCode}${countryParam}&format=json&addressdetails=1`;
+        const res = await fetch(url, {
+          headers: {
+            'Accept-Language': 'en-US,en;q=0.9',
+            'User-Agent': 'Campzeo/1.0 (Signup Pincode Detection)'
+          }
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.length > 0) {
+            const address = data[0].address;
+            const detectedCity = address.city || address.town || address.village || address.suburb || address.municipality;
+            const detectedState = address.state || address.province || address.county || address.state_district;
+            const detectedCountryCode = address.country_code?.toUpperCase();
+
+            const matchedCountry = countries.find(c => c.code === detectedCountryCode);
+
+            setForm(prev => ({
+              ...prev,
+              city: detectedCity || prev.city,
+              state: detectedState || prev.state,
+              country: matchedCountry ? matchedCountry.name : (address.country || prev.country)
+            }));
+            setIsDetecting(false);
+            return; // Success, exit
+          }
+        }
+
+        // Fallback for India if Nominatim yields nothing but it looks like an Indian pincode
+        if (postalCode.length === 6 && (!country || country === "India")) {
+          const resIN = await fetch(`https://api.postalpincode.in/pincode/${postalCode}`);
+          const dataIN = await resIN.json();
+          if (dataIN[0]?.Status === "Success") {
+            const details = dataIN[0].PostOffice[0];
+            setForm(prev => ({
+              ...prev,
+              city: details.District,
+              state: details.State,
+              country: "India"
+            }));
+          }
+        }
+      } catch (error) {
+        console.error("Pincode detection error:", error);
+      } finally {
+        setIsDetecting(false);
+      }
+    };
+
+    const debounce = setTimeout(detectLocation, 800);
+    return () => clearTimeout(debounce);
+  }, [form.postalCode, form.country]);
+
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     // Validation logic remains the same
-    const requiredFields = {
+    const requiredFields: Record<string, string> = {
       email: "Email",
       password: "Password",
+      confirmPassword: "Confirm Password",
       name: "Owner Name",
-      organisationName: "Organisation Name",
       mobile: "Mobile Number",
       address: "Address",
       city: "City",
@@ -49,6 +134,11 @@ export default function Page() {
       country: "Country",
       postalCode: "Postal Code",
     };
+
+    if (accountType === 'business') {
+      requiredFields.organisationName = "Organisation Name";
+      requiredFields.taxNumber = "GST / Tax Number";
+    }
 
     for (const [field, label] of Object.entries(requiredFields)) {
       if (!form[field as keyof typeof form] || form[field as keyof typeof form].trim() === "") {
@@ -58,6 +148,19 @@ export default function Page() {
         return;
       }
     }
+
+    if (form.password !== form.confirmPassword) {
+      toast.error("Password Mismatch", {
+        description: "Passwords do not match.",
+      });
+      return;
+    }
+
+    const submissionForm = {
+      ...form,
+      organisationName: accountType === 'individual' ? form.name : form.organisationName,
+      taxNumber: accountType === 'individual' ? (form.taxNumber || "N/A") : form.taxNumber,
+    };
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -90,7 +193,7 @@ export default function Page() {
     try {
       const response = await fetch("/api/enquiries", {
         method: "POST",
-        body: JSON.stringify(form),
+        body: JSON.stringify(submissionForm),
       });
 
       const data = await response.json();
@@ -202,19 +305,35 @@ export default function Page() {
           </div>
 
           <form onSubmit={submit} className="space-y-6">
+            <div className="space-y-2">
+              <Label>Account Type</Label>
+              <Tabs
+                defaultValue="business"
+                className="w-full"
+                onValueChange={(v) => setAccountType(v as "business" | "individual")}
+              >
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="business">Business</TabsTrigger>
+                  <TabsTrigger value="individual">Individual</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="organisationName">Organisation Name <span className="text-destructive">*</span></Label>
-                <Input
-                  id="organisationName"
-                  name="organisationName"
-                  placeholder="Acme Corp"
-                  value={form.organisationName}
-                  onChange={handleChange}
-                  className="h-10"
-                />
-              </div>
-              <div className="space-y-2">
+              {accountType === "business" && (
+                <div className="space-y-2">
+                  <Label htmlFor="organisationName">Organisation Name <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="organisationName"
+                    name="organisationName"
+                    placeholder="Acme Corp"
+                    value={form.organisationName}
+                    onChange={handleChange}
+                    className="h-10"
+                  />
+                </div>
+              )}
+              <div className={accountType === "individual" ? "col-span-1 md:col-span-2 space-y-2" : "space-y-2"}>
                 <Label htmlFor="name">Owner Name <span className="text-destructive">*</span></Label>
                 <Input
                   id="name"
@@ -264,37 +383,60 @@ export default function Page() {
 
               <div className="space-y-2">
                 <Label htmlFor="city">City <span className="text-destructive">*</span></Label>
-                <Input
-                  id="city"
-                  name="city"
-                  placeholder="New York"
-                  value={form.city}
-                  onChange={handleChange}
-                  className="h-10"
-                />
+                <div className="relative">
+                  <Input
+                    id="city"
+                    name="city"
+                    placeholder="New York"
+                    value={form.city}
+                    onChange={handleChange}
+                    className="h-10 pr-10"
+                  />
+                  {isDetecting && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="state">State <span className="text-destructive">*</span></Label>
-                <Input
-                  id="state"
-                  name="state"
-                  placeholder="NY"
-                  value={form.state}
-                  onChange={handleChange}
-                  className="h-10"
-                />
+                <div className="relative">
+                  <Input
+                    id="state"
+                    name="state"
+                    placeholder="NY"
+                    value={form.state}
+                    onChange={handleChange}
+                    className="h-10 pr-10"
+                  />
+                  {isDetecting && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 ">
                 <Label htmlFor="country">Country <span className="text-destructive">*</span></Label>
-                <Input
-                  id="country"
+                <Select
                   name="country"
-                  placeholder="United States"
+
+                  onValueChange={(v) => handleSelectChange("country", v)}
                   value={form.country}
-                  onChange={handleChange}
-                  className="h-10"
-                />
+                >
+                  <SelectTrigger className="border border-gray-200 h-10">
+                    <SelectValue placeholder="Select Country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {countries.map((c) => (
+                      <SelectItem key={c.code} value={c.name}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="postalCode">Postal Code <span className="text-destructive">*</span></Label>
@@ -308,29 +450,62 @@ export default function Page() {
                 />
               </div>
 
-              <div className="col-span-1 md:col-span-2 space-y-2">
-                <Label htmlFor="taxNumber">GST / Tax Number <span className="text-destructive">*</span></Label>
-                <Input
-                  id="taxNumber"
-                  name="taxNumber"
-                  placeholder="Tax ID or VAT Number"
-                  value={form.taxNumber}
-                  onChange={handleChange}
-                  className="h-10"
-                />
-              </div>
+              {accountType === "business" && (
+                <div className="col-span-1 md:col-span-2 space-y-2">
+                  <Label htmlFor="taxNumber">GST / Tax Number <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="taxNumber"
+                    name="taxNumber"
+                    placeholder="Tax ID or VAT Number"
+                    value={form.taxNumber}
+                    onChange={handleChange}
+                    className="h-10"
+                  />
+                </div>
+              )}
 
               <div className="col-span-1 md:col-span-2 space-y-2">
                 <Label htmlFor="password">Password <span className="text-destructive">*</span></Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder="Create a strong password (min 8 chars)"
-                  value={form.password}
-                  onChange={handleChange}
-                  className="h-10"
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Create a strong password"
+                    value={form.password}
+                    onChange={handleChange}
+                    className="h-10 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="col-span-1 md:col-span-2 space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password <span className="text-destructive">*</span></Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Repeat your password"
+                    value={form.confirmPassword}
+                    onChange={handleChange}
+                    className="h-10 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Must contain at least 8 characters, 1 uppercase, 1 lowercase, and 1 number.
                 </p>
