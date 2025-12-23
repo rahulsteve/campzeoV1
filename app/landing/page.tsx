@@ -34,6 +34,9 @@ export default function LandingPage() {
               <Link href="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">
                 Pricing
               </Link>
+              <Link href="/privacy-policy" className="text-muted-foreground hover:text-foreground transition-colors">
+                Privacy
+              </Link>
             </div>
             <div className="flex items-center gap-4">
               <SignedOut>

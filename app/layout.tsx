@@ -41,6 +41,9 @@ export const metadata: Metadata = {
     description: 'Streamline your social media management with powerful tools and insights.',
     images: ['/logo-3.png'],
   },
+  verification: {
+    google: "XBN_xJq_snQ0FMBdDjF-bPnK65zRpNrqTU4FQiPSBII",
+  },
 };
 
 export default function RootLayout({
