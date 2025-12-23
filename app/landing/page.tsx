@@ -8,6 +8,7 @@ import { SignInButton, SignedOut, SignedIn, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TestimonialCarousel } from "@/components/testimonial-carousel";
+import { motion } from "framer-motion";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -18,8 +19,19 @@ export default function LandingPage() {
       <nav className="fixed top-0 w-full bg-background/80 backdrop-blur-md border-b z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-2">
-              <img src="/logo-1.png" alt="Campzeo" className="h-8" />
+            <div className="flex items-center gap-2"> 
+              <motion.div
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ duration: 0.5 }}
+                                    >
+                                        <Link href="/" className="flex items-center gap-2 group">
+                                            <div className="relative">
+                                                <img src="/logo-1.png" alt="Campzeo" className="h-9 transition-transform duration-300 group-hover:scale-110" />
+                                                <div className="absolute -inset-1 bg-primary/20 rounded-full blur opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            </div>
+                                        </Link>
+                                    </motion.div>
             </div>
             <div className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
@@ -34,15 +46,9 @@ export default function LandingPage() {
               <Link href="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">
                 Pricing
               </Link>
-              <Link href="/privacy-policy" className="text-muted-foreground hover:text-foreground transition-colors">
-                Privacy Policy
+              <Link href="/contact" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+                Contact Us
               </Link>
-              <Link href="/terms-of-service" className="text-muted-foreground hover:text-foreground transition-colors">
-                Terms of Service
-              </Link>
-              <a href="mailto:support@campzeo.com" className="text-muted-foreground hover:text-foreground transition-colors">
-                Contact
-              </a>
             </div>
             <div className="flex items-center gap-4">
               <SignedOut>
@@ -296,7 +302,7 @@ export default function LandingPage() {
                 <li><Link href="/privacy-policy" className="hover:text-primary transition-colors">Privacy Policy</Link></li>
                 <li><Link href="/terms-of-service" className="hover:text-primary transition-colors">Terms of Service</Link></li>
                 <li><Link href="/cookies" className="hover:text-primary transition-colors">Cookie Policy</Link></li>
-                <li><a href="mailto:support@campzeo.com" className="hover:text-primary transition-colors">Contact Us</a></li>
+                <li><Link href="/contact" className="hover:text-primary transition-colors">Contact Us</Link></li>
               </ul>
             </div>
           </div>
