@@ -510,15 +510,7 @@ export async function getYouTubeVideoInsights(
 
     } catch (error) {
         console.error(`[YouTube] Error fetching insights for ${videoId}:`, error);
-        return {
-            likes: 0,
-            comments: 0,
-            impressions: 0,
-            reach: 0,
-            engagementRate: 0,
-            views: 0,
-            isDeleted: false
-        };
+        throw error;
     }
 }
 

@@ -63,12 +63,14 @@ export async function GET(request: NextRequest) {
                 // Permissions needed:
                 // - pages_show_list: To see user's Facebook Pages
                 // - pages_read_engagement: To read page insights
+                // - pages_read_user_content: To read page feed/posts
+                // - read_insights: For detailed metrics (reach, impressions)
                 // - pages_manage_posts: To post content to pages
                 // - instagram_basic: Basic Instagram account info
                 // - instagram_content_publish: To publish to Instagram
                 // - instagram_manage_insights: For Instagram analytics
                 // - business_management: For Instagram Business Account access
-                authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${clientIdConfig.value}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish,instagram_manage_insights,business_management`;
+                authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${clientIdConfig.value}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&scope=pages_show_list,pages_read_engagement,pages_read_user_content,read_insights,pages_manage_posts,instagram_basic,instagram_content_publish,instagram_manage_insights,business_management`;
                 break;
             case "INSTAGRAM_DIRECT":
                 // Direct Instagram app authentication (not via Facebook)
@@ -82,7 +84,7 @@ export async function GET(request: NextRequest) {
                 authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientIdConfig.value}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&response_type=code&scope=https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube&access_type=offline&prompt=consent`;
                 break;
             case "PINTEREST":
-                authUrl = `https://www.pinterest.com/oauth/?client_id=${clientIdConfig.value}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&response_type=code&scope=boards:read,boards:write,pins:read,pins:write`;
+                authUrl = `https://www.pinterest.com/oauth/?client_id=${clientIdConfig.value}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&response_type=code&scope=boards:read,boards:write,pins:read,pins:write,user_accounts:read`;
                 // For Sandbox usage, it often stays the same, but the tokens work against sandbox API. 
                 // However, double check if a specific sandbox auth URL is needed. 
                 // Pinterest docs say: "https://www.pinterest.com/oauth/" works for both, 

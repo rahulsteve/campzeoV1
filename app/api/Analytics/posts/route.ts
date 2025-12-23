@@ -19,6 +19,15 @@ export async function GET(request: NextRequest) {
         const platform = searchParams.get('platform');
         const forceRefresh = searchParams.get('fresh') === 'true';
 
+        // Pagination Params
+        const page = parseInt(searchParams.get('page') || '1');
+        const limit = parseInt(searchParams.get('limit') || '10');
+        const skip = (page - 1) * limit;
+
+        // Filter Params
+        const startDate = searchParams.get('startDate');
+        const endDate = searchParams.get('endDate');
+
         if (!platform) {
             return NextResponse.json({ error: 'Platform is required' }, { status: 400 });
         }
@@ -57,7 +66,7 @@ export async function GET(request: NextRequest) {
         const campaignIds = campaigns.map(c => c.id);
 
         if (campaignIds.length === 0) {
-            return NextResponse.json({ posts: [] });
+            return NextResponse.json({ posts: [], totalCount: 0, totalPages: 0, currentPage: page });
         }
 
         // 2. Get all campaign posts
@@ -71,99 +80,130 @@ export async function GET(request: NextRequest) {
         const campaignPostIds = campaignPosts.map(p => p.id);
 
         if (campaignPostIds.length === 0) {
-            return NextResponse.json({ posts: [] });
+            return NextResponse.json({ posts: [], totalCount: 0, totalPages: 0, currentPage: page });
         }
 
-        // 3. Get PostTransactions for these posts and the specified platform
+        // 3. Construct Where Clause for Transactions
+        const whereClause: any = {
+            refId: { in: campaignPostIds },
+            platform: platform.toUpperCase(),
+            published: true,
+            postId: { not: '' }
+        };
+
+        // Add Date Filters if provided
+        if (startDate || endDate) {
+            whereClause.publishedAt = {};
+            if (startDate) whereClause.publishedAt.gte = new Date(startDate);
+            if (endDate) whereClause.publishedAt.lte = new Date(endDate);
+        }
+
+        // 3.1 Get count for pagination
+        const totalCount = await prisma.postTransaction.count({ where: whereClause });
+
+        // 3.2 Get paginated transactions
         let transactions = await prisma.postTransaction.findMany({
-            where: {
-                refId: { in: campaignPostIds },
-                platform: platform.toUpperCase(),
-                published: true, // Only show published posts
-                postId: { not: '' } // Ensure there is a platform post ID
-            },
+            where: whereClause,
             orderBy: {
-                createdAt: 'desc'
-            }
+                publishedAt: 'desc'
+            },
+            skip: skip,
+            take: limit
         });
 
         // 3.5 Fallback / Sync: If no transactions found OR force refresh requested, fetch from platform
-        if (transactions.length === 0 || forceRefresh) {
+        // NOTE: Syncing is typically done for the latest content. Paginating might mean sync only happens when on page 1.
+        if ((transactions.length === 0 && page === 1) || forceRefresh) {
             console.log(`[Analytics] Syncing posts for ${platform} (Transactions: ${transactions.length}, Refresh: ${forceRefresh})`);
 
             try {
                 const platformUpper = platform.toUpperCase();
                 let platformPosts: any[] = [];
-
                 if (platformUpper === 'FACEBOOK' && (dbUser.facebookPageAccessToken || dbUser.facebookAccessToken)) {
-                    const fbPosts = await getFacebookPagePosts({
-                        accessToken: (dbUser.facebookPageAccessToken || dbUser.facebookAccessToken)!,
-                        pageId: dbUser.facebookPageId || ''
-                    }, 25); // Increased limit for better sync
-                    platformPosts = fbPosts.map(p => ({
-                        id: -1, // Virtual ID indicator
-                        refId: 0,
-                        platform: 'FACEBOOK',
-                        postId: p.id,
-                        accountId: dbUser.facebookPageId || '',
-                        message: p.message || '',
-                        mediaUrls: p.full_picture || '',
-                        postType: 'POST',
-                        accessToken: '',
-                        published: true,
-                        publishedAt: p.created_time,
-                        createdAt: p.created_time,
-                        updatedAt: p.created_time
-                    }));
-                } else if (platformUpper === 'INSTAGRAM' && dbUser.instagramAccessToken && dbUser.instagramUserId) {
-                    const igMedia = await getInstagramUserMedia({
-                        accessToken: dbUser.instagramAccessToken,
-                        userId: dbUser.instagramUserId
-                    }, 25);
-                    platformPosts = igMedia.map(m => ({
-                        id: 0,
-                        refId: 0,
-                        platform: 'INSTAGRAM',
-                        postId: m.id,
-                        accountId: dbUser.instagramUserId || '',
-                        message: m.caption || '',
-                        mediaUrls: m.media_url,
-                        postType: m.media_type,
-                        accessToken: '',
-                        published: true,
-                        publishedAt: m.timestamp,
-                        createdAt: m.timestamp,
-                        updatedAt: m.timestamp
-                    }));
-                } else if (platformUpper === 'LINKEDIN' && dbUser.linkedInAccessToken) {
-                    // Need authorUrn from somewhere, assuming it's linked to the user or we can fetch it?
-                    // Usually we store it in linkedInAuthUrn
-                    const dbUserFull = await prisma.user.findUnique({ where: { clerkId: user.id } });
-                    if (dbUserFull?.linkedInAuthUrn) {
-                        const liPosts = await getLinkedInUserPosts({
-                            accessToken: dbUser.linkedInAccessToken,
-                            authorUrn: dbUserFull.linkedInAuthUrn
-                        }, 10);
-                        platformPosts = liPosts.map(p => ({
-                            id: 0,
+                    try {
+                        console.log(`[Facebook Sync] Fetching page posts for ${dbUser.facebookPageId}`);
+                        const fbPosts = await getFacebookPagePosts({
+                            accessToken: (dbUser.facebookPageAccessToken || dbUser.facebookAccessToken)!,
+                            pageId: dbUser.facebookPageId || ''
+                        }, 50);
+                        console.log(`[Facebook Sync] Found ${fbPosts.length} posts`);
+                        platformPosts = fbPosts.map((p: any) => ({
+                            id: -1,
                             refId: 0,
-                            platform: 'LINKEDIN',
+                            platform: 'FACEBOOK',
                             postId: p.id,
-                            accountId: dbUserFull.linkedInAuthUrn || '',
-                            message: p.text || '',
-                            mediaUrls: p.media?.[0]?.originalUrl || '',
+                            accountId: dbUser.facebookPageId || '',
+                            message: p.message || '',
+                            mediaUrls: p.full_picture || '',
                             postType: 'POST',
                             accessToken: '',
                             published: true,
-                            publishedAt: p.createdAt,
-                            createdAt: p.createdAt,
-                            updatedAt: p.createdAt
+                            publishedAt: p.created_time,
+                            createdAt: p.created_time,
+                            updatedAt: p.created_time
                         }));
+                    } catch (e: any) {
+                        console.error(`[Facebook Sync] Error:`, e.message);
+                    }
+                } else if (platformUpper === 'INSTAGRAM' && dbUser.instagramAccessToken && dbUser.instagramUserId) {
+                    try {
+                        const igMedia = await getInstagramUserMedia({
+                            accessToken: dbUser.instagramAccessToken,
+                            userId: dbUser.instagramUserId
+                        }, 25);
+                        platformPosts = igMedia.map((m: any) => ({
+                            id: 0,
+                            refId: 0,
+                            platform: 'INSTAGRAM',
+                            postId: m.id,
+                            accountId: dbUser.instagramUserId || '',
+                            message: m.caption || '',
+                            mediaUrls: m.media_url,
+                            postType: m.media_type,
+                            accessToken: '',
+                            published: true,
+                            publishedAt: m.timestamp,
+                            createdAt: m.timestamp,
+                            updatedAt: m.timestamp
+                        }));
+                    } catch (e: any) {
+                        console.error(`[Instagram Sync] Error:`, e.message);
+                    }
+                } else if (platformUpper === 'LINKEDIN' && dbUser.linkedInAccessToken) {
+                    try {
+                        // Need authorUrn from somewhere, assuming it's linked to the user or we can fetch it?
+                        // Usually we store it in linkedInAuthUrn
+                        const dbUserFull = await prisma.user.findUnique({ where: { clerkId: user.id } });
+                        if (dbUserFull?.linkedInAuthUrn) {
+                            const liPosts = await getLinkedInUserPosts({
+                                accessToken: dbUser.linkedInAccessToken,
+                                authorUrn: dbUserFull.linkedInAuthUrn
+                            }, 10);
+                            platformPosts = liPosts.map((p: any) => ({
+                                id: 0,
+                                refId: 0,
+                                platform: 'LINKEDIN',
+                                postId: p.id,
+                                accountId: dbUserFull.linkedInAuthUrn || '',
+                                message: p.text || '',
+                                mediaUrls: p.media?.[0]?.originalUrl || '',
+                                postType: 'POST',
+                                accessToken: '',
+                                published: true,
+                                publishedAt: p.createdAt,
+                                createdAt: p.createdAt,
+                                updatedAt: p.createdAt
+                            }));
+                        }
+                    } catch (e: any) {
+                        console.error(`[LinkedIn Sync] Error:`, e.message);
                     }
                 } else if (platformUpper === 'YOUTUBE' && dbUser.youtubeAccessToken) {
                     let ytVideos: any[] = [];
                     try {
-                        ytVideos = await getYouTubeChannelVideos(dbUser.youtubeAccessToken, 10);
+                        console.log(`[YouTube Sync] Fetching channel videos with token...`);
+                        ytVideos = await getYouTubeChannelVideos(dbUser.youtubeAccessToken, 50);
+                        console.log(`[YouTube Sync] Found ${ytVideos.length} videos`);
                     } catch (e: any) {
                         if (e.message?.includes('401') && dbUser.youtubeAuthUrn) {
                             const { refreshUserTokens } = await import("@/lib/social-refresh");
@@ -172,9 +212,11 @@ export async function GET(request: NextRequest) {
                                 const updatedUser = await prisma.user.findUnique({ where: { clerkId: user.id } });
                                 if (updatedUser?.youtubeAccessToken) ytVideos = await getYouTubeChannelVideos(updatedUser.youtubeAccessToken, 10);
                             }
+                        } else {
+                            console.error(`[YouTube Sync] Error:`, e.message);
                         }
                     }
-                    platformPosts = ytVideos.map(v => ({
+                    platformPosts = ytVideos.map((v: any) => ({
                         id: 0,
                         refId: 0,
                         platform: 'YOUTUBE',
@@ -192,18 +234,20 @@ export async function GET(request: NextRequest) {
                 } else if (platformUpper === 'PINTEREST' && dbUser.pinterestAccessToken) {
                     let pinPosts: any[] = [];
                     try {
-                        pinPosts = await getPinterestUserPins(dbUser.pinterestAccessToken, 10);
+                        pinPosts = await getPinterestUserPins(dbUser.pinterestAccessToken, 50);
                     } catch (e: any) {
                         if (e.message?.includes('401') && dbUser.pinterestAuthUrn) {
                             const { refreshUserTokens } = await import("@/lib/social-refresh");
                             const refresh = await refreshUserTokens(user.id);
                             if (refresh.success && refresh.results.pinterest.refreshed) {
                                 const updatedUser = await prisma.user.findUnique({ where: { clerkId: user.id } });
-                                if (updatedUser?.pinterestAccessToken) pinPosts = await getPinterestUserPins(updatedUser.pinterestAccessToken, 10);
+                                if (updatedUser?.pinterestAccessToken) pinPosts = await getPinterestUserPins(updatedUser.pinterestAccessToken, 50);
                             }
+                        } else {
+                            console.error(`[Pinterest Sync] Error:`, e.message);
                         }
                     }
-                    platformPosts = pinPosts.map(p => ({
+                    platformPosts = pinPosts.map((p: any) => ({
                         id: 0,
                         refId: 0,
                         platform: 'PINTEREST',
@@ -223,14 +267,23 @@ export async function GET(request: NextRequest) {
 
                 // Merge with existing transactions and persist new ones
                 if (platformPosts.length > 0) {
-                    const existingPostIds = new Set(transactions.map((t: any) => t.postId));
-                    const newPosts = platformPosts.filter(p => !existingPostIds.has(p.postId));
+                    // Check against ALL existing post IDs for this platform and organisation, not just the paginated ones
+                    const allExistingTransactions = await prisma.postTransaction.findMany({
+                        where: {
+                            refId: { in: campaignPostIds },
+                            platform: platform.toUpperCase(),
+                        },
+                        select: { postId: true }
+                    });
+
+                    const existingPostIds = new Set(allExistingTransactions.map((t: any) => t.postId));
+                    const newPosts = platformPosts.filter((p: any) => !existingPostIds.has(p.postId));
 
                     if (newPosts.length > 0) {
                         console.log(`[Analytics] Found ${newPosts.length} new external posts for ${platform}. Persisting to DB...`);
 
                         // Persist new posts to PostTransaction to give them real IDs and history
-                        const createdTransactions = await Promise.all(newPosts.map(async (p) => {
+                        const createdTransactions = await Promise.all(newPosts.map(async (p: any) => {
                             try {
                                 return await prisma.postTransaction.create({
                                     data: {
@@ -255,9 +308,16 @@ export async function GET(request: NextRequest) {
                             }
                         }));
 
-                        // Filter out nulls and add to transactions
+                        // Re-fetch transactions for current page if we added new ones
                         const validCreated = createdTransactions.filter(t => t !== null);
-                        transactions = [...transactions, ...validCreated] as any;
+                        if (validCreated.length > 0) {
+                            transactions = await prisma.postTransaction.findMany({
+                                where: whereClause,
+                                orderBy: { publishedAt: 'desc' },
+                                skip: skip,
+                                take: limit
+                            });
+                        }
                     }
                 }
             } catch (fallbackError) {
@@ -312,7 +372,14 @@ export async function GET(request: NextRequest) {
                     case 'FACEBOOK':
                         token = dbUser.facebookPageAccessToken || dbUser.facebookAccessToken;
                         if (token) {
-                            insights = await getFacebookPostInsights(tx.postId, token);
+                            try {
+                                console.log(`[Facebook Insights] Fetching live insights for post ${tx.postId}`);
+                                insights = await getFacebookPostInsights(tx.postId, token);
+                                console.log(`[Facebook Insights] Live data: ${insights.likes} likes, ${insights.reach} reach`);
+                            } catch (fbErr: any) {
+                                console.error(`[Facebook Insights] Error for ${tx.postId}:`, fbErr.message);
+                                // If 401, we might need re-auth (Facebook doesn't have auto-refresh here yet)
+                            }
                         } else {
                             console.warn('[Analytics] No Facebook access token found for user');
                         }
@@ -367,15 +434,10 @@ export async function GET(request: NextRequest) {
                         token = dbUser.youtubeAccessToken;
                         if (token) {
                             try {
+                                console.log(`[YouTube Insights] Fetching live insights for video ${tx.postId}`);
                                 const videoInsights = await getYouTubeVideoInsights(tx.postId, token);
-                                insights = {
-                                    likes: videoInsights.likes,
-                                    comments: videoInsights.comments,
-                                    reach: videoInsights.reach,
-                                    impressions: videoInsights.impressions,
-                                    engagementRate: videoInsights.engagementRate,
-                                    isDeleted: videoInsights.isDeleted
-                                };
+                                console.log(`[YouTube Insights] Live data: ${videoInsights.likes} likes, ${videoInsights.views || videoInsights.reach} views/reach`);
+                                insights = { ...videoInsights };
                             } catch (e: any) {
                                 if (e.message?.includes('401') && (dbUser as any).youtubeAuthUrn) {
                                     const { refreshUserTokens } = await import("@/lib/social-refresh");
@@ -398,14 +460,7 @@ export async function GET(request: NextRequest) {
                         if (token) {
                             try {
                                 const pinInsights = await getPinterestPostInsights(tx.postId, token);
-                                insights = {
-                                    likes: pinInsights.likes,
-                                    comments: pinInsights.comments,
-                                    reach: pinInsights.reach,
-                                    impressions: pinInsights.impressions,
-                                    engagementRate: pinInsights.engagementRate,
-                                    isDeleted: pinInsights.isDeleted
-                                };
+                                insights = { ...pinInsights };
                             } catch (e: any) {
                                 if ((e.message?.includes('401')) && (dbUser as any).pinterestAuthUrn) {
                                     const { refreshUserTokens } = await import("@/lib/social-refresh");
@@ -591,7 +646,12 @@ export async function GET(request: NextRequest) {
             }
         }));
 
-        return NextResponse.json({ posts: postsWithInsights });
+        return NextResponse.json({
+            posts: postsWithInsights,
+            totalCount: totalCount,
+            totalPages: Math.ceil(totalCount / limit),
+            currentPage: page
+        });
 
     } catch (error: any) {
         console.error('Error fetching analytics posts:', error);

@@ -120,7 +120,9 @@ export async function GET(
                     case 'FACEBOOK':
                         token = dbUser.facebookPageAccessToken || dbUser.facebookAccessToken;
                         if (token) {
+                            console.log(`[Facebook Details Sync] Fetching live insights for post ${transaction.postId}`);
                             insights = await getFacebookPostInsights(transaction.postId, token);
+                            console.log(`[Facebook Details Sync] Live data: ${insights.likes} likes, ${insights.reach} reach`);
                         }
                         break;
                     case 'INSTAGRAM':
@@ -139,7 +141,9 @@ export async function GET(
                         token = dbUser.youtubeAccessToken;
                         if (token) {
                             try {
+                                console.log(`[YouTube Details Sync] Fetching live insights for video ${transaction.postId}`);
                                 insights = await getYouTubeVideoInsights(transaction.postId, token);
+                                console.log(`[YouTube Details Sync] Live data: ${insights.likes} likes, ${(insights as any).views || insights.reach} views/reach`);
                             } catch (e: any) {
                                 if (e.message?.includes('401') && dbUser.youtubeAuthUrn) {
                                     const { refreshUserTokens } = await import("@/lib/social-refresh");

@@ -575,15 +575,6 @@ export async function getFacebookPostInsights(
 
     } catch (error) {
         console.error(`[Facebook] Error fetching insights for ${postId}:`, error);
-        // Return zeros on error to prevent crashing the whole feed
-        // Default to not deleted, just error
-        return {
-            likes: 0,
-            comments: 0,
-            impressions: 0,
-            reach: 0,
-            engagementRate: 0,
-            isDeleted: false
-        };
+        throw error;
     }
 }

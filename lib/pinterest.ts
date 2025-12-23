@@ -184,8 +184,8 @@ export async function getPinterestPostInsights(
         let comments = 0;
         let pinMetadata = null;
 
-        // 1. Get Pin Details to get comment count and metadata
-        const detailsResponse = await fetch(`https://api.pinterest.com/v5/pins/${pinId}`, {
+        // 1. Get Pin Details to get metrics and metadata
+        const detailsResponse = await fetch(`https://api.pinterest.com/v5/pins/${pinId}?pin_metrics=true`, {
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
             },
@@ -197,7 +197,17 @@ export async function getPinterestPostInsights(
 
         if (detailsResponse.ok) {
             pinMetadata = await detailsResponse.json();
-            comments = pinMetadata.comment_count || 0;
+
+            // Extract comments and saves from lifetime metrics if available
+            // Pinterest v5 pin_metrics=true returns all_pin_metrics: { lifetime: { ... }, 90_day: { ... } }
+            const lifetime = pinMetadata.all_pin_metrics?.lifetime;
+            if (lifetime) {
+                comments = lifetime.comment || 0;
+                // If we have lifetime metrics, we can use them as a baseline or fallback
+            } else {
+                // Fallback for some accounts/pins
+                comments = pinMetadata.comment_count || 0;
+            }
         } else {
             console.warn(`[Pinterest] Failed to fetch pin details for ${pinId}: ${detailsResponse.status}`);
             if (detailsResponse.status === 404) {
@@ -217,9 +227,9 @@ export async function getPinterestPostInsights(
 
         // 2. Get Analytics
         const endDate = new Date().toISOString().split('T')[0];
-        const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // Last 30 days
+        const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // Max 90 days
 
-        const metrics = 'IMPRESSION,With_Pin_Click,Save,OUTBOUND_CLICK';
+        const metrics = 'IMPRESSION,PIN_CLICK,SAVE,OUTBOUND_CLICK';
 
         const analyticsUrl = `https://api.pinterest.com/v5/pins/${pinId}/analytics?start_date=${startDate}&end_date=${endDate}&metric_types=${metrics}`;
 
@@ -253,11 +263,13 @@ export async function getPinterestPostInsights(
 
         const data = await response.json();
         const summary = data.all?.summary_metrics || {};
+        const lifetime = pinMetadata?.all_pin_metrics?.lifetime || {};
 
-        const impressions = summary.IMPRESSION || 0;
-        const saves = summary.SAVE || 0;
-        const pinClicks = summary.PIN_CLICK || 0;
-        const outboundClicks = summary.OUTBOUND_CLICK || 0;
+        // Prioritize lifetime metrics for absolute counts if they are higher (more real-time)
+        const impressions = Math.max(summary.IMPRESSION || 0, lifetime.impression || 0);
+        const saves = Math.max(summary.SAVE || 0, lifetime.save || 0);
+        const pinClicks = Math.max(summary.PIN_CLICK || 0, lifetime.pin_click || 0);
+        const outboundClicks = Math.max(summary.OUTBOUND_CLICK || 0, lifetime.outbound_click || 0);
 
         // Map to standard interface
         // Note: Pinterest 'Saves' are conceptually 'Likes' in other platforms (user validation)

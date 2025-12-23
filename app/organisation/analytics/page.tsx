@@ -72,6 +72,14 @@ export default function AnalyticsPage() {
     const [loadingPosts, setLoadingPosts] = useState(false);
     const [syncing, setSyncing] = useState<number | null>(null);
 
+    // Pagination/Filter State
+    const [page, setPage] = useState(1);
+    const [limit] = useState(10);
+    const [totalCount, setTotalCount] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const [startDate, setStartDate] = useState<string>('');
+    const [endDate, setEndDate] = useState<string>('');
+
     // AI Chat State
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
@@ -110,7 +118,11 @@ export default function AnalyticsPage() {
 
         setLoadingPosts(true);
         try {
-            const url = `/api/Analytics/posts?platform=${selectedPlatform}${forceRefresh ? '&fresh=true' : ''}`;
+            let url = `/api/Analytics/posts?platform=${selectedPlatform}&page=${page}&limit=${limit}`;
+            if (forceRefresh) url += '&fresh=true';
+            if (startDate) url += `&startDate=${startDate}`;
+            if (endDate) url += `&endDate=${endDate}`;
+
             const response = await fetch(url);
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
@@ -119,13 +131,14 @@ export default function AnalyticsPage() {
             }
             const data = await response.json();
             setPosts(data.posts || []);
+            setTotalCount(data.totalCount || 0);
+            setTotalPages(data.totalPages || 0);
 
             if (forceRefresh) {
                 toast.success('Data refreshed');
             }
         } catch (error) {
             console.error('Error fetching posts:', error);
-            // Don't show toast on initial load error to avoid spam if it's just empty
             if (forceRefresh) toast.error('Failed to load analytics data');
         } finally {
             setLoadingPosts(false);
@@ -138,7 +151,7 @@ export default function AnalyticsPage() {
         } else {
             setPosts([]);
         }
-    }, [selectedPlatform]);
+    }, [selectedPlatform, page, startDate, endDate]);
 
     const handleSync = async (post: Post) => {
         setSyncing(post.id);
@@ -250,7 +263,10 @@ export default function AnalyticsPage() {
                                     return (
                                         <button
                                             key={platform}
-                                            onClick={() => setSelectedPlatform(platform)}
+                                            onClick={() => {
+                                                setSelectedPlatform(platform);
+                                                setPage(1); // Reset page on platform change
+                                            }}
                                             className={`flex cursor-pointer flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all min-w-[100px] ${isSelected
                                                 ? 'border-primary bg-primary/10 shadow-sm'
                                                 : 'border-border hover:border-primary/50 hover:bg-muted/50'
@@ -272,24 +288,44 @@ export default function AnalyticsPage() {
                 {selectedPlatform && (
                     <Card>
                         <CardHeader>
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 <div>
                                     <CardTitle>{selectedPlatform} Posts</CardTitle>
                                     <CardDescription>Performance metrics for your recent posts</CardDescription>
                                 </div>
-                                <Button
-                                    className='cursor-pointer'
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => fetchPosts(true)}
-                                    disabled={loadingPosts}
-                                >
-                                    <RefreshCw className={`mr-2 size-3 ${loadingPosts ? 'animate-spin' : ''}`} />
-                                    Refresh Data
-                                </Button>
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-muted-foreground">From:</span>
+                                        <input
+                                            type="date"
+                                            className="bg-background border rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-primary"
+                                            value={startDate}
+                                            onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-muted-foreground">To:</span>
+                                        <input
+                                            type="date"
+                                            className="bg-background border rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-primary"
+                                            value={endDate}
+                                            onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
+                                        />
+                                    </div>
+                                    <Button
+                                        className='cursor-pointer'
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => fetchPosts(true)}
+                                        disabled={loadingPosts}
+                                    >
+                                        <RefreshCw className={`mr-2 size-3 ${loadingPosts ? 'animate-spin' : ''}`} />
+                                        Refresh Data
+                                    </Button>
+                                </div>
                             </div>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-4">
                             {loadingPosts ? (
                                 <div className="flex justify-center p-8">
                                     <Loader2 className="size-8 animate-spin text-primary" />
@@ -299,91 +335,139 @@ export default function AnalyticsPage() {
                                     <p>No posts found for this platform.</p>
                                 </div>
                             ) : (
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="w-[100px]">Media</TableHead>
-                                            <TableHead className="max-w-[300px]">Content</TableHead>
-                                            <TableHead>Likes</TableHead>
-                                            <TableHead>Comments</TableHead>
-                                            <TableHead>Engagement</TableHead>
-                                            <TableHead>Published</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {posts.map((post) => (
-                                            <TableRow
-                                                key={post.id}
-                                                className={`cursor-pointer hover:bg-muted/50 ${post.insight?.isDeleted ? 'opacity-60 bg-red-50 hover:bg-red-50' : ''}`}
-                                                onClick={() => viewDetails(post)}
-                                            >
-                                                <TableCell onClick={(e) => e.stopPropagation()}>
-                                                    <div className="relative size-16 rounded-md overflow-hidden bg-muted border">
-                                                        {post.postType === 'VIDEO' || post.mediaUrls?.toLowerCase().endsWith('.mp4') ? (
-                                                            <div className="flex items-center justify-center h-full bg-slate-900">
-                                                                <Video className="size-6 text-white" />
+                                <>
+                                    <div className="overflow-x-auto border rounded-md">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="w-[100px]">Media</TableHead>
+                                                    <TableHead className="min-w-[200px] max-w-[300px]">Content</TableHead>
+                                                    <TableHead>Likes</TableHead>
+                                                    <TableHead>Comments</TableHead>
+                                                    <TableHead>Reach/Views</TableHead>
+                                                    <TableHead>Engagement</TableHead>
+                                                    <TableHead>Published</TableHead>
+                                                    <TableHead className="text-right">Actions</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {posts.map((post) => (
+                                                    <TableRow
+                                                        key={post.id}
+                                                        className={`cursor-pointer hover:bg-muted/50 ${post.insight?.isDeleted ? 'opacity-60 bg-red-50 hover:bg-red-50' : ''}`}
+                                                        onClick={() => viewDetails(post)}
+                                                    >
+                                                        <TableCell onClick={(e) => e.stopPropagation()}>
+                                                            <div className="relative size-16 rounded-md overflow-hidden bg-muted border">
+                                                                {post.postType === 'VIDEO' || post.mediaUrls?.toLowerCase().endsWith('.mp4') ? (
+                                                                    <div className="flex items-center justify-center h-full bg-slate-900">
+                                                                        <Video className="size-6 text-white" />
+                                                                    </div>
+                                                                ) : (post.mediaUrls && post.mediaUrls !== '[]' && (post.mediaUrls.startsWith('http') || post.mediaUrls.startsWith('/'))) ? (
+                                                                    <Image
+                                                                        src={post.mediaUrls}
+                                                                        alt="Post media"
+                                                                        fill
+                                                                        className="object-cover"
+                                                                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                                                    />
+                                                                ) : (
+                                                                    <div className="flex items-center justify-center h-full">
+                                                                        <ImageIcon className="size-6 text-muted-foreground" />
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        ) : (post.mediaUrls && post.mediaUrls !== '[]' && (post.mediaUrls.startsWith('http') || post.mediaUrls.startsWith('/'))) ? (
-                                                            <Image
-                                                                src={post.mediaUrls}
-                                                                alt="Post media"
-                                                                fill
-                                                                className="object-cover"
-                                                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                                                            />
-                                                        ) : (
-                                                            <div className="flex items-center justify-center h-full">
-                                                                <ImageIcon className="size-6 text-muted-foreground" />
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="space-y-1">
+                                                                <p className={`line-clamp-2 text-sm font-medium ${post.insight?.isDeleted ? 'line-through text-red-500' : ''}`}>
+                                                                    {post.message || 'No content'}
+                                                                </p>
+                                                                {post.insight?.isDeleted && (
+                                                                    <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">
+                                                                        Deleted on Platform
+                                                                    </span>
+                                                                )}
                                                             </div>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="space-y-1">
-                                                        <p className={`line-clamp-2 text-sm font-medium ${post.insight?.isDeleted ? 'line-through text-red-500' : ''}`}>
-                                                            {post.message || 'No content'}
-                                                        </p>
-                                                        {post.insight?.isDeleted && (
-                                                            <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">
-                                                                Deleted on Platform
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>{post.insight?.isDeleted ? '-' : post.insight?.likes ?? 0}</TableCell>
-                                                <TableCell>{post.insight?.isDeleted ? '-' : post.insight?.comments ?? 0}</TableCell>
-                                                <TableCell>
-                                                    {post.insight?.isDeleted ? '-' : (post.insight?.engagementRate ? `${post.insight.engagementRate.toFixed(1)}%` : '0.0%')}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {post.publishedAt ? format(new Date(post.publishedAt), 'MMM d, yyyy') : '-'}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                                                        <Button
-                                                            className="cursor-pointer"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => handleSync(post)}
-                                                            disabled={syncing === post.id}
-                                                        >
-                                                            <RefreshCw className={`size-4 ${syncing === post.id ? 'animate-spin' : ''}`} />
-                                                        </Button>
-                                                        <Button
-                                                            className="cursor-pointer"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => viewDetails(post)}
-                                                        >
-                                                            <BarChart2 className="size-4" />
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                                                        </TableCell>
+                                                        <TableCell>{post.insight?.isDeleted ? '-' : post.insight?.likes ?? 0}</TableCell>
+                                                        <TableCell>{post.insight?.isDeleted ? '-' : post.insight?.comments ?? 0}</TableCell>
+                                                        <TableCell>{post.insight?.isDeleted ? '-' : post.insight?.reach ?? 0}</TableCell>
+                                                        <TableCell>
+                                                            {post.insight?.isDeleted ? '-' : (post.insight?.engagementRate ? `${post.insight.engagementRate.toFixed(1)}%` : '0.0%')}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            {post.publishedAt ? format(new Date(post.publishedAt), 'MMM d, yyyy') : '-'}
+                                                        </TableCell>
+                                                        <TableCell className="text-right">
+                                                            <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                                                                <Button
+                                                                    className="cursor-pointer"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => handleSync(post)}
+                                                                    disabled={syncing === post.id}
+                                                                >
+                                                                    <RefreshCw className={`size-4 ${syncing === post.id ? 'animate-spin' : ''}`} />
+                                                                </Button>
+                                                                <Button
+                                                                    className="cursor-pointer"
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => viewDetails(post)}
+                                                                >
+                                                                    <BarChart2 className="size-4" />
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+
+                                    {/* Pagination Controls */}
+                                    {totalPages > 1 && (
+                                        <div className="flex items-center justify-between pt-4">
+                                            <p className="text-sm text-muted-foreground">
+                                                Showing <span className="font-medium">{posts.length}</span> of <span className="font-medium">{totalCount}</span> posts
+                                            </p>
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    disabled={page === 1}
+                                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                                >
+                                                    Previous
+                                                </Button>
+                                                <div className="flex items-center gap-1">
+                                                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                                        .slice(Math.max(0, page - 3), Math.min(totalPages, page + 2))
+                                                        .map((pageNum) => (
+                                                            <Button
+                                                                key={pageNum}
+                                                                variant={page === pageNum ? 'default' : 'ghost'}
+                                                                size="icon"
+                                                                className="h-8 w-8 text-xs"
+                                                                onClick={() => setPage(pageNum)}
+                                                            >
+                                                                {pageNum}
+                                                            </Button>
+                                                        ))}
+                                                </div>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    disabled={page === totalPages}
+                                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                                >
+                                                    Next
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </CardContent>
                     </Card>
