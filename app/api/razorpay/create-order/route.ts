@@ -14,7 +14,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const { plan, organizationName, isSignup } = await req.json();
+        const { plan, organizationName, isSignup, metadata } = await req.json();
 
         if (!plan) {
             return NextResponse.json({ error: "Plan is required" }, { status: 400 });
@@ -57,6 +57,7 @@ export async function POST(req: Request) {
                 plan: plan,
                 organizationName: organizationName,
                 isSignup: "true",
+                ...metadata
             };
         } else {
             // Upgrade flow - organisation exists
@@ -66,6 +67,7 @@ export async function POST(req: Request) {
                 plan: plan,
                 userId: dbUser.id,
                 isSignup: "false",
+                ...metadata
             };
         }
 

@@ -17,6 +17,8 @@ interface RazorpayButtonProps {
   className?: string;
   organizationName?: string;
   isSignup?: boolean;
+  metadata?: Record<string, any>;
+  id?: string;
 }
 
 export function RazorpayButton({
@@ -29,6 +31,8 @@ export function RazorpayButton({
   className,
   organizationName,
   isSignup = false,
+  metadata,
+  id,
 }: RazorpayButtonProps) {
   const { user } = useUser();
   const [isLoading, setIsLoading] = useState(false);
@@ -67,7 +71,7 @@ export function RazorpayButton({
       const orderResponse = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, organizationName, isSignup }),
+        body: JSON.stringify({ plan, organizationName, isSignup, metadata }),
       });
 
       if (!orderResponse.ok) {
@@ -95,6 +99,7 @@ export function RazorpayButton({
                 razorpay_signature: response.razorpay_signature,
                 plan,
                 isSignup,
+                metadata,
               }),
             });
 
@@ -104,11 +109,11 @@ export function RazorpayButton({
 
             const verifyData = await verifyResponse.json();
             toast.success("Payment successful!");
-            
+
             onSuccess?.(verifyData);
 
             if (!isSignup) {
-                router.push(`/payment/success?payment_id=${response.razorpay_payment_id}`);
+              router.push(`/payment/success?payment_id=${response.razorpay_payment_id}`);
             }
           } catch (error) {
             console.error("Payment verification error:", error);
@@ -151,6 +156,7 @@ export function RazorpayButton({
 
   return (
     <Button
+      id={id}
       onClick={handlePayment}
       disabled={isLoading || !isScriptLoaded}
       variant={variant}

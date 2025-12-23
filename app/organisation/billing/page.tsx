@@ -14,9 +14,11 @@ import { useRouter } from "next/navigation";
 import { RazorpayButton } from "@/components/razorpay-button";
 import { TrialCountdown } from "@/components/trial-countdown";
 import { UsageMetricsCard } from "@/components/usage-metrics-card";
-import { CancelSubscriptionDialog } from "@/components/cancel-subscription-dialog";
-import { PlanComparisonModal } from "@/components/plan-comparison-modal";
 import { usePlans } from "@/hooks/use-plans";
+import { PlanChangeDialog } from "@/components/plan-change-dialog";
+import { PlanComparisonModal } from "@/components/plan-comparison-modal";
+import { CancelSubscriptionDialog } from "@/components/cancel-subscription-dialog";
+import { useRef } from "react";
 
 interface OrganisationData {
   id: number;
@@ -93,7 +95,11 @@ export default function BillingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showComparisonModal, setShowComparisonModal] = useState(false);
+  const [showPlanChangeDialog, setShowPlanChangeDialog] = useState(false);
+  const [selectedPlanForChange, setSelectedPlanForChange] = useState<any | null>(null);
+  const [activationTiming, setActivationTiming] = useState<"IMMEDIATE" | "DEFERRED">("IMMEDIATE");
   const [isUpdatingAutoRenew, setIsUpdatingAutoRenew] = useState(false);
+  const razorpayButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     fetchBillingData();
@@ -188,10 +194,22 @@ export default function BillingPage() {
   };
 
   const handleSelectPlan = (planId: string | number) => {
-    const planElement = document.getElementById(`plan-${planId}`);
-    if (planElement) {
-      planElement.scrollIntoView({ behavior: "smooth", block: "center" });
+    const plan = plans.find(p => p.id === planId || p.name === planId);
+    if (plan) {
+      setSelectedPlanForChange(plan);
+      setShowPlanChangeDialog(true);
     }
+  };
+
+  const handlePlanChangeConfirm = async (immediate: boolean) => {
+    // We will trigger the Razorpay button manually or store the preference
+    // Actually, it's better to pass the preference to the RazorpayButton
+    // But since the RazorpayButton is inside the loop, we need a way to trigger it.
+    // For now, let's just close the dialog and let the user click the button in the UI, 
+    // OR just use a hidden button.
+
+    // Better approach: Update the state and then the user clicks the button.
+    // Even better: The PlanChangeDialog itself could trigger the payment if we pass the right props.
   };
 
   if (isLoading || plansLoading) {
@@ -362,26 +380,61 @@ export default function BillingPage() {
                       <Button variant="outline" className="w-full" disabled>
                         Current Plan
                       </Button>
-                    ) : canUpgrade ? (
-                      plan.price === 0 ? (
-                        <Button variant="outline" className="w-full" disabled>
-                          Not Available
-                        </Button>
-                      ) : (
-                        <RazorpayButton
-                          plan={plan.name}
-                          amount={plan.price}
-                          onSuccess={handlePaymentSuccess}
+                    ) : subscription ? (
+                      <div className="space-y-2">
+                        <PlanChangeDialog
+                          open={showPlanChangeDialog && selectedPlanForChange?.id === plan.id}
+                          onOpenChange={setShowPlanChangeDialog}
+                          currentPlanName={currentPlan?.name}
+                          newPlanName={plan.name}
+                          onConfirm={async (immediate) => {
+                            setActivationTiming(immediate ? "IMMEDIATE" : "DEFERRED");
+                            // Small delay to ensure state is updated before click
+                            setTimeout(() => {
+                              const btn = document.getElementById(`razorpay-btn-${plan.id}`);
+                              btn?.click();
+                            }, 100);
+                          }}
+                        />
+                        <Button
+                          variant={plan.price > (Number(currentPlan?.price) || 0) ? "default" : "outline"}
                           className="w-full"
+                          onClick={() => {
+                            setSelectedPlanForChange(plan);
+                            setShowPlanChangeDialog(true);
+                          }}
                         >
-                          <TrendingUp className="size-4 mr-2" />
-                          Upgrade to {plan.name}
-                        </RazorpayButton>
-                      )
+                          {plan.price > (Number(currentPlan?.price) || 0) ? "Upgrade Plan" : "Change to " + plan.name}
+                        </Button>
+                        <div className="hidden">
+                          <RazorpayButton
+                            id={`razorpay-btn-${plan.id}`}
+                            plan={plan.name}
+                            amount={plan.price}
+                            onSuccess={handlePaymentSuccess}
+                            metadata={{ activationTiming }}
+                          >
+                            Buy
+                          </RazorpayButton>
+                        </div>
+                      </div>
                     ) : (
-                      <Button variant="ghost" className="w-full" disabled>
-                        Contact Sales
-                      </Button>
+                      <div className="space-y-2">
+                        {plan.price === 0 ? (
+                          <Button variant="outline" className="w-full" disabled>
+                            Free Trial (One-time)
+                          </Button>
+                        ) : (
+                          <RazorpayButton
+                            plan={plan.name}
+                            amount={plan.price}
+                            onSuccess={handlePaymentSuccess}
+                            className="w-full"
+                          >
+                            Get Started with {plan.name}
+                          </RazorpayButton>
+                        )}
+                      </div>
                     )}
                   </CardContent>
                 </Card>

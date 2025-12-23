@@ -65,7 +65,7 @@ export function TestimonialCarousel() {
                         <div className="p-1 h-full">
                             <Card className="h-full border-muted/20 bg-muted/5 hover:bg-muted/10 transition-colors">
                                 <CardContent className="flex flex-col p-6 h-full">
-                                    <div className="flex gap-1 mb-4 text-yellow-500">6069
+                                    <div className="flex gap-1 mb-4 text-yellow-500">
                                         {[...Array(5)].map((_, i) => (
                                             <Star key={i} className="size-4 fill-current" />
                                         ))}

@@ -129,10 +129,7 @@ export default function InvoicePage() {
                         <h1 className="text-xl font-semibold">Invoice Details</h1>
                     </div>
                     <div className="flex items-center gap-2  sm:w-auto">
-                        <Button variant="outline" onClick={handlePrint} disabled={isPrinting} className="flex-1 sm:flex-none">
-                            <Printer className="size-4 mr-2" />
-                            Print
-                        </Button>
+                      
                         <Button onClick={handlePrint} disabled={isPrinting} className="flex-1 sm:flex-none">
                             <Download className="size-4 mr-2" />
                             Download PDF
@@ -176,8 +173,8 @@ export default function InvoicePage() {
                                     <p className="font-mono text-lg font-medium text-slate-700">#{invoice.invoiceNumber}</p>
                                     <div className="mt-4">
                                         <span className={`inline-flex items-center rounded-md px-3 py-1 text-sm font-medium ${invoice.status === 'PAID' ? 'bg-green-50 text-green-700 ring-1 ring-inset ring-green-600/20' :
-                                                invoice.status === 'PENDING' ? 'bg-yellow-50 text-yellow-800 ring-1 ring-inset ring-yellow-600/20' :
-                                                    'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20'
+                                            invoice.status === 'PENDING' ? 'bg-yellow-50 text-yellow-800 ring-1 ring-inset ring-yellow-600/20' :
+                                                'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20'
                                             }`}>
                                             {invoice.status}
                                         </span>
