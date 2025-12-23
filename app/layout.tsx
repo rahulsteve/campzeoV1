@@ -4,6 +4,7 @@ import "./globals.css";
 import Script from "next/script";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "sonner";
+import { CookieConsent } from "@/components/CookieConsent";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -60,6 +61,7 @@ export default function RootLayout({
         >
           {children}
           <Toaster />
+          <CookieConsent />
         </ClerkProvider>
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-XHEXP4D7RE"
@@ -69,6 +71,15 @@ export default function RootLayout({
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
+            
+            // Set default consent to 'denied'
+            gtag('consent', 'default', {
+              'analytics_storage': 'denied',
+              'ad_storage': 'denied',
+              'ad_user_data': 'denied',
+              'ad_personalization': 'denied'
+            });
+
             gtag('js', new Date());
 
             gtag('config', 'G-XHEXP4D7RE');

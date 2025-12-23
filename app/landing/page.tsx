@@ -37,6 +37,12 @@ export default function LandingPage() {
               <Link href="/privacy-policy" className="text-muted-foreground hover:text-foreground transition-colors">
                 Privacy Policy
               </Link>
+              <Link href="/terms-of-service" className="text-muted-foreground hover:text-foreground transition-colors">
+                Terms of Service
+              </Link>
+              <a href="mailto:support@campzeo.com" className="text-muted-foreground hover:text-foreground transition-colors">
+                Contact
+              </a>
             </div>
             <div className="flex items-center gap-4">
               <SignedOut>
@@ -290,6 +296,7 @@ export default function LandingPage() {
                 <li><Link href="/privacy-policy" className="hover:text-primary transition-colors">Privacy Policy</Link></li>
                 <li><Link href="/terms-of-service" className="hover:text-primary transition-colors">Terms of Service</Link></li>
                 <li><Link href="/cookies" className="hover:text-primary transition-colors">Cookie Policy</Link></li>
+                <li><a href="mailto:support@campzeo.com" className="hover:text-primary transition-colors">Contact Us</a></li>
               </ul>
             </div>
           </div>
