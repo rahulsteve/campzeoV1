@@ -142,7 +142,10 @@ export async function POST(
             pinterestLink,
             isReel,
             contentType,
-            thumbnailUrl
+            thumbnailUrl,
+            facebookPageId,
+            facebookPageAccessToken,
+            instagramBusinessId
         } = body;
 
         // Validation
@@ -171,7 +174,10 @@ export async function POST(
             metadata = {
                 isReel: !!isReel,
                 thumbnailUrl,
-                postType: contentType
+                postType: contentType,
+                facebookPageId,
+                facebookPageAccessToken,
+                instagramBusinessId
             };
         }
 

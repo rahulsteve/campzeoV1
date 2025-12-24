@@ -398,7 +398,29 @@ export async function getFacebookPagePosts(
         const data = await response.json();
         return data.data || [];
     } catch (error) {
-        console.error('Facebook fetch posts error:', error);
+        console.error('[Facebook] Error fetching posts:', error);
+        throw error;
+    }
+}
+
+/**
+ * Fetch all Facebook Pages the user manages
+ */
+export async function getFacebookPages(userAccessToken: string) {
+    try {
+        const response = await fetch(
+            `https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,category,instagram_business_account&access_token=${userAccessToken}`
+        );
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(`Failed to fetch pages: ${JSON.stringify(error)}`);
+        }
+
+        const data = await response.json();
+        return data.data || [];
+    } catch (error) {
+        console.error('[Facebook] Error fetching pages:', error);
         throw error;
     }
 }

@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
                 authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientIdConfig.value}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&response_type=code&scope=https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube&access_type=offline&prompt=consent`;
                 break;
             case "PINTEREST":
-                authUrl = `https://www.pinterest.com/oauth/?client_id=${clientIdConfig.value}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&response_type=code&scope=boards:read,boards:write,pins:read,pins:write,user_accounts:read`;
+                authUrl = `https://www.pinterest.com/oauth/?client_id=${clientIdConfig.value}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}&response_type=code&scope=boards:read,boards:write,pins:read,pins:write,user_accounts:read,ads:read`;
                 // For Sandbox usage, it often stays the same, but the tokens work against sandbox API. 
                 // However, double check if a specific sandbox auth URL is needed. 
                 // Pinterest docs say: "https://www.pinterest.com/oauth/" works for both, 

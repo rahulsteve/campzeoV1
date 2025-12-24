@@ -108,6 +108,12 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
     }, [campaignId]);
 
 
+    const [facebookPages, setFacebookPages] = useState<any[]>([]);
+    const [loadingFacebookPages, setLoadingFacebookPages] = useState(false);
+    const [selectedFacebookPageId, setSelectedFacebookPageId] = useState<string>('');
+    const [selectedFacebookPageAccessToken, setSelectedFacebookPageAccessToken] = useState<string>('');
+    const [selectedInstagramBusinessId, setSelectedInstagramBusinessId] = useState<string>('');
+
     const [uploadingMedia, setUploadingMedia] = useState(false);
     const [templates, setTemplates] = useState<any[]>([]);
     const [pinterestBoards, setPinterestBoards] = useState<{ id: string; name: string }[]>([]);
@@ -221,6 +227,29 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
             };
 
             fetchPlaylists();
+        } else if (selectedPlatform === 'FACEBOOK' || selectedPlatform === 'INSTAGRAM') {
+            const fetchPages = async () => {
+                try {
+                    setLoadingFacebookPages(true);
+                    const response = await fetch('/api/socialmedia/facebook/pages');
+                    if (response.ok) {
+                        const data = await response.json();
+                        setFacebookPages(data.pages || []);
+
+                        // If only one page, select it
+                        if (data.pages && data.pages.length === 1) {
+                            setSelectedFacebookPageId(data.pages[0].id);
+                            setSelectedFacebookPageAccessToken(data.pages[0].access_token);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error fetching Facebook pages:', error);
+                    toast.error('Failed to fetch Facebook pages');
+                } finally {
+                    setLoadingFacebookPages(false);
+                }
+            };
+            fetchPages();
         }
     }, [selectedPlatform]);
 
@@ -432,6 +461,12 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                 toast.error('YouTube requires a video file');
                 return;
             }
+
+            // Page validation
+            if ((selectedPlatform === 'FACEBOOK' || selectedPlatform === 'INSTAGRAM') && !selectedFacebookPageId && organisationPlatforms.includes(selectedPlatform)) {
+                toast.error('Please select a Facebook Page');
+                return;
+            }
         }
 
         try {
@@ -456,7 +491,10 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                     pinterestLink,
                     isReel, // Send isReel flag
                     contentType, // NEW: Facebook/Instagram content type (POST, REEL)
-                    thumbnailUrl // Send thumbnail
+                    thumbnailUrl, // Send thumbnail
+                    facebookPageId: selectedFacebookPageId, // NEW: Selected Facebook Page
+                    facebookPageAccessToken: selectedFacebookPageAccessToken, // NEW: Selected Facebook Page Access Token
+                    instagramBusinessId: selectedInstagramBusinessId // NEW: Linked Instagram ID
                 }),
             });
 
@@ -921,6 +959,54 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                                 </label>
                                                             )}
                                                         </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Facebook & Instagram Page Selection */}
+                                                {(selectedPlatform === 'FACEBOOK' || selectedPlatform === 'INSTAGRAM') && (
+                                                    <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+                                                        <Label className="text-sm font-medium flex items-center gap-2">
+                                                            <Facebook className="size-4 text-blue-600" />
+                                                            Select Facebook Page
+                                                        </Label>
+                                                        {loadingFacebookPages ? (
+                                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                                <Loader2 className="size-3 animate-spin" />
+                                                                Loading pages...
+                                                            </div>
+                                                        ) : facebookPages.length === 0 ? (
+                                                            <p className="text-xs text-red-500">No Facebook Pages found. Make sure you've connected your account and granted permissions.</p>
+                                                        ) : (
+                                                            <Select
+                                                                value={selectedFacebookPageId}
+                                                                onValueChange={(val) => {
+                                                                    setSelectedFacebookPageId(val);
+                                                                    const page = facebookPages.find(p => p.id === val);
+                                                                    if (page) {
+                                                                        setSelectedFacebookPageAccessToken(page.access_token);
+                                                                        if (page.instagram_business_account?.id) {
+                                                                            setSelectedInstagramBusinessId(page.instagram_business_account.id);
+                                                                        } else {
+                                                                            setSelectedInstagramBusinessId('');
+                                                                        }
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <SelectTrigger className='border border-gray200'>
+                                                                    <SelectValue placeholder="Select a page to post to" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {facebookPages.map((page) => (
+                                                                        <SelectItem key={page.id} value={page.id}>
+                                                                            {page.name}
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}
+                                                        <p className="text-[10px] text-muted-foreground">
+                                                            Posts will be published to the selected page.
+                                                        </p>
                                                     </div>
                                                 )}
 

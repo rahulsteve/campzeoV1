@@ -87,20 +87,22 @@ export async function sendCampaignPost(
 
             // Facebook
             if (post.type === 'FACEBOOK') {
-                const fbToken = dbUser.facebookPageAccessToken || dbUser.facebookAccessToken;
+                const metadata = post.metadata as any;
+                const fbToken = metadata?.facebookPageAccessToken || dbUser.facebookPageAccessToken || dbUser.facebookAccessToken;
+                const fbPageId = metadata?.facebookPageId || dbUser.facebookPageId;
 
-                if (!fbToken || !dbUser.facebookPageId) {
+                if (!fbToken || !fbPageId) {
                     throw new Error('Facebook credentials not found');
                 }
 
                 const platformResponse = await postToFacebook(
                     {
                         accessToken: fbToken,
-                        pageId: dbUser.facebookPageId,
+                        pageId: fbPageId,
                     },
                     post.message || post.subject || "",
                     post.mediaUrls.length > 0 ? post.mediaUrls : post.videoUrl,
-                    { isReel: (post.metadata as any)?.isReel }
+                    { isReel: metadata?.isReel }
                 );
 
                 await prisma.campaignPost.update({
@@ -113,10 +115,10 @@ export async function sendCampaignPost(
                         refId: post.id,
                         platform: 'FACEBOOK',
                         postId: platformResponse.id,
-                        accountId: dbUser.facebookPageId,
+                        accountId: fbPageId,
                         message: post.message || post.subject || "",
                         mediaUrls: post.mediaUrls.length > 0 ? post.mediaUrls[0] : post.videoUrl,
-                        postType: (post.metadata as any)?.isReel ? 'REEL' : ((post.mediaUrls.length > 0 || post.videoUrl) ? 'IMAGE' : 'TEXT'),
+                        postType: metadata?.isReel ? 'REEL' : ((post.mediaUrls.length > 0 || post.videoUrl) ? 'IMAGE' : 'TEXT'),
                         accessToken: fbToken,
                         published: true,
                         publishedAt: new Date(),
@@ -128,11 +130,15 @@ export async function sendCampaignPost(
 
             // Instagram
             if (post.type === 'INSTAGRAM') {
-                if (!dbUser.instagramAccessToken || !dbUser.instagramUserId) {
+                const metadata = post.metadata as any;
+                const igToken = metadata?.facebookPageAccessToken || dbUser.instagramAccessToken;
+                const igUserId = metadata?.instagramBusinessId || dbUser.instagramUserId;
+
+                if (!igToken || !igUserId) {
                     throw new Error('Instagram credentials not found');
                 }
 
-                if (dbUser.instagramUserId === 'no-business-account') {
+                if (igUserId === 'no-business-account') {
                     throw new Error('No Instagram Business Account found');
                 }
 
@@ -142,8 +148,8 @@ export async function sendCampaignPost(
 
                 const platformResponse = await postToInstagram(
                     {
-                        accessToken: dbUser.instagramAccessToken,
-                        userId: dbUser.instagramUserId,
+                        accessToken: igToken!,
+                        userId: igUserId!,
                     },
                     post.message || post.subject || "",
                     mediaToUse,
@@ -176,11 +182,11 @@ export async function sendCampaignPost(
                         refId: post.id,
                         platform: 'INSTAGRAM',
                         postId: platformResponse.id,
-                        accountId: dbUser.instagramUserId,
+                        accountId: igUserId!,
                         message: post.message || post.subject || "",
                         mediaUrls: post.mediaUrls.length > 0 ? post.mediaUrls[0] : post.videoUrl,
                         postType,
-                        accessToken: dbUser.instagramAccessToken,
+                        accessToken: igToken!,
                         published: true,
                         publishedAt: new Date(),
                     }

@@ -174,6 +174,11 @@ export interface PinterestPostInsights {
     message?: string;
     caption?: string;
     media?: any;
+    paidStats?: {
+        saves: number;
+        impressions: number;
+        clicks: number;
+    } | null;
 }
 
 export async function getPinterestPostInsights(
@@ -265,14 +270,21 @@ export async function getPinterestPostInsights(
         const summary = data.all?.summary_metrics || {};
         const lifetime = pinMetadata?.all_pin_metrics?.lifetime || {};
 
-        // Prioritize lifetime metrics for absolute counts if they are higher (more real-time)
-        const impressions = Math.max(summary.IMPRESSION || 0, lifetime.impression || 0);
-        const saves = Math.max(summary.SAVE || 0, lifetime.save || 0);
-        const pinClicks = Math.max(summary.PIN_CLICK || 0, lifetime.pin_click || 0);
-        const outboundClicks = Math.max(summary.OUTBOUND_CLICK || 0, lifetime.outbound_click || 0);
+        // Fetch Paid Analytics if possible (using the new ads:read scope)
+        const paidStats = await getPinterestPinAdAnalytics(pinId, accessToken);
+
+        // Combine Organic (Analytics + PIN_METRICS) with Paid
+        const organicImpressions = Math.max(summary.IMPRESSION || 0, lifetime.impression || 0);
+        const organicSaves = Math.max(summary.SAVE || 0, lifetime.save || 0);
+        const organicPinClicks = Math.max(summary.PIN_CLICK || 0, lifetime.pin_click || 0);
+        const organicOutboundClicks = Math.max(summary.OUTBOUND_CLICK || 0, lifetime.outbound_click || 0);
+
+        const impressions = organicImpressions + (paidStats?.impressions || 0);
+        const saves = organicSaves + (paidStats?.saves || 0);
+        const pinClicks = organicPinClicks + (paidStats?.clicks || 0);
+        const outboundClicks = organicOutboundClicks; // Paid outbound clicks usually separate, but let's stick to these for now
 
         // Map to standard interface
-        // Note: Pinterest 'Saves' are conceptually 'Likes' in other platforms (user validation)
         const likes = saves;
         const reach = impressions; // Proxy
 
@@ -295,7 +307,8 @@ export async function getPinterestPostInsights(
             description: pinMetadata?.description,
             message: pinMetadata?.title || pinMetadata?.description || "",
             caption: pinMetadata?.description || "",
-            media: pinMetadata?.media
+            media: pinMetadata?.media,
+            paidStats: paidStats // Include for debugging or future breakdown
         };
 
     } catch (error) {
@@ -320,6 +333,77 @@ export interface PinterestPin {
     description: string;
     createdAt: string;
     media: any;
+}
+
+/**
+ * Fetch Ad Accounts associated with the user (v5 API)
+ */
+export async function getPinterestAdAccounts(accessToken: string) {
+    try {
+        const response = await fetch('https://api.pinterest.com/v5/ad_accounts', {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+            },
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.warn(`[Pinterest] Failed to fetch ad accounts: ${JSON.stringify(error)}`);
+            return [];
+        }
+
+        const data = await response.json();
+        return data.items || [];
+    } catch (error) {
+        console.error('[Pinterest] Error fetching ad accounts:', error);
+        return [];
+    }
+}
+
+/**
+ * Fetch Ad Analytics for a specific Pin across all ad accounts
+ */
+export async function getPinterestPinAdAnalytics(pinId: string, accessToken: string) {
+    try {
+        const adAccounts = await getPinterestAdAccounts(accessToken);
+        if (adAccounts.length === 0) return null;
+
+        const endDate = new Date().toISOString().split('T')[0];
+        const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+        let totalPaidSaves = 0;
+        let totalPaidImpressions = 0;
+        let totalPaidClicks = 0;
+
+        for (const account of adAccounts) {
+            // Fetch analytics for this pin in this ad account
+            // Note: This requires filtering by pin_ids in the ad analytics endpoint
+            const url = `https://api.pinterest.com/v5/ad_accounts/${account.id}/ads/analytics?start_date=${startDate}&end_date=${endDate}&pin_ids=${pinId}&columns=SPEND_IN_MICRO_DOLLAR,PAID_IMPRESSION,PAID_CLICK,SAVE&granularity=TOTAL`;
+
+            const response = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.length > 0) {
+                    const stats = data[0];
+                    totalPaidSaves += stats.SAVE || 0;
+                    totalPaidImpressions += stats.PAID_IMPRESSION || 0;
+                    totalPaidClicks += stats.PAID_CLICK || 0;
+                }
+            }
+        }
+
+        return {
+            saves: totalPaidSaves,
+            impressions: totalPaidImpressions,
+            clicks: totalPaidClicks
+        };
+    } catch (error) {
+        console.error('[Pinterest] Error fetching pin ad analytics:', error);
+        return null;
+    }
 }
 
 export async function getPinterestUserPins(
