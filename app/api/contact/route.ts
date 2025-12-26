@@ -4,7 +4,27 @@ import { sendEmail } from "@/lib/email";
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { name, email, subject, message } = body;
+        const { name, email, subject, message, captchaToken } = body;
+
+        if (!captchaToken) {
+            return NextResponse.json(
+                { error: "CAPTCHA verification failed" },
+                { status: 400 }
+            );
+        }
+
+        const captchaVerification = await fetch(
+            `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${captchaToken}`,
+            { method: "POST" }
+        );
+        const captchaData = await captchaVerification.json();
+
+        if (!captchaData.success) {
+            return NextResponse.json(
+                { error: "CAPTCHA verification failed" },
+                { status: 400 }
+            );
+        }
 
         if (!name || !email || !subject || !message) {
             return NextResponse.json(

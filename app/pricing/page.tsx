@@ -9,18 +9,12 @@ import { Header } from '@/components/Header';
 import { usePlans, Plan } from "@/hooks/use-plans";
 import { formatPrice } from "@/lib/plans";
 import { useRouter } from "next/navigation";
+import { SignUpButton, useUser } from "@clerk/nextjs";
 
 export default function PricingPage() {
     const { plans, isLoading: plansLoading } = usePlans();
     const router = useRouter();
-
-    const handlePlanSelect = (plan: Plan) => {
-        if (plan.price === 0) {
-            router.push("/sign-up");
-        } else {
-            router.push(`/purchase?planId=${plan.id}`);
-        }
-    };
+    const { isSignedIn } = useUser();
 
     return (
         <div className="min-h-screen bg-background text-foreground">
@@ -80,15 +74,51 @@ export default function PricingPage() {
                                             </ul>
                                         </CardContent>
                                         <CardFooter>
-                                            <Button
-                                                className="w-full"
-                                                variant={isPopular ? "default" : "outline"}
-                                                size="lg"
-                                                onClick={() => handlePlanSelect(plan)}
-                                            >
-                                                {isTrial ? "Start Free Trial" : "Purchase Now"}
-                                                <ArrowRight className="ml-2 size-4" />
-                                            </Button>
+                                            {isTrial ? (
+                                                // Free Trial: Redirect to /sign-up page
+                                                <Link href="/sign-up" className="w-full">
+                                                    <Button
+                                                        className="w-full"
+                                                        variant="outline"
+                                                        size="lg"
+                                                    >
+                                                        Start Free Trial
+                                                        <ArrowRight className="ml-2 size-4" />
+                                                    </Button>
+                                                </Link>
+                                            ) : isSignedIn ? (
+                                                // Paid Plan + Signed In: Go to onboarding
+                                                <Button
+                                                    className="w-full"
+                                                    variant={isPopular ? "default" : "outline"}
+                                                    size="lg"
+                                                    onClick={() => router.push('/onboarding')}
+                                                >
+                                                    Purchase Now
+                                                    <ArrowRight className="ml-2 size-4" />
+                                                </Button>
+                                            ) : (
+                                                // Paid Plan + Not Signed In: Show Clerk modal
+                                                <SignUpButton
+                                                    mode="modal"
+                                                    forceRedirectUrl="/onboarding"
+                                                    unsafeMetadata={{
+                                                        selectedPlanId: plan.id,
+                                                        selectedPlanName: plan.name,
+                                                        planPrice: plan.price,
+                                                        isTrial: false
+                                                    }}
+                                                >
+                                                    <Button
+                                                        className="w-full"
+                                                        variant={isPopular ? "default" : "outline"}
+                                                        size="lg"
+                                                    >
+                                                        Purchase Now
+                                                        <ArrowRight className="ml-2 size-4" />
+                                                    </Button>
+                                                </SignUpButton>
+                                            )}
                                         </CardFooter>
                                     </Card>
                                 );

@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Plus, X, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Plus, X, AlertTriangle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function EditPlanPage() {
@@ -304,21 +304,25 @@ export default function EditPlanPage() {
 
                                 <div className="space-y-2">
                                     {features.map((feature, index) => (
-                                        <div key={index} className="flex gap-2">
-                                            <Input
-                                                value={feature}
-                                                onChange={(e) => handleFeatureChange(index, e.target.value)}
-                                                placeholder={`Feature ${index + 1}`}
-                                                className={errors.features && !feature.trim() ? "border-destructive" : ""}
-                                            />
+                                        <div key={index} className="flex gap-3 items-center group">
+                                            <div className="flex-1">
+                                                <Input
+                                                    value={feature}
+                                                    onChange={(e) => handleFeatureChange(index, e.target.value)}
+                                                    placeholder={`Feature ${index + 1}`}
+                                                    className={`bg-white ${errors.features && !feature.trim() ? "border-destructive" : ""}`}
+                                                />
+                                            </div>
                                             {features.length > 1 && (
                                                 <Button
                                                     type="button"
                                                     variant="ghost"
                                                     size="icon"
                                                     onClick={() => handleRemoveFeature(index)}
+                                                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-70 group-hover:opacity-100"
+                                                    title="Remove feature"
                                                 >
-                                                    <X className="h-4 w-4" />
+                                                    <Trash2 className="h-4 w-4" />
                                                 </Button>
                                             )}
                                         </div>

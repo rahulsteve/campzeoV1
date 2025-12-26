@@ -9,9 +9,11 @@ import { Mail, Phone, MapPin, Send, ArrowLeft, Loader2, MessageSquare, Sparkles 
 import Link from "next/link";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import ReCAPTCHA from "react-google-recaptcha";
 
 export default function ContactPage() {
     const [loading, setLoading] = useState(false);
+    const [captchaToken, setCaptchaToken] = useState<string | null>(null);
     const [formData, setFormData] = useState({
         name: "",
         email: "",
@@ -21,19 +23,26 @@ export default function ContactPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!captchaToken) {
+            toast.error("Please complete the CAPTCHA check.");
+            return;
+        }
+
         setLoading(true);
 
         try {
             const response = await fetch("/api/contact", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
+                body: JSON.stringify({ ...formData, captchaToken }),
             });
 
             if (!response.ok) throw new Error("Failed to send message");
 
             toast.success("Message sent successfully! We will get back to you soon.");
             setFormData({ name: "", email: "", subject: "", message: "" });
+            setCaptchaToken(null);
         } catch (error) {
             console.error("Error sending message:", error);
             toast.error("Failed to send message. Please try again later.");
@@ -233,10 +242,18 @@ export default function ContactPage() {
                                             />
                                         </div>
 
+                                        <div className="flex justify-center">
+                                            <ReCAPTCHA
+                                                sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
+                                                onChange={setCaptchaToken}
+                                                theme="light" // or "dark" depending on your UI preference
+                                            />
+                                        </div>
+
                                         <Button
                                             type="submit"
                                             className="w-full h-14 rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold text-base shadow-xl shadow-primary/20 transition-all hover:-translate-y-1 active:scale-[0.98]"
-                                            disabled={loading}
+                                            disabled={loading || !captchaToken}
                                         >
                                             {loading ? (
                                                 <Loader2 className="size-5 animate-spin mr-2" />

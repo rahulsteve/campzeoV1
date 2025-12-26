@@ -15,6 +15,31 @@ export async function POST(req: Request) {
     try {
         const data = await req.json();
 
+        if (!data.captchaToken) {
+            return NextResponse.json({
+                success: false,
+                message: "CAPTCHA verification failed",
+                errors: ["Please complete the CAPTCHA check"]
+            }, { status: 400 });
+        }
+
+        const captchaVerification = await fetch(
+            `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${data.captchaToken}`,
+            { method: "POST" }
+        );
+        const captchaData = await captchaVerification.json();
+
+        if (!captchaData.success) {
+            return NextResponse.json({
+                success: false,
+                message: "CAPTCHA verification failed",
+                errors: ["Invalid CAPTCHA"]
+            }, { status: 400 });
+        }
+
+        // Remove captchaToken from data so it doesn't cause issues with Prisma/Validation
+        delete data.captchaToken;
+
         // Validation errors array
         const errors: string[] = [];
 

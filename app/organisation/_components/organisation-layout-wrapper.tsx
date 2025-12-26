@@ -142,10 +142,10 @@ export function OrganisationLayoutWrapper({
         </aside>
 
         {/* Scrollable Main Content */}
-        <main className="flex-1 w-full overflow-y-auto" style={{minHeight:"90vh"}}>
+        <main className="flex-1 w-full overflow-y-auto" style={{ minHeight: "100vh" }}>
           {children}
         </main>
-        
+
       </div>
       {/* Footer */}
       <footer className="flex-shrink-0 border-t pt-1 bg-background p-4 text-center text-sm text-muted-foreground">

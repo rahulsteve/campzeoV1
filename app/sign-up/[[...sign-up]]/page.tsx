@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { Zap, Loader2, CheckCircle2, Star, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { countries } from "@/lib/countries";
+import ReCAPTCHA from "react-google-recaptcha";
 import {
   Select,
   SelectContent,
@@ -28,6 +29,7 @@ export default function Page() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     email: "",
@@ -121,6 +123,11 @@ export default function Page() {
   const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    if (!captchaToken) {
+      toast.error("Please complete the CAPTCHA check.");
+      return;
+    }
+
     // Validation logic remains the same
     const requiredFields: Record<string, string> = {
       email: "Email",
@@ -160,6 +167,7 @@ export default function Page() {
       ...form,
       organisationName: accountType === 'individual' ? form.name : form.organisationName,
       taxNumber: accountType === 'individual' ? (form.taxNumber || "N/A") : form.taxNumber,
+      captchaToken
     };
 
     // Email validation
@@ -524,10 +532,18 @@ export default function Page() {
               </div>
             </div>
 
+            <div className="flex justify-center my-4">
+              <ReCAPTCHA
+                sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
+                onChange={setCaptchaToken}
+                theme="light"
+              />
+            </div>
+
             <Button
               type="submit"
               className="w-full h-11 text-base font-medium shadow-md transition-all hover:shadow-lg"
-              disabled={loading}
+              disabled={loading || !captchaToken}
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">

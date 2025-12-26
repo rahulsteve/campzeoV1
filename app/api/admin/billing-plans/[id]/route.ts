@@ -53,10 +53,18 @@ export async function GET(
             return NextResponse.json({ isSuccess: false, message: 'Plan not found' }, { status: 404 });
         }
 
+        let features = [];
+        try {
+            features = plan.features ? JSON.parse(plan.features) : [];
+        } catch (e) {
+            features = [];
+        }
+
         return NextResponse.json({
             isSuccess: true,
             data: {
                 ...plan,
+                features,
                 totalSubscriptions: plan._count.subscriptions,
                 activeSubscriptions: plan.subscriptions.length,
                 activeOrganisations: plan.subscriptions.map((sub: { organisation: any; }) => sub.organisation)

@@ -382,41 +382,49 @@ export default function BillingPage() {
                       </Button>
                     ) : subscription ? (
                       <div className="space-y-2">
-                        <PlanChangeDialog
-                          open={showPlanChangeDialog && selectedPlanForChange?.id === plan.id}
-                          onOpenChange={setShowPlanChangeDialog}
-                          currentPlanName={currentPlan?.name}
-                          newPlanName={plan.name}
-                          onConfirm={async (immediate) => {
-                            setActivationTiming(immediate ? "IMMEDIATE" : "DEFERRED");
-                            // Small delay to ensure state is updated before click
-                            setTimeout(() => {
-                              const btn = document.getElementById(`razorpay-btn-${plan.id}`);
-                              btn?.click();
-                            }, 100);
-                          }}
-                        />
-                        <Button
-                          variant={plan.price > (Number(currentPlan?.price) || 0) ? "default" : "outline"}
-                          className="w-full"
-                          onClick={() => {
-                            setSelectedPlanForChange(plan);
-                            setShowPlanChangeDialog(true);
-                          }}
-                        >
-                          {plan.price > (Number(currentPlan?.price) || 0) ? "Upgrade Plan" : "Change to " + plan.name}
-                        </Button>
-                        <div className="hidden">
-                          <RazorpayButton
-                            id={`razorpay-btn-${plan.id}`}
-                            plan={plan.name}
-                            amount={plan.price}
-                            onSuccess={handlePaymentSuccess}
-                            metadata={{ activationTiming }}
-                          >
-                            Buy
-                          </RazorpayButton>
-                        </div>
+                        {plan.price === 0 && subscription.status === 'ACTIVE' ? (
+                          <Button variant="outline" className="w-full" disabled>
+                            Trial Unavailable
+                          </Button>
+                        ) : (
+                          <>
+                            <PlanChangeDialog
+                              open={showPlanChangeDialog && selectedPlanForChange?.id === plan.id}
+                              onOpenChange={setShowPlanChangeDialog}
+                              currentPlanName={currentPlan?.name}
+                              newPlanName={plan.name}
+                              onConfirm={async (immediate) => {
+                                setActivationTiming(immediate ? "IMMEDIATE" : "DEFERRED");
+                                // Small delay to ensure state is updated before click
+                                setTimeout(() => {
+                                  const btn = document.getElementById(`razorpay-btn-${plan.id}`);
+                                  btn?.click();
+                                }, 100);
+                              }}
+                            />
+                            <Button
+                              variant={plan.price > (Number(currentPlan?.price) || 0) ? "default" : "outline"}
+                              className="w-full"
+                              onClick={() => {
+                                setSelectedPlanForChange(plan);
+                                setShowPlanChangeDialog(true);
+                              }}
+                            >
+                              {plan.price > (Number(currentPlan?.price) || 0) ? "Upgrade Plan" : "Change to " + plan.name}
+                            </Button>
+                            <div className="hidden">
+                              <RazorpayButton
+                                id={`razorpay-btn-${plan.id}`}
+                                plan={plan.name}
+                                amount={plan.price}
+                                onSuccess={handlePaymentSuccess}
+                                metadata={{ activationTiming }}
+                              >
+                                Buy
+                              </RazorpayButton>
+                            </div>
+                          </>
+                        )}
                       </div>
                     ) : (
                       <div className="space-y-2">

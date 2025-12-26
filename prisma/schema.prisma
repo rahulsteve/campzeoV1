@@ -59,7 +59,9 @@ model Organisation {
   trialEndDate          DateTime?
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
+  analyticsSnapshots    AnalyticsSnapshot[]
   campaigns             Campaign[]
+  chatHistories         ChatHistory[]
   contacts              Contact[]
   messageTemplates      MessageTemplate[]
   notifications         Notification[]
@@ -67,8 +69,6 @@ model Organisation {
   payments              Payment[]
   subscriptions         Subscription[]
   users                 User[]
-  analyticsSnapshots    AnalyticsSnapshot[]
-  chatHistories         ChatHistory[]
 }
 
 model OrganisationPlatform {
@@ -101,7 +101,6 @@ model CampaignPost {
   senderEmail          String?
   type                 PlatformType
   isAttachedToCampaign Boolean      @default(false)
-  isDeleted            Boolean      @default(false)
   campaignId           Int?
   videoUrl             String?
   videoId              String?
@@ -111,6 +110,7 @@ model CampaignPost {
   updatedAt            DateTime     @updatedAt
   mediaUrls            String[]
   metadata             Json?
+  isDeleted            Boolean      @default(false)
   campaign             Campaign?    @relation(fields: [campaignId], references: [id])
 }
 
@@ -248,10 +248,10 @@ model PostInsight {
   reach          Int      @default(0)
   impressions    Int      @default(0)
   engagementRate Float    @default(0)
-  isDeleted      Boolean  @default(false)
   lastUpdated    DateTime
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  isDeleted      Boolean  @default(false)
 }
 
 model PostTransaction {
@@ -311,43 +311,18 @@ model MessageTemplate {
   platform       PlatformType
   category       TemplateCategory @default(CUSTOM)
   variables      Json?
-  metadata       Json?
-  mediaUrls      String[]         @default([])
   isActive       Boolean          @default(true)
   organisationId Int
   createdBy      String?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
-
+  metadata       Json?
+  mediaUrls      String[]         @default([])
   organisation   Organisation     @relation(fields: [organisationId], references: [id], onDelete: Cascade)
 
   @@index([organisationId])
   @@index([platform])
   @@index([category])
-}
-
-enum UserRole {
-  ADMIN_USER
-  ORGANISATION_USER
-}
-
-enum TemplateCategory {
-  MARKETING
-  TRANSACTIONAL
-  NOTIFICATION
-  CUSTOM
-}
-
-enum PlatformType {
-  EMAIL
-  SMS
-  WHATSAPP
-  RCS
-  FACEBOOK
-  INSTAGRAM
-  LINKEDIN
-  YOUTUBE
-  PINTEREST
 }
 
 model AnalyticsSnapshot {
@@ -373,4 +348,28 @@ model CommentSentiment {
   sentiment String?
   score     Float?
   createdAt DateTime @default(now())
+}
+
+enum UserRole {
+  ADMIN_USER
+  ORGANISATION_USER
+}
+
+enum TemplateCategory {
+  MARKETING
+  TRANSACTIONAL
+  NOTIFICATION
+  CUSTOM
+}
+
+enum PlatformType {
+  EMAIL
+  SMS
+  WHATSAPP
+  RCS
+  FACEBOOK
+  INSTAGRAM
+  LINKEDIN
+  YOUTUBE
+  PINTEREST
 }

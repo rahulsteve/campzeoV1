@@ -110,7 +110,7 @@ export async function POST(req: Request) {
                         data: {
                             planId: planDetails.id,
                             status: "ACTIVE",
-                           
+
 
                             endDate: newEndDate,
                             renewalDate: newEndDate,
