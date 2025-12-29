@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +22,7 @@ import {
   ArrowLeft,
   Search,
   Printer,
+  ExternalLink,
   Mail,
   Smartphone,
   Facebook,
@@ -49,7 +52,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SecretInput } from "@/components/ui/secret-input";
-import { useState, useEffect, useMemo } from "react";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -1935,8 +1937,18 @@ export default function AdminDashboard() {
               <div className="grid gap-6 md:grid-cols-2">
                 <Card className="border shadow-sm">
                   <CardHeader>
-                    <CardTitle>Job Settings</CardTitle>
-                    <CardDescription>Configure background jobs.</CardDescription>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Job Settings</CardTitle>
+                        <CardDescription>Configure background jobs.</CardDescription>
+                      </div>
+                      <Link href="/admin/scheduler">
+                        <Button variant="outline" size="sm" className="gap-2">
+                          Manage Automation & Scheduler
+                          <ExternalLink className="size-3" />
+                        </Button>
+                      </Link>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {['POST_SCHEDULER', 'ANALYTICS_SYNC', 'BILLING_CYCLE'].map((job) => {

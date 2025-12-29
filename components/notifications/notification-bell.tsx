@@ -148,7 +148,7 @@ export function NotificationBell() {
                     )}
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-96 p-0">
+            <DropdownMenuContent align="end" className="w-[400px] max-w-[calc(100vw-2rem)] p-0">
                 <div className="flex items-center justify-between p-4 border-b">
                     <h3 className="font-semibold">Notifications</h3>
                     {unreadCount > 0 && (

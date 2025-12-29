@@ -126,7 +126,7 @@ export default function NotificationsPage() {
     };
 
     return (
-        <div className="container mx-auto p-6 max-w-4xl">
+        <div className="container mx-auto p-6 ">
             <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">

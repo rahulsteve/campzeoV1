@@ -40,6 +40,7 @@ export default function SchedulerTestPage() {
     const [lastRun, setLastRun] = useState<string | null>(null);
     const [frequency, setFrequency] = useState<string>("5");
     const [nextRunIn, setNextRunIn] = useState<string>("");
+    const [isSeeding, setIsSeeding] = useState(false);
 
     const jobId = 'campaign-post-scheduler';
 
@@ -173,6 +174,30 @@ export default function SchedulerTestPage() {
         }
     };
 
+    const handleSeed = async () => {
+        try {
+            setIsSeeding(true);
+            const response = await fetch('/api/admin/seed', {
+                method: 'POST',
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                toast.success('Database initialized with default scheduler settings');
+                // Refresh settings after seeding
+                window.location.reload();
+            } else {
+                throw new Error(data.error || 'Failed to seed database');
+            }
+        } catch (error) {
+            console.error('Error seeding database:', error);
+            toast.error(error instanceof Error ? error.message : 'Failed to seed database');
+        } finally {
+            setIsSeeding(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-background">
             <div className="flex">
@@ -263,6 +288,29 @@ export default function SchedulerTestPage() {
                                         )}
                                     </div>
                                 </div>
+
+                                {/* Seed Button for empty table */}
+                                {!isEnabled && !loadingSettings && (
+                                    <div className="pt-4 border-t border-dashed">
+                                        <div className="flex items-center justify-between">
+                                            <div className="space-y-1">
+                                                <h4 className="text-sm font-medium">Initial Setup Required?</h4>
+                                                <p className="text-xs text-muted-foreground">
+                                                    If the scheduler settings are missing from the database, click below to initialize them.
+                                                </p>
+                                            </div>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={handleSeed}
+                                                disabled={isSeeding}
+                                            >
+                                                {isSeeding ? <Loader2 className="size-3 mr-2 animate-spin" /> : <RefreshCw className="size-3 mr-2" />}
+                                                Initialize Settings
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
 
@@ -307,108 +355,110 @@ export default function SchedulerTestPage() {
                                     <p className="mt-1">This manual trigger is useful for testing and immediate execution.</p>
                                 </div>
                             </CardContent>
-                        </Card>
+                        </Card >
 
                         {/* Results Card */}
-                        {result && (
-                            <Card>
-                                <CardHeader>
-                                    <div className="flex items-center justify-between">
-                                        <CardTitle>Execution Results</CardTitle>
-                                        {result.success ? (
-                                            <Badge variant="default" className="gap-1">
-                                                <CheckCircle className="size-3" />
-                                                Success
-                                            </Badge>
-                                        ) : (
-                                            <Badge variant="destructive" className="gap-1">
-                                                <XCircle className="size-3" />
-                                                Failed
-                                            </Badge>
-                                        )}
-                                    </div>
-                                    <CardDescription>
-                                        Executed at {new Date(result.timestamp).toLocaleString()}
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    {result.success && result.results ? (
-                                        <>
-                                            {/* Summary Stats */}
-                                            <div className="grid grid-cols-3 gap-4">
-                                                <div className="p-4 border rounded-lg">
-                                                    <div className="text-2xl font-bold">{result.results.total}</div>
-                                                    <div className="text-sm text-muted-foreground">Total Posts</div>
-                                                </div>
-                                                <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-950">
-                                                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                                                        {result.results.processed}
+                        {
+                            result && (
+                                <Card>
+                                    <CardHeader>
+                                        <div className="flex items-center justify-between">
+                                            <CardTitle>Execution Results</CardTitle>
+                                            {result.success ? (
+                                                <Badge variant="default" className="gap-1">
+                                                    <CheckCircle className="size-3" />
+                                                    Success
+                                                </Badge>
+                                            ) : (
+                                                <Badge variant="destructive" className="gap-1">
+                                                    <XCircle className="size-3" />
+                                                    Failed
+                                                </Badge>
+                                            )}
+                                        </div>
+                                        <CardDescription>
+                                            Executed at {new Date(result.timestamp).toLocaleString()}
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        {result.success && result.results ? (
+                                            <>
+                                                {/* Summary Stats */}
+                                                <div className="grid grid-cols-3 gap-4">
+                                                    <div className="p-4 border rounded-lg">
+                                                        <div className="text-2xl font-bold">{result.results.total}</div>
+                                                        <div className="text-sm text-muted-foreground">Total Posts</div>
                                                     </div>
-                                                    <div className="text-sm text-muted-foreground">Processed</div>
-                                                </div>
-                                                <div className="p-4 border rounded-lg bg-red-50 dark:bg-red-950">
-                                                    <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-                                                        {result.results.failed}
+                                                    <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-950">
+                                                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                                            {result.results.processed}
+                                                        </div>
+                                                        <div className="text-sm text-muted-foreground">Processed</div>
                                                     </div>
-                                                    <div className="text-sm text-muted-foreground">Failed</div>
+                                                    <div className="p-4 border rounded-lg bg-red-50 dark:bg-red-950">
+                                                        <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                                            {result.results.failed}
+                                                        </div>
+                                                        <div className="text-sm text-muted-foreground">Failed</div>
+                                                    </div>
                                                 </div>
-                                            </div>
 
-                                            {/* Errors */}
-                                            {result.results.errors.length > 0 && (
-                                                <div className="space-y-2">
-                                                    <h4 className="font-medium text-sm">Errors:</h4>
+                                                {/* Errors */}
+                                                {result.results.errors.length > 0 && (
                                                     <div className="space-y-2">
-                                                        {result.results.errors.map((error, index) => (
-                                                            <div
-                                                                key={index}
-                                                                className="p-3 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-950"
-                                                            >
-                                                                <div className="flex items-start gap-2">
-                                                                    <XCircle className="size-4 text-red-600 dark:text-red-400 mt-0.5" />
-                                                                    <div className="flex-1">
-                                                                        <div className="text-sm font-medium">
-                                                                            Post ID: {error.postId}
-                                                                        </div>
-                                                                        <div className="text-sm text-muted-foreground">
-                                                                            {error.error}
+                                                        <h4 className="font-medium text-sm">Errors:</h4>
+                                                        <div className="space-y-2">
+                                                            {result.results.errors.map((error, index) => (
+                                                                <div
+                                                                    key={index}
+                                                                    className="p-3 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-950"
+                                                                >
+                                                                    <div className="flex items-start gap-2">
+                                                                        <XCircle className="size-4 text-red-600 dark:text-red-400 mt-0.5" />
+                                                                        <div className="flex-1">
+                                                                            <div className="text-sm font-medium">
+                                                                                Post ID: {error.postId}
+                                                                            </div>
+                                                                            <div className="text-sm text-muted-foreground">
+                                                                                {error.error}
+                                                                            </div>
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                        ))}
+                                                            ))}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            )}
+                                                )}
 
-                                            {/* Success Message */}
-                                            {result.results.total === 0 && (
-                                                <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950">
-                                                    <div className="flex items-center gap-2">
-                                                        <RefreshCw className="size-4 text-blue-600 dark:text-blue-400" />
-                                                        <div className="text-sm">
-                                                            No scheduled posts found. All posts are either already sent or scheduled for later.
+                                                {/* Success Message */}
+                                                {result.results.total === 0 && (
+                                                    <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950">
+                                                        <div className="flex items-center gap-2">
+                                                            <RefreshCw className="size-4 text-blue-600 dark:text-blue-400" />
+                                                            <div className="text-sm">
+                                                                No scheduled posts found. All posts are either already sent or scheduled for later.
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <div className="p-4 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-950">
+                                                <div className="flex items-start gap-2">
+                                                    <XCircle className="size-4 text-red-600 dark:text-red-400 mt-0.5" />
+                                                    <div className="flex-1">
+                                                        <div className="text-sm font-medium">Error</div>
+                                                        <div className="text-sm text-muted-foreground">
+                                                            {result.error || result.message || 'Unknown error occurred'}
                                                         </div>
                                                     </div>
                                                 </div>
-                                            )}
-                                        </>
-                                    ) : (
-                                        <div className="p-4 border border-red-200 dark:border-red-800 rounded-lg bg-red-50 dark:bg-red-950">
-                                            <div className="flex items-start gap-2">
-                                                <XCircle className="size-4 text-red-600 dark:text-red-400 mt-0.5" />
-                                                <div className="flex-1">
-                                                    <div className="text-sm font-medium">Error</div>
-                                                    <div className="text-sm text-muted-foreground">
-                                                        {result.error || result.message || 'Unknown error occurred'}
-                                                    </div>
-                                                </div>
                                             </div>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        )}
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            )
+                        }
 
                         {/* Info Card */}
                         <Card>

@@ -126,9 +126,18 @@ export async function GET(request: NextRequest) {
                     });
 
                     // Create error notification
+                    let errorMessage = result.error || 'Unknown error';
+                    if (typeof errorMessage === 'object') {
+                        try {
+                            errorMessage = (errorMessage as any).message || JSON.stringify(errorMessage);
+                        } catch (e) {
+                            errorMessage = 'Technical error occurred';
+                        }
+                    }
+
                     await prisma.notification.create({
                         data: {
-                            message: `Failed to send scheduled ${post.type} post: ${result.error || 'Unknown error'}`,
+                            message: `Failed to send scheduled ${post.type} post: ${errorMessage}`,
                             isSuccess: false,
                             type: 'CAMPAIGN_POST',
                             platform: post.type,

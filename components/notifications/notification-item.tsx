@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { getNotificationIcon, getRelativeTime, NotificationType } from "@/lib/notification-utils";
 import { cn } from "@/lib/utils";
-import { Trash2 } from "lucide-react";
+import { Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     AlertDialog,
@@ -37,8 +38,48 @@ export function NotificationItem({
     onMarkAsRead,
     onDelete,
 }: NotificationItemProps) {
+    const [isExpanded, setIsExpanded] = useState(false);
     const iconConfig = getNotificationIcon(type);
     const Icon = iconConfig.icon;
+
+    // Helper to clean and truncate the message
+    const processMessage = (msg: string) => {
+        let displayMsg = msg;
+        let isTechnical = false;
+
+        // Check for JSON-like error messages
+        if (msg.includes('error":') || msg.includes('code":')) {
+            isTechnical = true;
+            try {
+                // Try to find if there's a JSON block and parse it for a better message
+                const jsonMatch = msg.match(/\{.*\}/);
+                if (jsonMatch) {
+                    const jsonStr = jsonMatch[0];
+                    const errorObj = JSON.parse(jsonStr);
+                    const specificError =
+                        errorObj.error?.message ||
+                        errorObj.message ||
+                        errorObj.error_user_msg ||
+                        (typeof errorObj.error === 'string' ? errorObj.error : null);
+
+                    if (specificError) {
+                        displayMsg = msg.replace(jsonStr, specificError);
+                    }
+                }
+            } catch (e) {
+                // If parsing fails, just use the original message
+            }
+        }
+
+        const needsTruncation = displayMsg.length > 120;
+        const truncated = needsTruncation && !isExpanded
+            ? displayMsg.substring(0, 120) + "..."
+            : displayMsg;
+
+        return { displayMsg: truncated, hasMore: needsTruncation || isTechnical, isTechnical };
+    };
+
+    const { displayMsg, hasMore } = processMessage(message);
 
     const handleClick = () => {
         if (!isRead && onMarkAsRead) {
@@ -65,12 +106,29 @@ export function NotificationItem({
             {/* Content */}
             <div className="flex-1 min-w-0">
                 <p className={cn(
-                    "text-sm",
+                    "text-sm break-words",
                     !isRead && "font-medium text-foreground",
                     isRead && "text-muted-foreground"
                 )}>
-                    {message}
+                    {displayMsg}
                 </p>
+                {hasMore && (
+                    <Button
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-xs text-blue-600 hover:text-blue-800 mt-1"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsExpanded(!isExpanded);
+                        }}
+                    >
+                        {isExpanded ? (
+                            <span className="flex items-center gap-1">Show less <ChevronUp className="size-3" /></span>
+                        ) : (
+                            <span className="flex items-center gap-1">Show more <ChevronDown className="size-3" /></span>
+                        )}
+                    </Button>
+                )}
                 <p className="text-xs text-muted-foreground mt-1">
                     {getRelativeTime(createdAt)}
                 </p>
