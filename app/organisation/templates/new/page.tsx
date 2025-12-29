@@ -682,11 +682,11 @@ export default function NewTemplatePage() {
     const showSubjectField = ["EMAIL", "FACEBOOK", "LINKEDIN", "YOUTUBE", "PINTEREST"].includes(formData.platform);
 
     return (
-        <div className="flex h-screen flex-col bg-background">
+        <div className="p-6  mx-auto space-y-6">
             {/* Header */}
-            <div className="flex h-16 items-center justify-between border-b px-6">
+            <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                    <Button variant="ghost" size="icon" className="cursor-pointer" onClick={() => router.back()}>
                         <ChevronLeft className="size-5" />
                     </Button>
                     <div className="flex items-center gap-2">
@@ -697,367 +697,367 @@ export default function NewTemplatePage() {
                         </div>
                     </div>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => router.back()}>
-                        Cancel
-                    </Button>
-                    <Button onClick={handleCreate} disabled={isSaving}>
-                        {isSaving ? "Creating..." : "Create Template"}
-                    </Button>
-                </div>
             </div>
 
             {/* Main Content */}
-            <div className="flex flex-1 overflow-hidden">
-                <div className="flex-1 overflow-y-auto p-6">
-                    <div className="mx-auto  space-y-6">
-                        {/* Template Name */}
+            <div className="space-y-6">
+                <div className="mx-auto space-y-6">
+                    {/* Template Name */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Template Name</label>
+                        <Input
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            placeholder="e.g. Weekly Newsletter"
+                            className="text-base"
+                        />
+                    </div>
+
+                    {/* Platform Selection */}
+                    <div className="space-y-3">
+                        <label className="text-sm font-medium">Select Platform</label>
+                        <div className="flex flex-wrap gap-2">
+                            {PLATFORMS.map((platform) => {
+                                const Icon = platform.icon;
+                                const isSelected = formData.platform === platform.value;
+                                return (
+                                    <button
+                                        key={platform.value}
+                                        onClick={() => handlePlatformChange(platform.value)}
+                                        className={cn(
+                                            "flex items-center gap-2 rounded-lg border-2 px-4 py-2.5 transition-all",
+                                            isSelected
+                                                ? "border-primary bg-primary/10 text-primary"
+                                                : "border-border bg-background hover:border-primary/50"
+                                        )}
+                                    >
+                                        <Icon className="size-5" />
+                                        <span className="font-medium">{platform.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Platform Specific Options */}
+                    {formData.platform === 'YOUTUBE' && (
+                        <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+                            <label className="text-sm font-medium">Content Type</label>
+                            <div className="flex flex-wrap gap-2">
+                                {['VIDEO', 'SHORT', 'PLAYLIST'].map((type) => (
+                                    <button
+                                        key={type}
+                                        onClick={() => setFormData({
+                                            ...formData,
+                                            metadata: { ...formData.metadata, postType: type }
+                                        })}
+                                        className={cn(
+                                            "rounded-md border px-3 py-1.5 text-sm font-medium transition-all",
+                                            (formData.metadata.postType === type || (!formData.metadata.postType && type === 'VIDEO'))
+                                                ? "border-primary bg-primary/10 text-primary"
+                                                : "border-border bg-background hover:bg-muted"
+                                        )}
+                                    >
+                                        {type === 'VIDEO' ? 'Standard Video' : type === 'SHORT' ? 'YouTube Short' : 'Playlist'}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {formData.metadata.postType === 'PLAYLIST' && (
+                                <div className="space-y-3 pt-2">
+                                    <div className="flex gap-4">
+                                        <label className="flex items-center gap-2 text-sm">
+                                            <input
+                                                type="radio"
+                                                name="playlistAction"
+                                                checked={formData.metadata.playlistAction !== 'ADD_TO'}
+                                                onChange={() => setFormData({
+                                                    ...formData,
+                                                    metadata: { ...formData.metadata, playlistAction: 'CREATE' }
+                                                })}
+                                            />
+                                            Create New Playlist
+                                        </label>
+                                    </div>
+                                    <Input
+                                        placeholder="New Playlist Title"
+                                        value={formData.metadata.playlistTitle || ''}
+                                        onChange={(e) => setFormData({
+                                            ...formData,
+                                            metadata: { ...formData.metadata, playlistTitle: e.target.value }
+                                        })}
+                                    />
+                                </div>
+                            )}
+
+                            {/* Extra YouTube Fields */}
+                            <div className="grid grid-cols-2 gap-4 pt-2">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Privacy Status</label>
+                                 <div className="border rounded-md">
+                                    <select
+                                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                        value={formData.metadata.youtubePrivacy || 'public'}
+                                        onChange={(e) => setFormData({ ...formData, metadata: { ...formData.metadata, youtubePrivacy: e.target.value } })}
+                                    >
+                                        <option value="public">Public</option>
+                                        <option value="unlisted">Unlisted</option>
+                                        <option value="private">Private</option>
+                                    </select></div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Tags (comma separated)</label>
+                                    <Input
+                                        placeholder="e.g. tutorial, vlog"
+                                        value={formData.metadata.youtubeTags || ''}
+                                        onChange={(e) => setFormData({ ...formData, metadata: { ...formData.metadata, youtubeTags: e.target.value } })}
+                                    />
+                                </div>
+                                <div className="col-span-2 space-y-2">
+                                    <label className="text-sm font-medium">Custom Thumbnail</label>
+                                    <div className="flex items-center gap-3">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => document.getElementById('thumbnail-upload')?.click()}
+                                            disabled={isUploading}
+                                            className="gap-2 w-full"
+                                        >
+                                            {isUploading ? "Uploading..." : "Upload Thumbnail"}
+                                        </Button>
+                                        <input
+                                            id="thumbnail-upload"
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleThumbnailUpload}
+                                            className="hidden"
+                                        />
+                                    </div>
+                                    {formData.metadata.thumbnailUrl && (
+                                        <div className="relative aspect-video w-32 overflow-hidden rounded border bg-muted">
+                                            <Image src={formData.metadata.thumbnailUrl} alt="Thumbnail" fill className="object-cover" unoptimized />
+                                            <button
+                                                onClick={() => setFormData({ ...formData, metadata: { ...formData.metadata, thumbnailUrl: null } })}
+                                                className="absolute right-1 top-1 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
+                                            >
+                                                <X className="size-3" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Facebook & Instagram Specific Options */}
+                    {(formData.platform === 'FACEBOOK' || formData.platform === 'INSTAGRAM') && (
+                        <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+                            <label className="text-sm font-medium">Content Type</label>
+                            <div className="flex flex-wrap gap-2">
+                                {['POST', 'REEL'].map((type) => (
+                                    <button
+                                        key={type}
+                                        onClick={() => setFormData({
+                                            ...formData,
+                                            metadata: { ...formData.metadata, postType: type }
+                                        })}
+                                        className={cn(
+                                            "rounded-md border px-3 py-1.5 text-sm font-medium transition-all",
+                                            (formData.metadata.postType === type || (!formData.metadata.postType && type === 'POST'))
+                                                ? "border-primary bg-primary/10 text-primary"
+                                                : "border-border bg-background hover:bg-muted"
+                                        )}
+                                    >
+                                        {type === 'POST' ? 'Standard Post' : 'Reel / Short Video'}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {formData.metadata.postType === 'REEL' && (
+                                <div className="space-y-2 pt-2">
+                                    <label className="text-sm font-medium">Cover Image (Optional)</label>
+                                    <div className="flex items-center gap-3">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => document.getElementById('cover-upload')?.click()}
+                                            disabled={isUploading}
+                                            className="gap-2 w-full"
+                                        >
+                                            {isUploading ? "Uploading..." : "Upload Cover"}
+                                        </Button>
+                                        <input
+                                            id="cover-upload"
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleThumbnailUpload}
+                                            className="hidden"
+                                        />
+                                    </div>
+                                    {formData.metadata.thumbnailUrl && (
+                                        <div className="relative aspect-[9/16] w-20 overflow-hidden rounded border bg-muted">
+                                            <Image src={formData.metadata.thumbnailUrl} alt="Cover" fill className="object-cover" unoptimized />
+                                            <button
+                                                onClick={() => setFormData({ ...formData, metadata: { ...formData.metadata, thumbnailUrl: null } })}
+                                                className="absolute right-1 top-1 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
+                                            >
+                                                <X className="size-3" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Pinterest Specific Options */}
+                    {formData.platform === 'PINTEREST' && (
+                        <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Destination Link</label>
+                                <Input
+                                    placeholder="https://example.com/product"
+                                    value={formData.metadata.destinationLink || ''}
+                                    onChange={(e) => setFormData({ ...formData, metadata: { ...formData.metadata, destinationLink: e.target.value } })}
+                                />
+                                <p className="text-xs text-muted-foreground">The URL people go to when they click your Pin</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Email Specific Options */}
+                    {formData.platform === 'EMAIL' && (
+                        <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Pre-header Text</label>
+                                <Input
+                                    placeholder="Summary text shown after the subject line..."
+                                    value={formData.metadata.preheader || ''}
+                                    onChange={(e) => setFormData({ ...formData, metadata: { ...formData.metadata, preheader: e.target.value } })}
+                                />
+                                <p className="text-xs text-muted-foreground">Short summary text shown in the inbox listing</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Media Upload Section */}
+                    <div className="space-y-3">
+                        <label className="text-sm font-medium">Upload Media (Optional)</label>
+                        <div className="space-y-3">
+                            {/* Upload Button */}
+                            <div className="flex items-center gap-3">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => document.getElementById('media-upload')?.click()}
+                                    disabled={isUploading}
+                                    className="gap-2"
+                                >
+                                    {isUploading ? (
+                                        <>
+                                            <div className="size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                                            Uploading...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Upload className="size-4" />
+                                            Upload Images/Videos
+                                        </>
+                                    )}
+                                </Button>
+                                <input
+                                    id="media-upload"
+                                    type="file"
+                                    accept="image/*,video/*"
+                                    multiple
+                                    onChange={handleImageUpload}
+                                    className="hidden"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Images and videos can be changed when creating posts
+                                </p>
+                            </div>
+
+                            {/* Media Previews */}
+                            {formData.mediaUrls.length > 0 && (
+                                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                                    {formData.mediaUrls.map((url, index) => {
+                                        const isVideo = url.match(/\.(mp4|webm|ogg|mov)$/i);
+                                        return (
+                                            <div key={index} className="group relative aspect-square overflow-hidden rounded-lg border bg-muted">
+                                                {isVideo ? (
+                                                    <video
+                                                        src={url}
+                                                        className="size-full object-cover"
+                                                        controls
+                                                        preload="metadata"
+                                                    />
+                                                ) : (
+                                                    <Image
+                                                        src={url}
+                                                        alt={`Upload ${index + 1}`}
+                                                        fill
+                                                        className="object-cover"
+                                                        unoptimized
+                                                    />
+                                                )}
+                                                <button
+                                                    onClick={() => removeImage(index)}
+                                                    className="absolute right-1 top-1 rounded-full bg-destructive p-1 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                                                >
+                                                    <X className="size-3" />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Subject/Title (conditional) */}
+                    {showSubjectField && (
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Template Name</label>
+                            <label className="text-sm font-medium">
+                                {formData.platform === 'YOUTUBE' ? 'Video Title' : formData.platform === 'EMAIL' ? 'Email Subject' : 'Post Title'}
+                            </label>
                             <Input
-                                value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                placeholder="e.g. Weekly Newsletter"
+                                value={formData.subject}
+                                onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                                placeholder={`Enter ${formData.platform === 'YOUTUBE' ? 'video title' : formData.platform === 'EMAIL' ? 'email subject' : 'post title'}`}
                                 className="text-base"
                             />
                         </div>
+                    )}
 
-                        {/* Platform Selection */}
-                        <div className="space-y-3">
-                            <label className="text-sm font-medium">Select Platform</label>
-                            <div className="flex flex-wrap gap-2">
-                                {PLATFORMS.map((platform) => {
-                                    const Icon = platform.icon;
-                                    const isSelected = formData.platform === platform.value;
-                                    return (
-                                        <button
-                                            key={platform.value}
-                                            onClick={() => handlePlatformChange(platform.value)}
-                                            className={cn(
-                                                "flex items-center gap-2 rounded-lg border-2 px-4 py-2.5 transition-all",
-                                                isSelected
-                                                    ? "border-primary bg-primary/10 text-primary"
-                                                    : "border-border bg-background hover:border-primary/50"
-                                            )}
-                                        >
-                                            <Icon className="size-5" />
-                                            <span className="font-medium">{platform.label}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
+                    {/* Live Preview Header */}
+                    <div className="pt-4">
+                        <h3 className="mb-2 text-sm font-medium">Live Preview</h3>
+                        <p className="text-xs text-muted-foreground">
+                            Type directly in the preview to see how your content will appear on {formData.platform}
+                        </p>
+                    </div>
 
-                        {/* Platform Specific Options */}
-                        {formData.platform === 'YOUTUBE' && (
-                            <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
-                                <label className="text-sm font-medium">Content Type</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {['VIDEO', 'SHORT', 'PLAYLIST'].map((type) => (
-                                        <button
-                                            key={type}
-                                            onClick={() => setFormData({
-                                                ...formData,
-                                                metadata: { ...formData.metadata, postType: type }
-                                            })}
-                                            className={cn(
-                                                "rounded-md border px-3 py-1.5 text-sm font-medium transition-all",
-                                                (formData.metadata.postType === type || (!formData.metadata.postType && type === 'VIDEO'))
-                                                    ? "border-primary bg-primary/10 text-primary"
-                                                    : "border-border bg-background hover:bg-muted"
-                                            )}
-                                        >
-                                            {type === 'VIDEO' ? 'Standard Video' : type === 'SHORT' ? 'YouTube Short' : 'Playlist'}
-                                        </button>
-                                    ))}
-                                </div>
+                    {/* Platform-Specific Preview */}
+                    <div className="rounded-lg border-2 bg-muted/30 p-6">
+                        <div className="mx-auto max-w-2xl">
+                            {renderPlatformPreview()}
 
-                                {formData.metadata.postType === 'PLAYLIST' && (
-                                    <div className="space-y-3 pt-2">
-                                        <div className="flex gap-4">
-                                            <label className="flex items-center gap-2 text-sm">
-                                                <input
-                                                    type="radio"
-                                                    name="playlistAction"
-                                                    checked={formData.metadata.playlistAction !== 'ADD_TO'}
-                                                    onChange={() => setFormData({
-                                                        ...formData,
-                                                        metadata: { ...formData.metadata, playlistAction: 'CREATE' }
-                                                    })}
-                                                />
-                                                Create New Playlist
-                                            </label>
-                                        </div>
-                                        <Input
-                                            placeholder="New Playlist Title"
-                                            value={formData.metadata.playlistTitle || ''}
-                                            onChange={(e) => setFormData({
-                                                ...formData,
-                                                metadata: { ...formData.metadata, playlistTitle: e.target.value }
-                                            })}
-                                        />
-                                    </div>
-                                )}
-
-                                {/* Extra YouTube Fields */}
-                                <div className="grid grid-cols-2 gap-4 pt-2">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium">Privacy Status</label>
-                                        <select
-                                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                                            value={formData.metadata.youtubePrivacy || 'public'}
-                                            onChange={(e) => setFormData({ ...formData, metadata: { ...formData.metadata, youtubePrivacy: e.target.value } })}
-                                        >
-                                            <option value="public">Public</option>
-                                            <option value="unlisted">Unlisted</option>
-                                            <option value="private">Private</option>
-                                        </select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium">Tags (comma separated)</label>
-                                        <Input
-                                            placeholder="e.g. tutorial, vlog"
-                                            value={formData.metadata.youtubeTags || ''}
-                                            onChange={(e) => setFormData({ ...formData, metadata: { ...formData.metadata, youtubeTags: e.target.value } })}
-                                        />
-                                    </div>
-                                    <div className="col-span-2 space-y-2">
-                                        <label className="text-sm font-medium">Custom Thumbnail</label>
-                                        <div className="flex items-center gap-3">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                onClick={() => document.getElementById('thumbnail-upload')?.click()}
-                                                disabled={isUploading}
-                                                className="gap-2 w-full"
-                                            >
-                                                {isUploading ? "Uploading..." : "Upload Thumbnail"}
-                                            </Button>
-                                            <input
-                                                id="thumbnail-upload"
-                                                type="file"
-                                                accept="image/*"
-                                                onChange={handleThumbnailUpload}
-                                                className="hidden"
-                                            />
-                                        </div>
-                                        {formData.metadata.thumbnailUrl && (
-                                            <div className="relative aspect-video w-32 overflow-hidden rounded border bg-muted">
-                                                <Image src={formData.metadata.thumbnailUrl} alt="Thumbnail" fill className="object-cover" unoptimized />
-                                                <button
-                                                    onClick={() => setFormData({ ...formData, metadata: { ...formData.metadata, thumbnailUrl: null } })}
-                                                    className="absolute right-1 top-1 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
-                                                >
-                                                    <X className="size-3" />
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Facebook & Instagram Specific Options */}
-                        {(formData.platform === 'FACEBOOK' || formData.platform === 'INSTAGRAM') && (
-                            <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
-                                <label className="text-sm font-medium">Content Type</label>
-                                <div className="flex flex-wrap gap-2">
-                                    {['POST', 'REEL'].map((type) => (
-                                        <button
-                                            key={type}
-                                            onClick={() => setFormData({
-                                                ...formData,
-                                                metadata: { ...formData.metadata, postType: type }
-                                            })}
-                                            className={cn(
-                                                "rounded-md border px-3 py-1.5 text-sm font-medium transition-all",
-                                                (formData.metadata.postType === type || (!formData.metadata.postType && type === 'POST'))
-                                                    ? "border-primary bg-primary/10 text-primary"
-                                                    : "border-border bg-background hover:bg-muted"
-                                            )}
-                                        >
-                                            {type === 'POST' ? 'Standard Post' : 'Reel / Short Video'}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {formData.metadata.postType === 'REEL' && (
-                                    <div className="space-y-2 pt-2">
-                                        <label className="text-sm font-medium">Cover Image (Optional)</label>
-                                        <div className="flex items-center gap-3">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                onClick={() => document.getElementById('cover-upload')?.click()}
-                                                disabled={isUploading}
-                                                className="gap-2 w-full"
-                                            >
-                                                {isUploading ? "Uploading..." : "Upload Cover"}
-                                            </Button>
-                                            <input
-                                                id="cover-upload"
-                                                type="file"
-                                                accept="image/*"
-                                                onChange={handleThumbnailUpload}
-                                                className="hidden"
-                                            />
-                                        </div>
-                                        {formData.metadata.thumbnailUrl && (
-                                            <div className="relative aspect-[9/16] w-20 overflow-hidden rounded border bg-muted">
-                                                <Image src={formData.metadata.thumbnailUrl} alt="Cover" fill className="object-cover" unoptimized />
-                                                <button
-                                                    onClick={() => setFormData({ ...formData, metadata: { ...formData.metadata, thumbnailUrl: null } })}
-                                                    className="absolute right-1 top-1 rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
-                                                >
-                                                    <X className="size-3" />
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Pinterest Specific Options */}
-                        {formData.platform === 'PINTEREST' && (
-                            <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">Destination Link</label>
-                                    <Input
-                                        placeholder="https://example.com/product"
-                                        value={formData.metadata.destinationLink || ''}
-                                        onChange={(e) => setFormData({ ...formData, metadata: { ...formData.metadata, destinationLink: e.target.value } })}
-                                    />
-                                    <p className="text-xs text-muted-foreground">The URL people go to when they click your Pin</p>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Email Specific Options */}
-                        {formData.platform === 'EMAIL' && (
-                            <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">Pre-header Text</label>
-                                    <Input
-                                        placeholder="Summary text shown after the subject line..."
-                                        value={formData.metadata.preheader || ''}
-                                        onChange={(e) => setFormData({ ...formData, metadata: { ...formData.metadata, preheader: e.target.value } })}
-                                    />
-                                    <p className="text-xs text-muted-foreground">Short summary text shown in the inbox listing</p>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Media Upload Section */}
-                        <div className="space-y-3">
-                            <label className="text-sm font-medium">Upload Media (Optional)</label>
-                            <div className="space-y-3">
-                                {/* Upload Button */}
-                                <div className="flex items-center gap-3">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => document.getElementById('media-upload')?.click()}
-                                        disabled={isUploading}
-                                        className="gap-2"
-                                    >
-                                        {isUploading ? (
-                                            <>
-                                                <div className="size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                                                Uploading...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Upload className="size-4" />
-                                                Upload Images/Videos
-                                            </>
-                                        )}
-                                    </Button>
-                                    <input
-                                        id="media-upload"
-                                        type="file"
-                                        accept="image/*,video/*"
-                                        multiple
-                                        onChange={handleImageUpload}
-                                        className="hidden"
-                                    />
-                                    <p className="text-xs text-muted-foreground">
-                                        Images and videos can be changed when creating posts
-                                    </p>
-                                </div>
-
-                                {/* Media Previews */}
-                                {formData.mediaUrls.length > 0 && (
-                                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                                        {formData.mediaUrls.map((url, index) => {
-                                            const isVideo = url.match(/\.(mp4|webm|ogg|mov)$/i);
-                                            return (
-                                                <div key={index} className="group relative aspect-square overflow-hidden rounded-lg border bg-muted">
-                                                    {isVideo ? (
-                                                        <video
-                                                            src={url}
-                                                            className="size-full object-cover"
-                                                            controls
-                                                            preload="metadata"
-                                                        />
-                                                    ) : (
-                                                        <Image
-                                                            src={url}
-                                                            alt={`Upload ${index + 1}`}
-                                                            fill
-                                                            className="object-cover"
-                                                            unoptimized
-                                                        />
-                                                    )}
-                                                    <button
-                                                        onClick={() => removeImage(index)}
-                                                        className="absolute right-1 top-1 rounded-full bg-destructive p-1 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                                                    >
-                                                        <X className="size-3" />
-                                                    </button>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Subject/Title (conditional) */}
-                        {showSubjectField && (
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">
-                                    {formData.platform === 'YOUTUBE' ? 'Video Title' : formData.platform === 'EMAIL' ? 'Email Subject' : 'Post Title'}
-                                </label>
-                                <Input
-                                    value={formData.subject}
-                                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                                    placeholder={`Enter ${formData.platform === 'YOUTUBE' ? 'video title' : formData.platform === 'EMAIL' ? 'email subject' : 'post title'}`}
-                                    className="text-base"
-                                />
-                            </div>
-                        )}
-
-                        {/* Live Preview Header */}
-                        <div className="pt-4">
-                            <h3 className="mb-2 text-sm font-medium">Live Preview</h3>
-                            <p className="text-xs text-muted-foreground">
-                                Type directly in the preview to see how your content will appear on {formData.platform}
+                            <p className="mt-4 text-center text-xs text-muted-foreground">
+                                💡 Use variables like <code className="rounded bg-muted px-1 py-0.5">{`{{firstName}}`}</code> or <code className="rounded bg-muted px-1 py-0.5">{`{{companyName}}`}</code> to personalize
                             </p>
-                        </div>
-
-                        {/* Platform-Specific Preview */}
-                        <div className="rounded-lg border-2 bg-muted/30 p-6">
-                            <div className="mx-auto max-w-2xl">
-                                {renderPlatformPreview()}
-
-                                <p className="mt-4 text-center text-xs text-muted-foreground">
-                                    💡 Use variables like <code className="rounded bg-muted px-1 py-0.5">{`{{firstName}}`}</code> or <code className="rounded bg-muted px-1 py-0.5">{`{{companyName}}`}</code> to personalize
-                                </p>
-                            </div>
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div className="flex justify-end mb-2 mx-5 gap-2">
+                <Button variant="outline" onClick={() => router.back()}>
+                    Cancel
+                </Button>
+                <Button onClick={handleCreate} disabled={isSaving}>
+                    {isSaving ? "Creating..." : "Create Template"}
+                </Button>
             </div>
         </div >
     );

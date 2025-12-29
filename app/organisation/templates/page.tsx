@@ -218,7 +218,7 @@ export default function TemplatesPage() {
                   className="pl-9"
                 />
               </div>
-
+<div className="border rounded-md">
               <Select value={platformFilter} onValueChange={setPlatformFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="Filter by platform" />
@@ -235,7 +235,8 @@ export default function TemplatesPage() {
                   <SelectItem value="PINTEREST">Pinterest</SelectItem>
                 </SelectContent>
               </Select>
-
+</div>
+<div className="border rounded-md">
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="Filter by category" />
@@ -247,7 +248,7 @@ export default function TemplatesPage() {
                   <SelectItem value="NOTIFICATION">Notification</SelectItem>
                   <SelectItem value="CUSTOM">Custom</SelectItem>
                 </SelectContent>
-              </Select>
+              </Select></div>
             </div>
           </CardContent>
         </Card>

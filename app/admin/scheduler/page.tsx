@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Play, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Loader2, Play, CheckCircle, XCircle, Clock, RefreshCw, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface SchedulerResult {
@@ -25,8 +27,63 @@ interface SchedulerResult {
 
 export default function SchedulerTestPage() {
     const [loading, setLoading] = useState(false);
+    const [loadingSettings, setLoadingSettings] = useState(false);
+    const [isEnabled, setIsEnabled] = useState(false);
     const [result, setResult] = useState<SchedulerResult | null>(null);
     const [lastRun, setLastRun] = useState<string | null>(null);
+
+    const jobId = 'campaign-post-scheduler';
+
+    // Fetch job settings
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                setLoadingSettings(true);
+                const response = await fetch('/api/admin/job-settings');
+                const data = await response.json();
+
+                if (data.isSuccess) {
+                    const setting = data.data.find((s: any) => s.jobId === jobId);
+                    if (setting) {
+                        setIsEnabled(setting.isEnabled);
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching job settings:', error);
+            } finally {
+                setLoadingSettings(false);
+            }
+        };
+
+        fetchSettings();
+    }, []);
+
+    const handleToggleSettings = async (checked: boolean) => {
+        try {
+            setLoadingSettings(true);
+            const response = await fetch('/api/admin/job-settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    jobId,
+                    isEnabled: checked
+                }),
+            });
+
+            const data = await response.json();
+            if (data.isSuccess) {
+                setIsEnabled(checked);
+                toast.success(`Scheduler ${checked ? 'enabled' : 'disabled'} successfully`);
+            } else {
+                throw new Error(data.message || 'Failed to update settings');
+            }
+        } catch (error) {
+            console.error('Error updating job settings:', error);
+            toast.error(error instanceof Error ? error.message : 'Failed to update settings');
+        } finally {
+            setLoadingSettings(false);
+        }
+    };
 
     const runScheduler = async () => {
         try {
@@ -76,9 +133,53 @@ export default function SchedulerTestPage() {
                         <div>
                             <h1 className="text-3xl font-bold tracking-tight">Campaign Posts Scheduler</h1>
                             <p className="text-muted-foreground mt-1">
-                                Manually trigger the scheduler to process scheduled campaign posts
+                                Manage and monitor automatic campaign post scheduling
                             </p>
                         </div>
+
+                        {/* Status Toggle Card */}
+                        <Card className={isEnabled ? 'border-primary/50' : ''}>
+                            <CardHeader className="pb-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-1">
+                                        <CardTitle className="text-xl flex items-center gap-2">
+                                            <Settings className="size-5" />
+                                            Automatic Scheduler
+                                        </CardTitle>
+                                        <CardDescription>
+                                            Enable or disable the automatic processing of scheduled posts
+                                        </CardDescription>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        {loadingSettings ? (
+                                            <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                                        ) : (
+                                            <Badge variant={isEnabled ? 'default' : 'secondary'}>
+                                                {isEnabled ? 'Active' : 'Disabled'}
+                                            </Badge>
+                                        )}
+                                        <Switch
+                                            id="scheduler-toggle"
+                                            checked={isEnabled}
+                                            onCheckedChange={handleToggleSettings}
+                                            disabled={loadingSettings}
+                                        />
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg border border-dashed flex items-start gap-2">
+                                    <Clock className="size-4 mt-0.5 text-primary" />
+                                    <div>
+                                        {isEnabled ? (
+                                            <p>The scheduler is currently <strong>running automatically</strong> every 5 minutes in production.</p>
+                                        ) : (
+                                            <p>The scheduler is <strong>stopped</strong>. No scheduled posts will be sent automatically until re-enabled.</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
 
                         {/* Control Card */}
                         <Card>

@@ -4,7 +4,10 @@ import crypto from "crypto";
 
 // File size limits (in bytes)
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB for images
-const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB for videos
+// NOTE: Vercel Serverless Functions have a request body limit of 4.5MB.
+// This 500MB limit will only work if running locally or using a different hosting provider.
+// For Vercel deployment, use Client Uploads (implemented in /api/upload).
+const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB for videos
 
 // Allowed file types
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];

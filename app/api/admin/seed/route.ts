@@ -98,6 +98,34 @@ export async function POST() {
             }
         }
 
+        // Seed Job Settings
+        const jobSettings = [
+            {
+                jobId: 'campaign-post-scheduler',
+                cronExpression: '*/5 * * * *',
+                isEnabled: true
+            }
+        ];
+
+        for (const setting of jobSettings) {
+            try {
+                const existing = await prisma.jobSetting.findFirst({
+                    where: { jobId: setting.jobId }
+                });
+
+                if (existing) {
+                    console.log(`⏭️  Job setting already exists: ${setting.jobId}`);
+                } else {
+                    await prisma.jobSetting.create({
+                        data: setting
+                    });
+                    console.log(`✅ Created job setting: ${setting.jobId}`);
+                }
+            } catch (error) {
+                console.error(`Error creating job setting ${setting.jobId}:`, error);
+            }
+        }
+
         console.log('✨ Seeding completed!');
 
         return NextResponse.json({

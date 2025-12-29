@@ -22,13 +22,19 @@ export async function sendSms(to: string, body: string) {
     }
 }
 
-export async function sendWhatsapp(to: string, body: string) {
+export async function sendWhatsapp(to: string, body: string, mediaUrls?: string[]) {
     try {
-        const message = await client.messages.create({
+        const messageOptions: any = {
             body: body,
             from: `whatsapp:${twilioNumber}`,
             to: `whatsapp:${to}`,
-        });
+        };
+
+        if (mediaUrls && mediaUrls.length > 0) {
+            messageOptions.mediaUrl = mediaUrls;
+        }
+
+        const message = await client.messages.create(messageOptions);
         console.log(`WhatsApp sent to ${to}: ${message.sid}`);
         return message;
     } catch (error) {

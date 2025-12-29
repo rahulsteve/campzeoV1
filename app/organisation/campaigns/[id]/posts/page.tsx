@@ -377,7 +377,7 @@ export default function CampaignPostsPage() {
     const isSocialPlatform = sharePost ? ['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'PINTEREST'].includes(sharePost.type) : false;
 
     return (
-        <div className="min-h-screen bg-background">
+        <div className=" bg-background">
           
             <div className="flex">
        

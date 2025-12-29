@@ -245,7 +245,7 @@ export async function sendCampaignPost(
                                     { accessToken: dbUser.youtubeAccessToken },
                                     targetPlaylistId,
                                     platformResponse.id,
-                                    0, // Position
+                                    undefined, // Position (undefined = auto/append)
                                     { isShort }
                                 );
                                 console.log(`[YouTube] Added video to playlist: ${targetPlaylistId}`);
@@ -416,7 +416,8 @@ export async function sendCampaignPost(
                     subject: subject,
                     html: message,
                     replyTo: post.senderEmail || undefined,
-                    tags: [campaignTag]
+                    tags: [campaignTag],
+                    attachments: post.mediaUrls
                 });
 
                 if (sent) successCount++;
@@ -471,7 +472,7 @@ export async function sendCampaignPost(
                     message = message.replace(new RegExp(key, 'g'), value);
                 });
 
-                const sent = await sendWhatsapp(number, message);
+                const sent = await sendWhatsapp(number, message, post.mediaUrls);
                 if (sent) successCount++;
                 else failCount++;
             }
@@ -495,8 +496,8 @@ export async function sendCampaignPost(
                     postId: internalPostId,
                     accountId: post.senderEmail || 'system',
                     message: post.message || post.subject || "",
-                    mediaUrls: '', // No media for these usually
-                    postType: 'TEXT',
+                    mediaUrls: Array.isArray(post.mediaUrls) && post.mediaUrls.length > 0 ? post.mediaUrls[0] : '',
+                    postType: (Array.isArray(post.mediaUrls) && post.mediaUrls.length > 0) ? 'IMAGE' : 'TEXT',
                     accessToken: 'system',
                     published: true,
                     publishedAt: new Date(),

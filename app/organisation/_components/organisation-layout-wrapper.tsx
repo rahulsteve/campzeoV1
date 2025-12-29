@@ -1,5 +1,6 @@
 "use client";
 
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
@@ -10,7 +11,7 @@ import {
   FileStack,
   UserCircle,
   Home,
-  Bell,
+  Bell, CurrencyIcon
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -28,7 +29,7 @@ const navItems = [
   { href: "/organisation/templates", label: "Templates", icon: FileStack },
   { href: "/organisation/settings", label: "Accounts", icon: UserCircle },
   { href: "/organisation/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/organisation/billing", label: "Billing", icon: BarChart3 },
+  { href: "/organisation/billing", label: "Billing", icon: CurrencyIcon },
 ];
 
 // Sidebar Navigation Component
@@ -75,6 +76,8 @@ export function OrganisationLayoutWrapper({
   };
 
   return (
+
+
     <div className="h-screen flex flex-col overflow-hidden bg-muted/30">
       {/* Impersonation Banner - Always at very top */}
       {isImpersonating && (
@@ -123,9 +126,7 @@ export function OrganisationLayoutWrapper({
           <Button variant="ghost" size="icon" onClick={() => router.push("/")}>
             <Home className="size-5" />
           </Button>
-          <Button variant="ghost" size="icon">
-            <Bell className="size-5" />
-          </Button>
+          <NotificationBell />
           <SignedIn>
             <UserButton />
           </SignedIn>
@@ -133,7 +134,7 @@ export function OrganisationLayoutWrapper({
       </header>
 
       {/* Main Layout: Sidebar + Content */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1  overflow-hidden">
         {/* Fixed Sidebar (Desktop Only) */}
         <aside className="hidden md:flex flex-col w-64 border-r bg-background flex-shrink-0">
           <div className="flex-1 overflow-y-auto py-4">
@@ -142,16 +143,19 @@ export function OrganisationLayoutWrapper({
         </aside>
 
         {/* Scrollable Main Content */}
-        <main className="flex-1 w-full overflow-y-auto" style={{ minHeight: "100vh" }}>
-          {children}
+        <main className="flex-1 w-full overflow-y-auto bg-background">
+          <div className=" flex flex-col">
+            <div className="flex-1">
+              {children}
+            </div>
+            {/* Footer */}
+          </div>
         </main>
 
       </div>
-      {/* Footer */}
-      <footer className="flex-shrink-0 border-t pt-1 bg-background p-4 text-center text-sm text-muted-foreground">
-        &copy; {new Date().getFullYear()} CampZeo. All rights reserved.
-      </footer>
-
+            <footer className="flex-shrink-0 border-t bg-background p-4 text-center text-sm text-muted-foreground">
+              &copy; {new Date().getFullYear()} CampZeo. All rights reserved.
+            </footer>
     </div>
   );
 }

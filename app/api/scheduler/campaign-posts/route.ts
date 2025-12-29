@@ -19,22 +19,25 @@ import { sendCampaignPost } from '@/lib/send-campaign-post';
  * GET /api/scheduler/campaign-posts
  */
 
-// CRON FUNCTIONALITY DISABLED - Using manual sharing for now
-export async function GET(request: NextRequest) {
-    return NextResponse.json(
-        {
-            error: 'Scheduler disabled',
-            message: 'Automatic scheduling is currently disabled. Please use manual sharing.'
-        },
-        { status: 503 }
-    );
-}
 
-/* 
-// ORIGINAL SCHEDULER CODE - COMMENTED OUT
 export async function GET(request: NextRequest) {
     try {
-        // Verify the request is from a trusted source (cron job)
+        // 1. Check if scheduler is enabled in settings
+        const jobSetting = await prisma.jobSetting.findFirst({
+            where: { jobId: 'campaign-post-scheduler' }
+        });
+
+        if (!jobSetting || !jobSetting.isEnabled) {
+            return NextResponse.json(
+                {
+                    error: 'Scheduler disabled',
+                    message: 'Automatic scheduling is currently disabled in admin settings.'
+                },
+                { status: 503 }
+            );
+        }
+
+        // 2. Verify the request is from a trusted source (cron job)
         const authHeader = request.headers.get('authorization');
         const cronSecret = process.env.CRON_SECRET || 'your-secret-key';
 
@@ -45,7 +48,7 @@ export async function GET(request: NextRequest) {
         const now = new Date();
         console.log(`[Scheduler] Running at ${now.toISOString()}`);
 
-        // Find all scheduled posts that are due to be sent
+        // 3. Find all scheduled posts that are due to be sent
         const scheduledPosts = await prisma.campaignPost.findMany({
             where: {
                 isPostSent: false,
@@ -53,11 +56,11 @@ export async function GET(request: NextRequest) {
                     lte: now, // Posts scheduled for now or earlier
                 },
                 isAttachedToCampaign: true,
+                isDeleted: false,
             },
             include: {
                 campaign: {
                     include: {
-                        contacts: true,
                         organisation: true,
                     },
                 },
@@ -73,7 +76,7 @@ export async function GET(request: NextRequest) {
             errors: [] as any[],
         };
 
-        // Process each scheduled post
+        // 4. Process each scheduled post
         for (const post of scheduledPosts) {
             try {
                 console.log(`[Scheduler] Processing post ${post.id} (${post.type})`);
@@ -82,10 +85,16 @@ export async function GET(request: NextRequest) {
                 const result = await sendCampaignPost(post);
 
                 if (result.success) {
+                    // Update post status
+                    await prisma.campaignPost.update({
+                        where: { id: post.id },
+                        data: { isPostSent: true }
+                    });
+
                     // Create success notification
                     await prisma.notification.create({
                         data: {
-                            message: `Scheduled ${post.type} post sent successfully (${result.sent} sent, ${result.failed} failed)`,
+                            message: `Scheduled ${post.type} post sent successfully`,
                             isSuccess: true,
                             type: 'CAMPAIGN_POST',
                             platform: post.type,
@@ -96,7 +105,7 @@ export async function GET(request: NextRequest) {
                     });
 
                     results.processed++;
-                    console.log(`[Scheduler] Post ${post.id} sent successfully: ${result.sent} sent, ${result.failed} failed`);
+                    console.log(`[Scheduler] Post ${post.id} sent successfully`);
                 } else {
                     results.failed++;
                     results.errors.push({
@@ -124,19 +133,6 @@ export async function GET(request: NextRequest) {
                     postId: post.id,
                     error: error instanceof Error ? error.message : 'Unknown error',
                 });
-
-                // Create error notification
-                await prisma.notification.create({
-                    data: {
-                        message: `Failed to send scheduled ${post.type} post: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                        isSuccess: false,
-                        type: 'CAMPAIGN_POST',
-                        platform: post.type,
-                        campaignId: post.campaignId,
-                        organisationId: post.campaign?.organisationId,
-                        referenceId: post.id,
-                    },
-                });
             }
         }
 
@@ -158,4 +154,4 @@ export async function GET(request: NextRequest) {
         );
     }
 }
-*/
+

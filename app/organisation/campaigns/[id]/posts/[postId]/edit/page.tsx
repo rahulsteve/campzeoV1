@@ -21,7 +21,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 
-import { ArrowLeft, Loader2, Save, Upload, X, Youtube, Eye, Video, Trash2,FileText, Sparkles } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Upload, X, Youtube, Eye, Video, Trash2, FileText, Sparkles, Mail, MessageSquare, Phone, Facebook, Instagram, Linkedin, Send, Plus, Wand2 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import Image from 'next/image';
@@ -84,6 +84,57 @@ export default function EditPostPage() {
     const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
     // AI Assistant state
     const [showAIAssistant, setShowAIAssistant] = useState(false);
+    const [aiAssistantTab, setAiAssistantTab] = useState<'text' | 'image'>('text');
+
+    // Pinterest Board Creation state
+    const [isCreatingBoard, setIsCreatingBoard] = useState(false);
+    const [newBoardName, setNewBoardName] = useState('');
+    const [newBoardDescription, setNewBoardDescription] = useState('');
+    const [creatingBoard, setCreatingBoard] = useState(false);
+
+    const [organisationPlatforms, setOrganisationPlatforms] = useState<string[]>([]);
+    const [loadingPlatforms, setLoadingPlatforms] = useState(true);
+
+    // Fetch organisation platforms
+    useEffect(() => {
+        const fetchOrgPlatforms = async () => {
+            try {
+                setLoadingPlatforms(true);
+                const response = await fetch('/api/Organisation/GetPlatforms');
+                if (!response.ok) {
+                    setOrganisationPlatforms(['EMAIL', 'SMS', 'WHATSAPP', 'FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'PINTEREST']);
+                    return;
+                }
+                const data = await response.json();
+                const platforms = data.platforms || [];
+                const availablePlatforms = platforms.filter((p: string) =>
+                    !['EMAIL', 'SMS', 'WHATSAPP'].includes(p.toUpperCase())
+                );
+                setOrganisationPlatforms(['EMAIL', 'SMS', 'WHATSAPP', ...availablePlatforms]);
+            } catch (error) {
+                console.error('Error fetching organisation platforms:', error);
+                setOrganisationPlatforms(['EMAIL', 'SMS', 'WHATSAPP', 'FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'PINTEREST']);
+            } finally {
+                setLoadingPlatforms(false);
+            }
+        };
+
+        fetchOrgPlatforms();
+    }, []);
+
+    // Get platform icon
+    const getPlatformIcon = (platform: string) => {
+        switch (platform) {
+            case 'EMAIL': return Mail;
+            case 'SMS': return MessageSquare;
+            case 'WHATSAPP': return Phone;
+            case 'FACEBOOK': return Facebook;
+            case 'INSTAGRAM': return Instagram;
+            case 'LINKEDIN': return Linkedin;
+            case 'YOUTUBE': return Youtube;
+            default: return Send;
+        }
+    };
 
     // Fetch post data
     useEffect(() => {
@@ -177,6 +228,51 @@ export default function EditPostPage() {
             fetchBoards();
         }
     }, [type]);
+
+    // Create new Pinterest board
+    const handleCreateBoard = async () => {
+        if (!newBoardName.trim()) {
+            toast.error('Board name is required');
+            return;
+        }
+
+        try {
+            setCreatingBoard(true);
+            const response = await fetch('/api/socialmedia/pinterest/boards', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: newBoardName,
+                    description: newBoardDescription,
+                    privacy: 'PUBLIC' // Default to public
+                }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to create board');
+            }
+
+            const data = await response.json();
+            const newBoard = data.board;
+
+            // Add new board to list and select it
+            setPinterestBoards(prev => [...prev, newBoard]);
+            setPinterestBoardId(newBoard.id);
+
+            // Reset and close modal
+            setNewBoardName('');
+            setNewBoardDescription('');
+            setIsCreatingBoard(false);
+
+            toast.success('Board created successfully');
+        } catch (error) {
+            console.error('Error creating board:', error);
+            toast.error(error instanceof Error ? error.message : 'Failed to create board');
+        } finally {
+            setCreatingBoard(false);
+        }
+    };
 
     // Fetch templates when platform changes
     useEffect(() => {
@@ -392,508 +488,565 @@ export default function EditPostPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-background">
-
-                <div className="flex">
-
-                    <main className="flex-1 p-6">
-                        <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
-                            <Loader2 className="size-8 animate-spin text-muted-foreground" />
-                        </div>
-                    </main>
-                </div>
+            <div className="flex items-center justify-center min-h-[400px]">
+                <Loader2 className="size-8 animate-spin text-muted-foreground" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-background">
+        <>
+            <div className="p-6  mx-auto space-y-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <Button
+                            className='cursor-pointer'
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => router.back()}
+                        >
+                            <ArrowLeft className="size-4 mr-2" />
+                            Back
+                        </Button>
+                        <div>
+                            <h1 className="text-3xl font-bold tracking-tight">Edit Post</h1>
+                            <p className="text-muted-foreground mt-1">
+                                Update post details
+                            </p>
+                        </div>
+                    </div>
+                    <Button className='cursor-pointer' variant="outline" onClick={() => setShowPreview(true)}>
+                        <Eye className="size-4 mr-2" />
+                        Preview
+                    </Button>
+                </div>
 
-            <div className="flex">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* Post Details */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Post Details</CardTitle>
+                            <CardDescription>
+                                Configure your campaign post
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {/* Platform Selection */}
+                            <div className="space-y-3">
+                                <Label>Select Platform *</Label>
+                                {loadingPlatforms ? (
+                                    <div className="flex items-center gap-2 p-4">
+                                        <Loader2 className="size-4 animate-spin" />
+                                        <span className="text-sm text-muted-foreground">Loading platforms...</span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="flex flex-wrap gap-3">
+                                            {organisationPlatforms.map((platform) => {
+                                                const isSelected = type === platform;
+                                                const Icon = getPlatformIcon(platform);
 
-                <main className="flex-1 p-6">
-                    <div className=" mx-auto space-y-6">
-                        {/* Header */}
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <Button
-                                className='cursor-pointer'
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => router.back()}
-                                >
-                                    <ArrowLeft className="size-4 mr-2" />
-                                    Back
-                                </Button>
-                                <div>
-                                    <h1 className="text-3xl font-bold tracking-tight">Edit Post</h1>
-                                    <p className="text-muted-foreground mt-1">
-                                        Update post details
+                                                return (
+                                                    <button
+                                                        key={platform}
+                                                        type="button"
+                                                        onClick={() => setType(platform)}
+                                                        className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all min-w-[100px] ${isSelected
+                                                            ? 'border-primary bg-primary/10 shadow-sm'
+                                                            : 'border-border hover:border-primary/50 hover:bg-muted/50 cursor-pointer'
+                                                            }`}
+                                                    >
+                                                        <Icon className={`size-6 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                                                        <span className={`text-xs font-medium ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
+                                                            {platform}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+
+                            {/* Template Selection */}
+                            {type && !loadingTemplates && templates.length > 0 && (
+                                <div className="space-y-2 p-4 bg-muted/20 rounded-lg border border-dashed">
+                                    <Label htmlFor="template" className="text-xs font-semibold uppercase text-muted-foreground">Quick Start with Template</Label>
+                                    <Select value={selectedTemplateId || "none"} onValueChange={handleTemplateSelect}>
+                                        <SelectTrigger id="template" className="bg-background border border-2 border-gray-200">
+                                            <SelectValue placeholder="Select a template..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">None - Keep current content</SelectItem>
+                                            {templates.map((template) => (
+                                                <SelectItem key={template.id} value={template.id.toString()}>
+                                                    <div className="flex items-center gap-2">
+                                                        <FileText className="size-4 text-primary" />
+                                                        <span>{template.name}</span>
+                                                        {template.category && (
+                                                            <span className="text-xs text-muted-foreground ml-2 px-1.5 py-0.5 rounded-full bg-muted">
+                                                                {template.category}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-[10px] text-muted-foreground">
+                                        Selecting a template will replace the current content.
                                     </p>
                                 </div>
-                            </div>
-                            <Button  className='cursor-pointer' variant="outline" onClick={() => setShowPreview(true)}>
-                                <Eye className="size-4 mr-2" />
-                                Preview
-                            </Button>
-                        </div>
+                            )}
 
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            {/* Post Details */}
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Post Details</CardTitle>
-                                    <CardDescription>
-                                        Configure your campaign post
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
+                            {type === 'EMAIL' && (
+                                <>
                                     <div className="space-y-2">
-                                        <Label htmlFor="type">Platform *</Label>
-                                        <Select value={type} onValueChange={setType}>
-                                            <SelectTrigger id="type">
-                                                <SelectValue placeholder="Select platform" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="EMAIL">Email</SelectItem>
-                                                <SelectItem value="SMS">SMS</SelectItem>
-                                                <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
-                                                <SelectItem value="FACEBOOK">Facebook</SelectItem>
-                                                <SelectItem value="INSTAGRAM">Instagram</SelectItem>
-                                                <SelectItem value="LINKEDIN">LinkedIn</SelectItem>
-                                                <SelectItem value="YOUTUBE">YouTube</SelectItem>
-                                                <SelectItem value="PINTEREST">Pinterest</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                        <Label htmlFor="senderEmail">Sender Email *</Label>
+                                        <Input
+                                            id="senderEmail"
+                                            type="email"
+                                            placeholder="sender@example.com"
+                                            value={senderEmail}
+                                            onChange={(e) => setSenderEmail(e.target.value)}
+                                            required={type === 'EMAIL'}
+                                        />
                                     </div>
 
-                                    {type === 'EMAIL' && (
-                                        <>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="senderEmail">Sender Email *</Label>
-                                                <Input
-                                                    id="senderEmail"
-                                                    type="email"
-                                                    placeholder="sender@example.com"
-                                                    value={senderEmail}
-                                                    onChange={(e) => setSenderEmail(e.target.value)}
-                                                    required={type === 'EMAIL'}
-                                                />
+                                    <div className="space-y-2">
+                                        <Label htmlFor="subject">Subject *</Label>
+                                        <Input
+                                            id="subject"
+                                            placeholder="Enter email subject"
+                                            value={subject}
+                                            onChange={(e) => setSubject(e.target.value)}
+                                            required={type === 'EMAIL'}
+                                        />
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Title for social platforms */}
+                            {type && type !== 'EMAIL' && type !== 'SMS' && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="subject">Title</Label>
+                                    <Input
+                                        id="subject"
+                                        placeholder="Enter post title"
+                                        value={subject}
+                                        onChange={(e) => setSubject(e.target.value)}
+                                    />
+                                </div>
+                            )}
+
+                            {type && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="message">
+                                        Message {type !== 'EMAIL' && '*'}
+                                    </Label>
+                                    <div className="relative">
+                                        <Textarea
+
+                                            id="message"
+                                            placeholder="Enter your message"
+                                            value={message}
+                                            onChange={(e) => setMessage(e.target.value)}
+                                            rows={6}
+                                            required={type !== 'EMAIL'}
+                                            className="pr-12 border rounded-md border-dark"
+                                        />
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            variant="ghost"
+                                            className="absolute cursor-pointer bottom-2 right-2 size-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
+                                            onClick={() => setShowAIAssistant(true)}
+                                            title="Generate content with AI"
+                                        >
+                                            <Sparkles className="size-4" />
+                                        </Button>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        {type === 'SMS' && 'SMS messages are limited to 160 characters'}
+                                        {type === 'WHATSAPP' && 'WhatsApp messages support rich formatting'}
+                                        {type === 'EMAIL' && 'You can use HTML formatting in email messages'}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Media Upload */}
+                            {['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'PINTEREST'].includes(type) && (
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <Label className="text-xs">
+                                            {type === 'YOUTUBE' ? 'Video *' : 'Media (Photo/Video)'}
+                                            {['INSTAGRAM', 'PINTEREST'].includes(type) && ' *'}
+                                        </Label>
+                                        <span className="text-[10px] text-muted-foreground">{mediaUrls.length}/10</span>
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-2 mb-2">
+                                        {mediaUrls.map((url, index) => (
+                                            <div key={index} className="relative rounded-md overflow-hidden border bg-muted/50 size-20 group">
+                                                {isVideoUrl(url) ? (
+                                                    <div className="flex items-center justify-center h-full bg-black/10">
+                                                        <Video className="size-6 text-muted-foreground" />
+                                                    </div>
+                                                ) : (
+                                                    <img
+                                                        src={url}
+                                                        alt={`Media ${index + 1}`}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeMedia(index)}
+                                                    className="absolute cursor-pointer top-0.5 right-0.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                                                    title="Remove media"
+                                                >
+                                                    <Trash2 className="size-3" />
+                                                </button>
                                             </div>
+                                        ))}
 
-                                            <div className="space-y-2">
-                                                <Label htmlFor="subject">Subject *</Label>
-                                                <Input
-                                                    id="subject"
-                                                    placeholder="Enter email subject"
-                                                    value={subject}
-                                                    onChange={(e) => setSubject(e.target.value)}
-                                                    required={type === 'EMAIL'}
-                                                />
+                                        {mediaUrls.length < 10 && (
+                                            <div className="flex gap-2">
+                                                <label htmlFor="media-upload" className="flex flex-col items-center justify-center size-20 border-2 border-dashed rounded-md cursor-pointer hover:bg-muted/50 transition-colors">
+                                                    {uploadingMedia ? (
+                                                        <Loader2 className="size-4 text-muted-foreground animate-spin" />
+                                                    ) : (
+                                                        <>
+                                                            <Upload className="size-4 text-muted-foreground mb-0.5" />
+                                                            <span className="text-[10px] text-muted-foreground">Add</span>
+                                                        </>
+                                                    )}
+                                                    <input
+                                                        id="media-upload"
+                                                        type="file"
+                                                        className="hidden"
+                                                        accept={type === 'YOUTUBE' ? 'video/*' : 'image/*,video/*'}
+                                                        onChange={handleFileUpload}
+                                                        disabled={uploadingMedia}
+                                                        multiple
+                                                    />
+                                                </label>
+
+                                                {/* AI Image Generation Shortcut */}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setAiAssistantTab('image');
+                                                        setShowAIAssistant(true);
+                                                    }}
+                                                    className="flex flex-col items-center justify-center size-20 border-2 border-dashed border-primary/30 rounded-md cursor-pointer hover:bg-primary/5 hover:border-primary/50 transition-colors group"
+                                                >
+                                                    <div className="flex flex-col items-center">
+                                                        <Wand2 className="size-4 text-primary mb-0.5 group-hover:scale-110 transition-transform" />
+                                                        <span className="text-[10px] text-primary font-medium">AI Image</span>
+                                                    </div>
+                                                </button>
                                             </div>
-                                        </>
-                                    )}
+                                        )}
+                                    </div>
+                                </div>
+                            )}
 
-                                    {/* Title for social platforms */}
-                                    {type && type !== 'EMAIL' && type !== 'SMS' && (
-                                        <div className="space-y-2">
-                                            <Label htmlFor="subject">Title</Label>
-                                            <Input
-                                                id="subject"
-                                                placeholder="Enter post title"
-                                                value={subject}
-                                                onChange={(e) => setSubject(e.target.value)}
-                                            />
-                                        </div>
-                                    )}
+                            {/* Facebook & Instagram Content Type Selection */}
+                            {(type === 'FACEBOOK' || type === 'INSTAGRAM') && (
+                                <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+                                    <Label className="text-sm font-medium">Content Type</Label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {['POST', 'REEL'].map((cType) => (
+                                            <button
 
-                                    {type && (
-                                        <div className="space-y-2">
-                                            <Label htmlFor="message">
-                                                Message {type !== 'EMAIL' && '*'}
-                                            </Label>
-                                            <div className="relative">
-                                                <Textarea
-                                                    id="message"
-                                                    placeholder="Enter your message"
-                                                    value={message}
-                                                    onChange={(e) => setMessage(e.target.value)}
-                                                    rows={6}
-                                                    required={type !== 'EMAIL'}
-                                                    className="pr-12"
-                                                />
+                                                key={cType}
+                                                type="button"
+                                                onClick={() => {
+                                                    setContentType(cType);
+                                                    setIsReel(cType === 'REEL');
+                                                }}
+                                                className={`rounded-md cursor-pointer border px-3 py-1.5 text-sm font-medium transition-all ${contentType === cType
+                                                    ? 'border-primary bg-primary/10 text-primary'
+                                                    : 'border-border bg-background hover:bg-muted'
+                                                    }`}
+                                            >
+                                                {cType === 'POST' ? 'Standard Post' : 'Reel / Short Video'}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {contentType === 'REEL' && (
+                                        <div className="space-y-2 pt-2">
+                                            <Label className="text-sm font-medium">Cover Image (Optional)</Label>
+                                            <div className="flex items-center gap-3">
                                                 <Button
                                                     type="button"
-                                                    size="icon"
-                                                    variant="ghost"
-                                                    className="absolute cursor-pointer bottom-2 right-2 size-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
-                                                    onClick={() => setShowAIAssistant(true)}
-                                                    title="Generate content with AI"
+                                                    variant="outline"
+                                                    onClick={() => document.getElementById('reel-cover-upload')?.click()}
+                                                    disabled={uploadingMedia}
+                                                    className="gap-2 w-full cursor-pointer"
                                                 >
-                                                    <Sparkles className="size-4" />
+                                                    <Upload className="size-4" />
+                                                    {uploadingMedia ? "Uploading..." : "Upload Cover"}
                                                 </Button>
+                                                <input
+                                                    id="reel-cover-upload"
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={handleFileUpload}
+                                                    className="hidden"
+                                                />
                                             </div>
+                                            {thumbnailUrl && (
+                                                <div className="relative aspect-[9/16] w-20 overflow-hidden rounded border bg-muted">
+                                                    <Image src={thumbnailUrl} alt="Cover" fill className="object-cover" unoptimized />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setThumbnailUrl(null)}
+                                                        className="absolute right-1 top-1 cursor-pointer rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
+                                                    >
+                                                        <X className="size-3" />
+                                                    </button>
+                                                </div>
+                                            )}
                                             <p className="text-xs text-muted-foreground">
-                                                {type === 'SMS' && 'SMS messages are limited to 160 characters'}
-                                                {type === 'WHATSAPP' && 'WhatsApp messages support rich formatting'}
-                                                {type === 'EMAIL' && 'You can use HTML formatting in email messages'}
+                                                Recommended for vertical videos (9:16) under 90 seconds.
                                             </p>
                                         </div>
                                     )}
+                                </div>
+                            )}
 
-                                    {/* Media Upload */}
-                                    {['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'PINTEREST'].includes(type) && (
-                                        <div className="space-y-2">
-                                            <div className="flex items-center justify-between mb-1">
-                                                <Label className="text-xs">
-                                                    {type === 'YOUTUBE' ? 'Video *' : 'Media (Photo/Video)'}
-                                                    {['INSTAGRAM', 'PINTEREST'].includes(type) && ' *'}
-                                                </Label>
-                                                <span className="text-[10px] text-muted-foreground">{mediaUrls.length}/10</span>
-                                            </div>
+                            {/* YouTube Specific Fields */}
+                            {type === 'YOUTUBE' && (
+                                <div className="space-y-4 pt-4 border-t">
+                                    <h3 className="font-medium flex items-center gap-2">
+                                        <Youtube className="size-4 text-red-600" />
+                                        YouTube Settings
+                                    </h3>
 
-                                            <div className="flex flex-wrap gap-2 mb-2">
-                                                {mediaUrls.map((url, index) => (
-                                                    <div key={index} className="relative rounded-md overflow-hidden border bg-muted/50 size-20 group">
-                                                        {isVideoUrl(url) ? (
-                                                            <div className="flex items-center justify-center h-full bg-black/10">
-                                                                <Video className="size-6 text-muted-foreground" />
-                                                            </div>
-                                                        ) : (
-                                                            <img
-                                                                src={url}
-                                                                alt={`Media ${index + 1}`}
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                                        )}
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => removeMedia(index)}
-                                                            className="absolute cursor-pointer top-0.5 right-0.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                                                            title="Remove media"
-                                                        >
-                                                            <Trash2 className="size-3" />
-                                                        </button>
-                                                    </div>
-                                                ))}
-
-                                                {mediaUrls.length < 10 && (
-                                                    <label htmlFor="media-upload" className="flex flex-col items-center justify-center size-20 border-2 border-dashed rounded-md cursor-pointer hover:bg-muted/50 transition-colors">
-                                                        {uploadingMedia ? (
-                                                            <Loader2 className="size-4 text-muted-foreground animate-spin" />
-                                                        ) : (
-                                                            <>
-                                                                <Upload className="size-4 text-muted-foreground mb-0.5" />
-                                                                <span className="text-[10px] text-muted-foreground">Add</span>
-                                                            </>
-                                                        )}
-                                                        <input
-                                                            id="media-upload"
-                                                            type="file"
-                                                            className="hidden"
-                                                            accept={type === 'YOUTUBE' ? 'video/*' : 'image/*,video/*'}
-                                                            onChange={handleFileUpload}
-                                                            disabled={uploadingMedia}
-                                                            multiple
-                                                        />
-                                                    </label>
-                                                )}
-                                            </div>
+                                    {/* Content Type Selection */}
+                                    <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
+                                        <Label className="text-sm font-medium">Content Type</Label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {['VIDEO', 'SHORT', 'PLAYLIST'].map((yType) => (
+                                                <button
+                                                    key={yType}
+                                                    type="button"
+                                                    onClick={() => setYoutubeContentType(yType)}
+                                                    className={`rounded-md cursor-pointer border px-3 py-1.5 text-sm font-medium transition-all ${youtubeContentType === yType
+                                                        ? 'border-primary bg-primary/10 text-primary'
+                                                        : 'border-border bg-background hover:bg-muted'
+                                                        }`}
+                                                >
+                                                    {yType === 'VIDEO' ? 'Standard Video' : yType === 'SHORT' ? 'YouTube Short' : 'Playlist'}
+                                                </button>
+                                            ))}
                                         </div>
-                                    )}
 
-                                    {/* Facebook & Instagram Content Type Selection */}
-                                    {(type === 'FACEBOOK' || type === 'INSTAGRAM') && (
-                                        <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
-                                            <Label className="text-sm font-medium">Content Type</Label>
-                                            <div className="flex flex-wrap gap-2">
-                                                {['POST', 'REEL'].map((cType) => (
-                                                    <button
-                                                    
-                                                        key={cType}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setContentType(cType);
-                                                            setIsReel(cType === 'REEL');
-                                                        }}
-                                                        className={`rounded-md cursor-pointer border px-3 py-1.5 text-sm font-medium transition-all ${contentType === cType
-                                                            ? 'border-primary bg-primary/10 text-primary'
-                                                            : 'border-border bg-background hover:bg-muted'
-                                                            }`}
-                                                    >
-                                                        {cType === 'POST' ? 'Standard Post' : 'Reel / Short Video'}
-                                                    </button>
-                                                ))}
-                                            </div>
-
-                                            {contentType === 'REEL' && (
-                                                <div className="space-y-2 pt-2">
-                                                    <Label className="text-sm font-medium">Cover Image (Optional)</Label>
-                                                    <div className="flex items-center gap-3">
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            onClick={() => document.getElementById('reel-cover-upload')?.click()}
-                                                            disabled={uploadingMedia}
-                                                            className="gap-2 w-full cursor-pointer"
-                                                        >
-                                                            <Upload className="size-4" />
-                                                            {uploadingMedia ? "Uploading..." : "Upload Cover"}
-                                                        </Button>
-                                                        <input
-                                                            id="reel-cover-upload"
-                                                            type="file"
-                                                            accept="image/*"
-                                                            onChange={handleFileUpload}
-                                                            className="hidden"
-                                                        />
-                                                    </div>
-                                                    {thumbnailUrl && (
-                                                        <div className="relative aspect-[9/16] w-20 overflow-hidden rounded border bg-muted">
-                                                            <Image src={thumbnailUrl} alt="Cover" fill className="object-cover" unoptimized />
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setThumbnailUrl(null)}
-                                                                className="absolute right-1 top-1 cursor-pointer rounded-full bg-black/50 p-1 text-white hover:bg-black/70"
-                                                            >
-                                                                <X className="size-3" />
-                                                            </button>
-                                                        </div>
-                                                    )}
+                                        {/* Playlist Options */}
+                                        {youtubeContentType === 'PLAYLIST' && (
+                                            <div className="space-y-3 pt-2">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="playlistTitle">New Playlist Title</Label>
+                                                    <Input
+                                                        id="playlistTitle"
+                                                        placeholder="Enter playlist title"
+                                                        value={youtubePlaylistTitle}
+                                                        onChange={(e) => setYoutubePlaylistTitle(e.target.value)}
+                                                    />
                                                     <p className="text-xs text-muted-foreground">
-                                                        Recommended for vertical videos (9:16) under 90 seconds.
+                                                        A new playlist will be created with this title
                                                     </p>
                                                 </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* YouTube Specific Fields */}
-                                    {type === 'YOUTUBE' && (
-                                        <div className="space-y-4 pt-4 border-t">
-                                            <h3 className="font-medium flex items-center gap-2">
-                                                <Youtube className="size-4 text-red-600" />
-                                                YouTube Settings
-                                            </h3>
-
-                                            {/* Content Type Selection */}
-                                            <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
-                                                <Label className="text-sm font-medium">Content Type</Label>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {['VIDEO', 'SHORT', 'PLAYLIST'].map((yType) => (
-                                                        <button
-                                                            key={yType}
-                                                            type="button"
-                                                            onClick={() => setYoutubeContentType(yType)}
-                                                            className={`rounded-md cursor-pointer border px-3 py-1.5 text-sm font-medium transition-all ${youtubeContentType === yType
-                                                                ? 'border-primary bg-primary/10 text-primary'
-                                                                : 'border-border bg-background hover:bg-muted'
-                                                                }`}
-                                                        >
-                                                            {yType === 'VIDEO' ? 'Standard Video' : yType === 'SHORT' ? 'YouTube Short' : 'Playlist'}
-                                                        </button>
-                                                    ))}
-                                                </div>
-
-                                                {/* Playlist Options */}
-                                                {youtubeContentType === 'PLAYLIST' && (
-                                                    <div className="space-y-3 pt-2">
-                                                        <div className="space-y-2">
-                                                            <Label htmlFor="playlistTitle">New Playlist Title</Label>
-                                                            <Input
-                                                                id="playlistTitle"
-                                                                placeholder="Enter playlist title"
-                                                                value={youtubePlaylistTitle}
-                                                                onChange={(e) => setYoutubePlaylistTitle(e.target.value)}
-                                                            />
-                                                            <p className="text-xs text-muted-foreground">
-                                                                A new playlist will be created with this title
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                )}
                                             </div>
-
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="youtubeTags">Tags (comma separated)</Label>
-                                                    <Input
-                                                        id="youtubeTags"
-                                                        placeholder="tutorial, tech, campzeo"
-                                                        value={youtubeTags}
-                                                        onChange={(e) => setYoutubeTags(e.target.value)}
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="youtubePrivacy">Privacy Status</Label>
-                                                    <Select value={youtubePrivacy} onValueChange={setYoutubePrivacy}>
-                                                        <SelectTrigger id="youtubePrivacy">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="public">Public</SelectItem>
-                                                            <SelectItem value="private">Private</SelectItem>
-                                                            <SelectItem value="unlisted">Unlisted</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="scheduledPostTime">Schedule Post (Optional)</Label>
-                                        <Input
-                                            id="scheduledPostTime"
-                                            type="datetime-local"
-                                            value={scheduledPostTime}
-                                            onChange={(e) => setScheduledPostTime(e.target.value)}
-                                        />
-                                        <p className="text-xs text-muted-foreground">
-                                            Leave empty to send immediately
-                                        </p>
+                                        )}
                                     </div>
 
-                                    {/* Pinterest Specific Fields */}
-                                    {type === 'PINTEREST' && (
-                                        <div className="space-y-4 pt-4 border-t">
-                                            <h3 className="font-medium flex items-center gap-2">
-                                                <div className="p-1 bg-red-600 rounded-full">
-                                                    <span className="text-white text-[10px] font-bold">P</span>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="youtubeTags">Tags (comma separated)</Label>
+                                            <Input
+                                                id="youtubeTags"
+                                                placeholder="tutorial, tech, campzeo"
+                                                value={youtubeTags}
+                                                onChange={(e) => setYoutubeTags(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="youtubePrivacy">Privacy Status</Label>
+                                            <Select value={youtubePrivacy} onValueChange={setYoutubePrivacy}>
+                                                <SelectTrigger id="youtubePrivacy">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="public">Public</SelectItem>
+                                                    <SelectItem value="private">Private</SelectItem>
+                                                    <SelectItem value="unlisted">Unlisted</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="space-y-2">
+                                <Label htmlFor="scheduledPostTime">Schedule Post (Optional)</Label>
+                                <Input
+                                    id="scheduledPostTime"
+                                    type="datetime-local"
+                                    value={scheduledPostTime}
+                                    onChange={(e) => setScheduledPostTime(e.target.value)}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Leave empty to send immediately
+                                </p>
+                            </div>
+
+                            {/* Pinterest Specific Fields */}
+                            {type === 'PINTEREST' && (
+                                <div className="space-y-4 pt-4 border-t">
+                                    <h3 className="font-medium flex items-center gap-2">
+                                        <div className="p-1 bg-red-600 rounded-full">
+                                            <span className="text-white text-[10px] font-bold">P</span>
+                                        </div>
+                                        Pinterest Settings
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="pinterestBoardId">Board *</Label>
+                                            {loadingPinterestBoards ? (
+                                                <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-muted/50">
+                                                    <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                                                    <span className="text-sm text-muted-foreground">Loading boards...</span>
                                                 </div>
-                                                Pinterest Settings
-                                            </h3>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="pinterestBoardId">Board *</Label>
-                                                    {loadingPinterestBoards ? (
-                                                        <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-muted/50">
-                                                            <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                                                            <span className="text-sm text-muted-foreground">Loading boards...</span>
-                                                        </div>
-                                                    ) : (
-                                                        <Select value={pinterestBoardId} onValueChange={setPinterestBoardId}>
+                                            ) : (
+                                                <>
+                                                    <div className="border border-1 rounded-md">
+                                                        <Select
+                                                            value={pinterestBoardId}
+                                                            onValueChange={(val) => {
+                                                                if (val === 'create_new') {
+                                                                    setIsCreatingBoard(true);
+                                                                    return;
+                                                                }
+                                                                setPinterestBoardId(val);
+                                                            }}
+                                                        >
                                                             <SelectTrigger id="pinterestBoardId">
                                                                 <SelectValue placeholder="Select a board" />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                {pinterestBoards.length === 0 ? (
-                                                                    <SelectItem value="none" disabled>No boards found</SelectItem>
-                                                                ) : (
-                                                                    pinterestBoards.map((board) => (
-                                                                        <SelectItem key={board.id} value={board.id}>
-                                                                            {board.name}
-                                                                        </SelectItem>
-                                                                    ))
-                                                                )}
+                                                                <SelectItem value="create_new" className="text-primary font-medium cursor-pointer bg-primary/5 focus:bg-primary/10">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Plus className="size-4" />
+                                                                        Create New Board
+                                                                    </div>
+                                                                </SelectItem>
+                                                                {pinterestBoards.map((board) => (
+                                                                    <SelectItem key={board.id} value={board.id}>
+                                                                        {board.name}
+                                                                    </SelectItem>
+                                                                ))}
                                                             </SelectContent>
                                                         </Select>
-                                                    )}
-                                                </div>
-
-                                            </div>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-
-                            {/* Template Selection */}
-                            {type && (
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Templates</CardTitle>
-                                        <CardDescription>
-                                            Use a template to quickly fill in content
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        {loadingTemplates ? (
-                                            <div className="flex items-center gap-2 p-4 border rounded-lg">
-                                                <Loader2 className="size-4 animate-spin" />
-                                                <span className="text-sm text-muted-foreground">Loading templates...</span>
-                                            </div>
-                                        ) : templates.length > 0 ? (
-                                            <>
-                                                <Select value={selectedTemplateId || "none"} onValueChange={handleTemplateSelect}>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select a template to start with..." />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="none">None - Keep current content</SelectItem>
-                                                        {templates.map((template) => (
-                                                            <SelectItem key={template.id} value={template.id.toString()}>
-                                                                <div className="flex items-center gap-2">
-                                                                    <FileText className="size-4" />
-                                                                    <span>{template.name}</span>
-                                                                    {template.category && (
-                                                                        <span className="text-xs text-muted-foreground">
-                                                                            ({template.category})
-                                                                        </span>
-                                                                    )}
+                                                    </div>
+                                                    <Dialog open={isCreatingBoard} onOpenChange={setIsCreatingBoard}>
+                                                        <DialogContent>
+                                                            <DialogHeader>
+                                                                <DialogTitle>Create New Pinterest Board</DialogTitle>
+                                                                <DialogDescription>
+                                                                    Create a new board to organize your pins.
+                                                                </DialogDescription>
+                                                            </DialogHeader>
+                                                            <div className="space-y-4 py-4">
+                                                                <div className="space-y-2">
+                                                                    <Label htmlFor="boardName">Board Name</Label>
+                                                                    <Input
+                                                                        id="boardName"
+                                                                        value={newBoardName}
+                                                                        onChange={(e) => setNewBoardName(e.target.value)}
+                                                                        placeholder="e.g., Summer Inspiration"
+                                                                    />
                                                                 </div>
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                                <p className="text-xs text-muted-foreground">
-                                                    Templates will replace the current content. You can edit directly in the preview below.
-                                                </p>
-                                            </>
-                                        ) : (
-                                            <p className="text-sm text-muted-foreground p-4 border rounded-lg bg-muted/30">
-                                                No templates available for {type}. Create one in the Templates section!
-                                            </p>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            )}
+                                                                <div className="space-y-2">
+                                                                    <Label htmlFor="boardDesc">Description (Optional)</Label>
+                                                                    <Textarea
+                                                                        id="boardDesc"
+                                                                        className="border border-primary/20 rounded-md resize-none"
+                                                                        value={newBoardDescription}
+                                                                        onChange={(e) => setNewBoardDescription(e.target.value)}
+                                                                        placeholder="What's this board about?"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex justify-end gap-3">
+                                                                <Button className='cursor-pointer' variant="outline" onClick={() => setIsCreatingBoard(false)}>Cancel</Button>
+                                                                <Button className='cursor-pointer' onClick={handleCreateBoard} disabled={creatingBoard || !newBoardName.trim()}>
+                                                                    {creatingBoard && <Loader2 className="size-4 mr-2 animate-spin" />}
+                                                                    Create Board
+                                                                </Button>
+                                                            </div>
+                                                        </DialogContent>
+                                                    </Dialog>
+                                                </>
+                                            )}
+                                        </div>
 
-                            {/* WYSIWYG Live Preview */}
-                            {type && (
-                                <WYSIWYGPreview
-                                    platform={type}
-                                    subject={subject}
-                                    message={message}
-                                    mediaUrls={mediaUrls}
-                                    thumbnailUrl={thumbnailUrl}
-                                    isReel={isReel || youtubeContentType === 'SHORT'}
-                                    onSubjectChange={setSubject}
-                                    onMessageChange={setMessage}
-                                    user={{
-                                        name: user?.fullName || user?.firstName || 'Your Brand',
-                                        image: user?.imageUrl
-                                    }}
-                                />
+                                    </div>
+                                </div>
                             )}
+                        </CardContent>
+                    </Card>
 
-                            {/* Actions */}
-                            <div className="flex justify-end gap-4">
-                                <Button
-                                className='cursor-pointer'
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => router.back()}
-                                    disabled={saving}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button className='cursor-pointer' type="submit" disabled={saving}>
-                                    {saving ? (
-                                        <>
-                                            <Loader2 className="size-4 mr-2 animate-spin" />
-                                            Saving...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Save className="size-4 mr-2" />
-                                            Save Changes
-                                        </>
-                                    )}
-                                </Button>
-                            </div>
-                        </form>
+
+
+                    {/* WYSIWYG Live Preview */}
+                    {type && (
+                        <WYSIWYGPreview
+                            platform={type}
+                            subject={subject}
+                            message={message}
+                            mediaUrls={mediaUrls}
+                            thumbnailUrl={thumbnailUrl}
+                            isReel={isReel || youtubeContentType === 'SHORT'}
+                            onSubjectChange={setSubject}
+                            onMessageChange={setMessage}
+                            user={{
+                                name: user?.fullName || user?.firstName || 'Your Brand',
+                                image: user?.imageUrl
+                            }}
+                        />
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex justify-end gap-4">
+                        <Button
+                            className='cursor-pointer'
+                            type="button"
+                            variant="outline"
+                            onClick={() => router.back()}
+                            disabled={saving}
+                        >
+                            Cancel
+                        </Button>
+                        <Button className='cursor-pointer' type="submit" disabled={saving}>
+                            {saving ? (
+                                <>
+                                    <Loader2 className="size-4 mr-2 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="size-4 mr-2" />
+                                    Save Changes
+                                </>
+                            )}
+                        </Button>
                     </div>
-                </main>
+                </form>
             </div>
 
             {/* Preview Dialog */}
@@ -960,13 +1113,20 @@ export default function EditPostPage() {
             <AIContentAssistant
                 open={showAIAssistant}
                 onOpenChange={setShowAIAssistant}
-                onInsertContent={(content) => setMessage(content)}
-                onInsertImage={(url) => setMediaUrls(prev => [...prev, url])}
+                initialTab={aiAssistantTab}
+                onInsertContent={(content, subject) => {
+                    setMessage(content);
+                    if (subject) setSubject(subject);
+                }}
+                onInsertImage={(url) => {
+                    setMediaUrls(prev => [...prev, url]);
+                    toast.success('AI image added to post!');
+                }}
                 context={{
-                    platform: type,
+                    platform: type || undefined,
                     existingContent: message,
                 }}
             />
-        </div>
+        </>
     );
 }

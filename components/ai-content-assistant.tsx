@@ -28,6 +28,7 @@ interface AIContentAssistantProps {
     onOpenChange: (open: boolean) => void;
     onInsertContent: (content: string, subject?: string) => void;
     onInsertImage?: (imageUrl: string) => void;
+    initialTab?: 'text' | 'image';
     context?: {
         platform?: string;
         existingContent?: string;
@@ -39,6 +40,7 @@ export function AIContentAssistant({
     onOpenChange,
     onInsertContent,
     onInsertImage,
+    initialTab = 'text',
     context,
 }: AIContentAssistantProps) {
     const [messages, setMessages] = useState<Message[]>([]);
@@ -201,7 +203,7 @@ export function AIContentAssistant({
                     </DialogDescription>
                 </DialogHeader>
 
-                <Tabs defaultValue="text" className="flex-1 flex flex-col min-h-0">
+                <Tabs key={`${open}-${initialTab}`} defaultValue={initialTab} className="flex-1 flex flex-col min-h-0">
                     <div className="px-6 border-b shrink-0 bg-background/95 backdrop-blur z-10">
                         <TabsList className="grid w-full grid-cols-2 mb-2">
                             <TabsTrigger value="text">
@@ -391,7 +393,7 @@ export function AIContentAssistant({
                                             handleGenerateContent();
                                         }
                                     }}
-                                    className="min-h-[80px] resize-none"
+                                    className="min-h-[80px] border border-primary/20 rounded-md resize-none"
                                 />
                                 <Button
                                     onClick={() => handleGenerateContent()}
@@ -424,6 +426,7 @@ export function AIContentAssistant({
                                         value={imagePrompt}
                                         onChange={(e) => setImagePrompt(e.target.value)}
                                         rows={3}
+                                         className="border border-primary/20 rounded-md resize-none"
                                     />
                                 </div>
 

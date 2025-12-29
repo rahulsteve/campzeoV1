@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
         if (!userId) return NextResponse.json({ isSuccess: false, message: 'Unauthorized' }, { status: 401 });
 
         const user = await prisma.user.findUnique({ where: { clerkId: userId } });
-        if (!user || user.role !== 'ADMIN_USER' || user.organisationId) {
+        if (!user || user.role !== 'ADMIN_USER') {
             await logWarning("Forbidden access attempt to fetch job settings", { userId });
             return NextResponse.json({ isSuccess: false, message: 'Forbidden' }, { status: 403 });
         }
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
         if (!userId) return NextResponse.json({ isSuccess: false, message: 'Unauthorized' }, { status: 401 });
 
         const user = await prisma.user.findUnique({ where: { clerkId: userId } });
-        if (!user || user.role !== 'ADMIN_USER' || user.organisationId) {
+        if (!user || user.role !== 'ADMIN_USER') {
             await logWarning("Forbidden access attempt to update job settings", { userId });
             return NextResponse.json({ isSuccess: false, message: 'Forbidden' }, { status: 403 });
         }

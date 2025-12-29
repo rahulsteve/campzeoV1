@@ -591,7 +591,7 @@ export default function EditTemplatePage() {
 
     if (isLoading) {
         return (
-            <div className="flex h-screen items-center justify-center">
+            <div className="flex min-h-[400px] items-center justify-center">
                 <div className="space-y-3 text-center">
                     <Loader2 className="mx-auto size-8 animate-spin text-primary" />
                     <p className="text-sm text-muted-foreground">Loading template...</p>
@@ -601,11 +601,11 @@ export default function EditTemplatePage() {
     }
 
     return (
-        <div className="flex h-screen flex-col bg-background">
+        <div className="p-6  mx-auto space-y-6">
             {/* Header */}
-            <div className="flex h-16 items-center justify-between border-b px-6">
+            <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                    <Button variant="ghost" size="icon" className="cursor-pointer" onClick={() => router.back()}>
                         <ChevronLeft className="size-5" />
                     </Button>
                     <div className="flex items-center gap-2">
@@ -630,141 +630,139 @@ export default function EditTemplatePage() {
             </div>
 
             {/* Main Content */}
-            <div className="flex flex-1 overflow-hidden">
-                <div className="flex-1 overflow-y-auto p-6">
-                    <div className="mx-auto  space-y-6">
-                        {/* Template Name */}
+            <div className="space-y-6">
+                <div className="mx-auto space-y-6">
+                    {/* Template Name */}
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Template Name</label>
+                        <Input
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            placeholder="e.g. Weekly Newsletter"
+                            className="text-base"
+                        />
+                    </div>
+
+                    {/* Platform Selection */}
+                    <div className="space-y-3">
+                        <label className="text-sm font-medium">Select Platform</label>
+                        <div className="flex flex-wrap gap-2">
+                            {PLATFORMS.map((platform) => {
+                                const Icon = platform.icon;
+                                const isSelected = formData.platform === platform.value;
+                                return (
+                                    <button
+                                        key={platform.value}
+                                        onClick={() => handlePlatformChange(platform.value)}
+                                        className={cn(
+                                            "flex items-center gap-2 rounded-lg border-2 px-4 py-2.5 transition-all",
+                                            isSelected
+                                                ? "border-primary bg-primary/10 text-primary"
+                                                : "border-border bg-background hover:border-primary/50"
+                                        )}
+                                    >
+                                        <Icon className="size-5" />
+                                        <span className="font-medium">{platform.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Image Upload Section */}
+                    <div className="space-y-3">
+                        <label className="text-sm font-medium">Upload Images (Optional)</label>
+                        <div className="space-y-3">
+                            {/* Upload Button */}
+                            <div className="flex items-center gap-3">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => document.getElementById('image-upload')?.click()}
+                                    disabled={isUploading}
+                                    className="gap-2"
+                                >
+                                    {isUploading ? (
+                                        <>
+                                            <div className="size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                                            Uploading...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Upload className="size-4" />
+                                            Upload Images
+                                        </>
+                                    )}
+                                </Button>
+                                <input
+                                    id="image-upload"
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    onChange={handleImageUpload}
+                                    className="hidden"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Images can be changed when creating posts
+                                </p>
+                            </div>
+
+                            {/* Image Previews */}
+                            {formData.mediaUrls.length > 0 && (
+                                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                                    {formData.mediaUrls.map((url, index) => (
+                                        <div key={index} className="group relative aspect-square overflow-hidden rounded-lg border bg-muted">
+                                            <Image
+                                                src={url}
+                                                alt={`Upload ${index + 1}`}
+                                                fill
+                                                className="object-cover"
+                                                unoptimized
+                                            />
+                                            <button
+                                                onClick={() => removeImage(index)}
+                                                className="absolute right-1 top-1 rounded-full bg-destructive p-1 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                                            >
+                                                <X className="size-3" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Subject/Title (conditional) */}
+                    {showSubjectField && (
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Template Name</label>
+                            <label className="text-sm font-medium">
+                                {formData.platform === 'YOUTUBE' ? 'Video Title' : formData.platform === 'EMAIL' ? 'Email Subject' : 'Post Title'}
+                            </label>
                             <Input
-                                value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                placeholder="e.g. Weekly Newsletter"
+                                value={formData.subject}
+                                onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                                placeholder={`Enter ${formData.platform === 'YOUTUBE' ? 'video title' : formData.platform === 'EMAIL' ? 'email subject' : 'post title'}`}
                                 className="text-base"
                             />
                         </div>
+                    )}
 
-                        {/* Platform Selection */}
-                        <div className="space-y-3">
-                            <label className="text-sm font-medium">Select Platform</label>
-                            <div className="flex flex-wrap gap-2">
-                                {PLATFORMS.map((platform) => {
-                                    const Icon = platform.icon;
-                                    const isSelected = formData.platform === platform.value;
-                                    return (
-                                        <button
-                                            key={platform.value}
-                                            onClick={() => handlePlatformChange(platform.value)}
-                                            className={cn(
-                                                "flex items-center gap-2 rounded-lg border-2 px-4 py-2.5 transition-all",
-                                                isSelected
-                                                    ? "border-primary bg-primary/10 text-primary"
-                                                    : "border-border bg-background hover:border-primary/50"
-                                            )}
-                                        >
-                                            <Icon className="size-5" />
-                                            <span className="font-medium">{platform.label}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
+                    {/* Live Preview Header */}
+                    <div className="pt-4">
+                        <h3 className="mb-2 text-sm font-medium">Live Preview</h3>
+                        <p className="text-xs text-muted-foreground">
+                            Type directly in the preview to see how your content will appear on {formData.platform}
+                        </p>
+                    </div>
 
-                        {/* Image Upload Section */}
-                        <div className="space-y-3">
-                            <label className="text-sm font-medium">Upload Images (Optional)</label>
-                            <div className="space-y-3">
-                                {/* Upload Button */}
-                                <div className="flex items-center gap-3">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => document.getElementById('image-upload')?.click()}
-                                        disabled={isUploading}
-                                        className="gap-2"
-                                    >
-                                        {isUploading ? (
-                                            <>
-                                                <div className="size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                                                Uploading...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Upload className="size-4" />
-                                                Upload Images
-                                            </>
-                                        )}
-                                    </Button>
-                                    <input
-                                        id="image-upload"
-                                        type="file"
-                                        accept="image/*"
-                                        multiple
-                                        onChange={handleImageUpload}
-                                        className="hidden"
-                                    />
-                                    <p className="text-xs text-muted-foreground">
-                                        Images can be changed when creating posts
-                                    </p>
-                                </div>
+                    {/* Platform-Specific Preview */}
+                    <div className="rounded-lg border-2 bg-muted/30 p-6">
+                        <div className="mx-auto max-w-2xl">
+                            {renderPlatformPreview()}
 
-                                {/* Image Previews */}
-                                {formData.mediaUrls.length > 0 && (
-                                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                                        {formData.mediaUrls.map((url, index) => (
-                                            <div key={index} className="group relative aspect-square overflow-hidden rounded-lg border bg-muted">
-                                                <Image
-                                                    src={url}
-                                                    alt={`Upload ${index + 1}`}
-                                                    fill
-                                                    className="object-cover"
-                                                    unoptimized
-                                                />
-                                                <button
-                                                    onClick={() => removeImage(index)}
-                                                    className="absolute right-1 top-1 rounded-full bg-destructive p-1 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                                                >
-                                                    <X className="size-3" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Subject/Title (conditional) */}
-                        {showSubjectField && (
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">
-                                    {formData.platform === 'YOUTUBE' ? 'Video Title' : formData.platform === 'EMAIL' ? 'Email Subject' : 'Post Title'}
-                                </label>
-                                <Input
-                                    value={formData.subject}
-                                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                                    placeholder={`Enter ${formData.platform === 'YOUTUBE' ? 'video title' : formData.platform === 'EMAIL' ? 'email subject' : 'post title'}`}
-                                    className="text-base"
-                                />
-                            </div>
-                        )}
-
-                        {/* Live Preview Header */}
-                        <div className="pt-4">
-                            <h3 className="mb-2 text-sm font-medium">Live Preview</h3>
-                            <p className="text-xs text-muted-foreground">
-                                Type directly in the preview to see how your content will appear on {formData.platform}
+                            <p className="mt-4 text-center text-xs text-muted-foreground">
+                                💡 Use variables like <code className="rounded bg-muted px-1 py-0.5">{`{{firstName}}`}</code> or <code className="rounded bg-muted px-1 py-0.5">{`{{companyName}}`}</code> to personalize
                             </p>
-                        </div>
-
-                        {/* Platform-Specific Preview */}
-                        <div className="rounded-lg border-2 bg-muted/30 p-6">
-                            <div className="mx-auto max-w-2xl">
-                                {renderPlatformPreview()}
-
-                                <p className="mt-4 text-center text-xs text-muted-foreground">
-                                    💡 Use variables like <code className="rounded bg-muted px-1 py-0.5">{`{{firstName}}`}</code> or <code className="rounded bg-muted px-1 py-0.5">{`{{companyName}}`}</code> to personalize
-                                </p>
-                            </div>
                         </div>
                     </div>
                 </div>

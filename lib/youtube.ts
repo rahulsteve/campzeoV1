@@ -177,17 +177,29 @@ async function uploadYouTubeThumbnail(
             throw new Error(`Failed to fetch thumbnail: ${thumbnailResponse.statusText}`);
         }
 
-        const thumbnailBuffer = Buffer.from(await thumbnailResponse.arrayBuffer());
+        const arrayBuffer = await thumbnailResponse.arrayBuffer();
+        const thumbnailBuffer = Buffer.from(arrayBuffer);
+        const thumbnailSize = thumbnailBuffer.length;
+
+        console.log(`[YouTube] Thumbnail size: ${thumbnailSize} bytes`);
+
+        // YouTube thumbnail limit is 2MB
+        if (thumbnailSize > 2 * 1024 * 1024) {
+            console.warn(`[YouTube] Thumbnail is too large (${(thumbnailSize / 1024 / 1024).toFixed(2)}MB). Max 2MB allowed.`);
+            // Potentially we could resize here if we had a library, but for now just warn
+            throw new Error(`Thumbnail too large (>2MB). Please upload a smaller image.`);
+        }
 
         // Determine image type from URL or content-type
         const contentType = thumbnailResponse.headers.get('content-type') || 'image/jpeg';
 
-        // Upload thumbnail using resumable upload
-        const response = await fetch(`https://www.googleapis.com/upload/youtube/v3/videos/setThumbnail?videoId=${videoId}&uploadType=media`, {
+        // Upload thumbnail using media upload
+        const response = await fetch(`https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${videoId}&uploadType=media`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
                 'Content-Type': contentType,
+                'Content-Length': thumbnailSize.toString()
             },
             body: thumbnailBuffer,
         });
@@ -365,7 +377,7 @@ export async function addVideoToPlaylist(
                         kind: 'youtube#video',
                         videoId,
                     },
-                    position: position || 0,
+                    ...(position !== undefined && { position }),
                 },
             }),
         });

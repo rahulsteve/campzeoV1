@@ -185,12 +185,13 @@ export async function sendOrganisationApproved(params: OrganisationApprovedParam
     console.log('='.repeat(60));
 }
 
-interface CampaignEmailParams {
+export interface CampaignEmailParams {
     to: string;
     subject: string;
     html: string;
     replyTo?: string;
     tags?: string[];
+    attachments?: string[];
 }
 
 /**
@@ -198,7 +199,7 @@ interface CampaignEmailParams {
  * @param params - Email parameters
  */
 export async function sendCampaignEmail(params: CampaignEmailParams): Promise<boolean> {
-    const { to, subject, html, replyTo, tags } = params;
+    const { to, subject, html, replyTo, tags, attachments } = params;
     const { apiKey, domain, fromEmail } = await getEmailConfig();
 
     if (apiKey && domain && fromEmail) {
@@ -220,6 +221,33 @@ export async function sendCampaignEmail(params: CampaignEmailParams): Promise<bo
             msg['o:tag'] = tags;
         }
 
+        // Handle attachments
+        if (attachments && attachments.length > 0) {
+            try {
+                const attachmentData = await Promise.all(attachments.map(async (url) => {
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error(`Failed to fetch attachment: ${url}`);
+                    const arrayBuffer = await res.arrayBuffer();
+                    const buffer = Buffer.from(arrayBuffer);
+
+                    // Extract filename from URL
+                    const filename = url.split('/').pop() || 'attachment';
+
+                    return {
+                        filename: decodeURIComponent(filename),
+                        data: buffer
+                    };
+                }));
+
+                msg.attachment = attachmentData;
+            } catch (error) {
+                console.error('Error processing attachments:', error);
+                // Continue without attachments or fail? 
+                // Let's log and continue, or maybe we should fail if attachments were critical.
+                // For now, logging error but trying to send message.
+            }
+        }
+
         try {
             await mg.messages.create(domain, msg);
             console.log(`✅ Campaign email sent to ${to} with tags: ${tags?.join(', ')}`);
@@ -238,6 +266,7 @@ export async function sendCampaignEmail(params: CampaignEmailParams): Promise<bo
     console.log(`Subject: ${subject}`);
     if (replyTo) console.log(`Reply-To: ${replyTo}`);
     if (tags) console.log(`Tags: ${tags.join(', ')}`);
+    if (attachments) console.log(`Attachments: ${attachments.length} files`);
     console.log('\nBody:');
     console.log(html);
     console.log('='.repeat(60));

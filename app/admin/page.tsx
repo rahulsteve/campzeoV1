@@ -32,7 +32,8 @@ import {
   ChevronRight,
   Download,
   X,
-  Trash
+  Trash,
+  FileJson
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -54,6 +55,107 @@ import { toast } from "sonner";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { constants } from "buffer";
+import { JSX } from "react/jsx-runtime";
+import { AdminBroadcastNotification } from "@/components/admin/admin-broadcast-notification";
+
+// JSON Viewer Component with Syntax Highlighting
+const JsonViewer = ({ jsonString }: { jsonString: string }) => {
+  const [parsedJson, setParsedJson] = useState<any>(null);
+  const [parseError, setParseError] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const parsed = JSON.parse(jsonString);
+      setParsedJson(parsed);
+      setParseError(null);
+    } catch (error) {
+      setParseError("Invalid JSON format");
+      setParsedJson(null);
+    }
+  }, [jsonString]);
+
+  const renderValue = (value: any, indent: number = 0): JSX.Element => {
+    const indentStr = "  ".repeat(indent);
+
+    if (value === null) {
+      return <span className="text-purple-400">null</span>;
+    }
+
+    if (typeof value === "boolean") {
+      return <span className="text-orange-400">{value.toString()}</span>;
+    }
+
+    if (typeof value === "number") {
+      return <span className="text-cyan-400">{value}</span>;
+    }
+
+    if (typeof value === "string") {
+      return <span className="text-green-400">"{value}"</span>;
+    }
+
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return <span className="text-slate-400">[]</span>;
+      }
+      return (
+        <span>
+          <span className="text-slate-400">[</span>
+          <div className="ml-4">
+            {value.map((item, index) => (
+              <div key={index}>
+                {renderValue(item, indent + 1)}
+                {index < value.length - 1 && <span className="text-slate-400">,</span>}
+              </div>
+            ))}
+          </div>
+          <span className="text-slate-400">]</span>
+        </span>
+      );
+    }
+
+    if (typeof value === "object") {
+      const keys = Object.keys(value);
+      if (keys.length === 0) {
+        return <span className="text-slate-400">{"{}"}</span>;
+      }
+      return (
+        <span>
+          <span className="text-slate-400">{"{"}</span>
+          <div className="ml-4">
+            {keys.map((key, index) => (
+              <div key={key} className="my-1">
+                <span className="text-blue-400">"{key}"</span>
+                <span className="text-slate-400">: </span>
+                {renderValue(value[key], indent + 1)}
+                {index < keys.length - 1 && <span className="text-slate-400">,</span>}
+              </div>
+            ))}
+          </div>
+          <span className="text-slate-400">{"}"}</span>
+        </span>
+      );
+    }
+
+    return <span className="text-slate-400">{String(value)}</span>;
+  };
+
+  if (parseError) {
+    return (
+      <div className="text-red-400 p-4 bg-red-950/20 rounded border border-red-800">
+        <div className="font-semibold mb-2">⚠ {parseError}</div>
+        <div className="text-sm text-slate-300 font-mono whitespace-pre-wrap break-all">
+          {jsonString}
+        </div>
+      </div>
+    );
+  }
+
+  if (!parsedJson) {
+    return <div className="text-slate-400">Loading...</div>;
+  }
+
+  return <div className="text-slate-100 leading-relaxed">{renderValue(parsedJson)}</div>;
+};
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("organisations");
@@ -161,6 +263,11 @@ export default function AdminDashboard() {
     email: "",
     password: ""
   });
+
+  // Properties Viewer Modal State
+  const [propertiesModalOpen, setPropertiesModalOpen] = useState(false);
+  const [selectedLogProperties, setSelectedLogProperties] = useState<string | null>(null);
+  const [selectedLogException, setSelectedLogException] = useState<string | null>(null);
 
   // Fetch Data
   const fetchOrganisations = async () => {
@@ -986,7 +1093,7 @@ export default function AdminDashboard() {
               <p className="text-xs text-muted-foreground">Administrator</p>
             </div> */}
 
-            Hi,  {user?.firstName  + " " + user?.lastName || user?.username || "User"}   <UserButton afterSignOutUrl="/" />
+            Hi,  {user?.firstName + " " + user?.lastName || user?.username || "User"}   <UserButton afterSignOutUrl="/" />
           </div>
         </div>
       </header>
@@ -1465,7 +1572,7 @@ export default function AdminDashboard() {
                   <h2 className="text-2xl font-bold tracking-tight text-slate-900">Enquiry Management</h2>
                   <p className="text-muted-foreground">Review and convert leads from sign-up enquiries.</p>
                 </div>
-                
+
               </div>
               <Card className="border shadow-sm">
                 {/* Filter Section */}
@@ -1511,19 +1618,19 @@ export default function AdminDashboard() {
                       />
                     </div>
                     <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={exportEnquiriesToCSV}
-                  className="gap-2 text-white cursor-pointer bg-red-500 md:ms-auto"
-                >
-                  <Download className="size-4" />
-                  Export to CSV
-                </Button>
+                      variant="outline"
+                      size="sm"
+                      onClick={exportEnquiriesToCSV}
+                      className="gap-2 text-white cursor-pointer bg-red-500 md:ms-auto"
+                    >
+                      <Download className="size-4" />
+                      Export to CSV
+                    </Button>
                   </div>
                   {(enquirySearch || dateFrom || dateTo) && (
                     <div className="mt-3 flex items-center gap-2">
                       <Button
-                        variant="ghost" 
+                        variant="ghost"
                         size="sm"
                         onClick={() => {
                           setEnquirySearch("");
@@ -1852,21 +1959,7 @@ export default function AdminDashboard() {
                   </CardContent>
                 </Card>
 
-                <Card className="border shadow-sm">
-                  <CardHeader>
-                    <CardTitle>Message Center</CardTitle>
-                    <CardDescription>Broadcast notifications to all tenants.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Textarea placeholder="Type your message here..." id="broadcast-msg" />
-                    <Button className="w-full cursor-pointer" onClick={() => {
-                      const msg = (document.getElementById('broadcast-msg') as HTMLTextAreaElement).value;
-                      handleSendNotification(msg);
-                    }}>
-                      <MessageSquare className="mr-2 size-4" /> Send Broadcast
-                    </Button>
-                  </CardContent>
-                </Card>
+                <AdminBroadcastNotification />
               </div>
             </TabsContent>
 
@@ -1879,45 +1972,45 @@ export default function AdminDashboard() {
                       <h2 className="text-2xl font-bold tracking-tight text-slate-900">Billing Plans</h2>
                       <p className="text-muted-foreground">Manage subscription plans and pricing</p>
                     </div>
-                  
+
                   </div>
 
                   {/* Search and Filter */}
                   <Card className="border border-1 l shadow-sm mb-4">
                     <CardContent className="p-4">
                       <div className="flex flex-col md:flex-row justify-between ">
-                       <div className="flex">
+                        <div className="flex">
 
-                        <div className="">
-                          <Input
-                            placeholder="Search plans..."
-                            value={plansSearch}
-                            className="w-auto"
-                            onChange={(e) => setPlansSearch(e.target.value)}
+                          <div className="">
+                            <Input
+                              placeholder="Search plans..."
+                              value={plansSearch}
+                              className="w-auto"
+                              onChange={(e) => setPlansSearch(e.target.value)}
                             />
+                          </div>
+                          <div className="border mx-2 border-1 rounded-md">
+
+                            <Select value={plansStatusFilter} onValueChange={setPlansStatusFilter}>
+                              <SelectTrigger className="w-auto border rounded">
+                                <SelectValue placeholder="Filter by status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Plans</SelectItem>
+                                <SelectItem value="active">Active Only</SelectItem>
+                                <SelectItem value="inactive">Inactive Only</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
-                        <div className="border mx-2 border-1 rounded-md">
-                          
-                        <Select value={plansStatusFilter} onValueChange={setPlansStatusFilter}>
-                          <SelectTrigger className="w-auto border rounded">
-                            <SelectValue placeholder="Filter by status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Plans</SelectItem>
-                            <SelectItem value="active">Active Only</SelectItem>
-                            <SelectItem value="inactive">Inactive Only</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <div>
+
+                          <Button className="cursor-pointer" onClick={handleCreatePlanClick}>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create Plan
+                          </Button>
                         </div>
                       </div>
-                      <div>
-                        
-                        <Button className="cursor-pointer" onClick={handleCreatePlanClick}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create Plan
-                    </Button>
-                      </div>
-                            </div>
                     </CardContent>
                   </Card>
 
@@ -1972,7 +2065,7 @@ export default function AdminDashboard() {
                               <TableCell className="text-right">
                                 <div className="flex gap-2 justify-end">
                                   <Button
-                                   className="h-8 px-2 cursor-pointer bg-indigo-500 hover:text-white text-white hover:bg-indigo-600"
+                                    className="h-8 px-2 cursor-pointer bg-indigo-500 hover:text-white text-white hover:bg-indigo-600"
                                     variant="outline"
                                     size="sm"
                                     onClick={() => handleEditPlanClick(plan)}
@@ -2116,22 +2209,22 @@ export default function AdminDashboard() {
                             <Label htmlFor="planBillingCycle">
                               Billing Cycle <span className="text-red-500">*</span>
                             </Label>
-                           <div   className="border border-1 rounded-md border-gray-300">
+                            <div className="border border-1 rounded-md border-gray-300">
 
-                            <Select
-                         
-                              value={planFormData.billingCycle}
-                              onValueChange={(value) => setPlanFormData({ ...planFormData, billingCycle: value })}
-                              disabled={hasActiveSubscriptions && !!editingPlanId}
-                            >
-                              <SelectTrigger id="planBillingCycle">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="MONTHLY">Monthly</SelectItem>
-                                <SelectItem value="YEARLY">Yearly</SelectItem>
-                              </SelectContent>
-                            </Select>
+                              <Select
+
+                                value={planFormData.billingCycle}
+                                onValueChange={(value) => setPlanFormData({ ...planFormData, billingCycle: value })}
+                                disabled={hasActiveSubscriptions && !!editingPlanId}
+                              >
+                                <SelectTrigger id="planBillingCycle">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="MONTHLY">Monthly</SelectItem>
+                                  <SelectItem value="YEARLY">Yearly</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
                             {hasActiveSubscriptions && editingPlanId && (
                               <p className="text-xs text-muted-foreground">
@@ -2148,7 +2241,7 @@ export default function AdminDashboard() {
                               Features <span className="text-red-500">*</span>
                             </Label>
                             <Button
-                            className="text-white cursor-pointer bg-red-500"
+                              className="text-white cursor-pointer bg-red-500"
                               type="button"
                               variant="outline"
                               size="sm"
@@ -2415,23 +2508,23 @@ export default function AdminDashboard() {
                     {/* Log Level Filter */}
                     <div className="space-y-2">
                       <Label htmlFor="logsLevel">Log Level</Label>
-                     <div className="border border-1 rounded-md">
+                      <div className="border border-1 rounded-md">
 
-                      <Select value={logsLevel} onValueChange={(value) => {
-                        setLogsLevel(value);
-                        setLogsPage(1);
-                      }}>
-                        <SelectTrigger id="logsLevel">
-                          <SelectValue placeholder="All Levels" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Levels</SelectItem>
-                          <SelectItem value="Info">Info</SelectItem>
-                          <SelectItem value="Warning">Warning</SelectItem>
-                          <SelectItem value="Error">Error</SelectItem>
-                        </SelectContent>
-                      </Select>
-                        </div>
+                        <Select value={logsLevel} onValueChange={(value) => {
+                          setLogsLevel(value);
+                          setLogsPage(1);
+                        }}>
+                          <SelectTrigger id="logsLevel">
+                            <SelectValue placeholder="All Levels" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Levels</SelectItem>
+                            <SelectItem value="Info">Info</SelectItem>
+                            <SelectItem value="Warning">Warning</SelectItem>
+                            <SelectItem value="Error">Error</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
 
                     {/* Date From */}
@@ -2491,10 +2584,10 @@ export default function AdminDashboard() {
                     <Table>
                       <TableHeader className="bg-slate-50">
                         <TableRow>
-                          <TableHead className="w-[100px]">Level</TableHead>
-                          <TableHead>Message</TableHead>
-                          <TableHead className="w-[200px]">Timestamp</TableHead>
-                          <TableHead className="w-[150px]">Properties</TableHead>
+                          <TableHead className="w-[110px]">Level</TableHead>
+                          <TableHead className="max-w-[400px]">Message</TableHead>
+                          <TableHead className="w-[180px]">Timestamp</TableHead>
+                          <TableHead className="w-[160px]">Properties</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -2518,15 +2611,34 @@ export default function AdminDashboard() {
                                   {log.level}
                                 </Badge>
                               </TableCell>
-                              <TableCell className="font-medium">{log.message}</TableCell>
+                              <TableCell className="max-w-[400px]">
+                                <div
+                                  className="truncate font-medium cursor-help"
+                                  title={log.message || ''}
+                                >
+                                  {log.message}
+                                </div>
+                              </TableCell>
                               <TableCell className="text-muted-foreground text-sm">
                                 {new Date(log.timeStamp).toLocaleString()}
                               </TableCell>
-                              <TableCell className="text-xs text-muted-foreground truncate max-w-[150px]">
-                                {log.properties ? (
-                                  <span title={log.properties}>{log.properties}</span>
+                              <TableCell>
+                                {log.properties || log.exception ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="cursor-pointer h-8 gap-2"
+                                    onClick={() => {
+                                      setSelectedLogProperties(log.properties);
+                                      setSelectedLogException(log.exception);
+                                      setPropertiesModalOpen(true);
+                                    }}
+                                  >
+                                    <FileJson className="h-4 w-4" />
+                                    View Details
+                                  </Button>
                                 ) : (
-                                  '-'
+                                  <span className="text-muted-foreground text-sm">-</span>
                                 )}
                               </TableCell>
                             </TableRow>
@@ -2573,6 +2685,97 @@ export default function AdminDashboard() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* JSON Properties Viewer Modal */}
+              <Dialog open={propertiesModalOpen} onOpenChange={setPropertiesModalOpen}>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <FileJson className="h-5 w-5 text-primary" />
+                      Log Properties
+                    </DialogTitle>
+                    <DialogDescription>
+                      Detailed view of the log entry properties in JSON format
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="flex-1 overflow-hidden flex flex-col gap-4">
+                    {selectedLogProperties || selectedLogException ? (
+                      <div className="flex-1 overflow-auto space-y-4">
+                        {/* Properties Section */}
+                        {selectedLogProperties && (
+                          <div className="relative">
+                            <div className="flex items-center justify-between mb-2">
+                              <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                                <FileJson className="h-4 w-4 text-blue-600" />
+                                Properties
+                              </h3>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="cursor-pointer gap-2 h-7 text-xs"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(selectedLogProperties);
+                                  toast.success("Properties copied to clipboard");
+                                }}
+                              >
+                                <Download className="h-3 w-3" />
+                                Copy
+                              </Button>
+                            </div>
+                            <div className="bg-slate-950 rounded-lg p-6 font-mono text-sm overflow-x-auto">
+                              <JsonViewer jsonString={selectedLogProperties} />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Exception Section */}
+                        {selectedLogException && (
+                          <div className="relative">
+                            <div className="flex items-center justify-between mb-2">
+                              <h3 className="text-sm font-semibold text-red-700 flex items-center gap-2">
+                                <X className="h-4 w-4 text-red-600" />
+                                Exception
+                              </h3>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="cursor-pointer gap-2 h-7 text-xs border-red-300 hover:bg-red-50"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(selectedLogException);
+                                  toast.success("Exception copied to clipboard");
+                                }}
+                              >
+                                <Download className="h-3 w-3" />
+                                Copy
+                              </Button>
+                            </div>
+                            <div className="bg-red-950 rounded-lg p-6 font-mono text-sm overflow-x-auto border border-red-800">
+                              <pre className="text-red-200 whitespace-pre-wrap break-words leading-relaxed">
+                                {selectedLogException}
+                              </pre>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-40 text-muted-foreground">
+                        No properties available
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end pt-4 border-t">
+                    <Button
+                      variant="outline"
+                      className="cursor-pointer"
+                      onClick={() => setPropertiesModalOpen(false)}
+                    >
+                      Close
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </TabsContent>
 
           </div>
