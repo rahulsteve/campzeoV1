@@ -58,7 +58,6 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const now = new Date();
         console.log(`[Scheduler] Running at ${now.toISOString()}`);
 
         // 3. Find all scheduled posts that are due to be sent
