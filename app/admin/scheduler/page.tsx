@@ -6,8 +6,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Loader2, Play, CheckCircle, XCircle, Clock, RefreshCw, Settings } from 'lucide-react';
+import { Loader2, Play, CheckCircle, XCircle, Clock, RefreshCw, Settings, Timer } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 interface SchedulerResult {
     success: boolean;
@@ -31,6 +38,8 @@ export default function SchedulerTestPage() {
     const [isEnabled, setIsEnabled] = useState(false);
     const [result, setResult] = useState<SchedulerResult | null>(null);
     const [lastRun, setLastRun] = useState<string | null>(null);
+    const [frequency, setFrequency] = useState<string>("5");
+    const [nextRunIn, setNextRunIn] = useState<string>("");
 
     const jobId = 'campaign-post-scheduler';
 
@@ -46,6 +55,10 @@ export default function SchedulerTestPage() {
                     const setting = data.data.find((s: any) => s.jobId === jobId);
                     if (setting) {
                         setIsEnabled(setting.isEnabled);
+                        setFrequency(setting.cronExpression || "5");
+                        if (setting.lastRunAt) {
+                            setLastRun(setting.lastRunAt);
+                        }
                     }
                 }
             } catch (error) {
@@ -58,7 +71,40 @@ export default function SchedulerTestPage() {
         fetchSettings();
     }, []);
 
-    const handleToggleSettings = async (checked: boolean) => {
+    // Calculate next run estimation
+    useEffect(() => {
+        const calculateNextRun = () => {
+            if (!isEnabled) {
+                setNextRunIn("Scheduler disabled");
+                return;
+            }
+
+            const now = new Date();
+            const freqMins = parseInt(frequency) || 5;
+
+            // Assuming it runs on fixed intervals of the hour (00, 05, 10, etc.)
+            const currentMinutes = now.getMinutes();
+            const nextMinutes = Math.ceil((currentMinutes + 0.1) / freqMins) * freqMins;
+
+            const nextRun = new Date(now);
+            nextRun.setMinutes(nextMinutes);
+            nextRun.setSeconds(0);
+            nextRun.setMilliseconds(0);
+
+            const diffMs = nextRun.getTime() - now.getTime();
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffSecs = Math.floor((diffMs % 60000) / 1000);
+
+            setNextRunIn(`${diffMins}m ${diffSecs}s`);
+        };
+
+        const timer = setInterval(calculateNextRun, 1000);
+        calculateNextRun();
+
+        return () => clearInterval(timer);
+    }, [isEnabled, frequency]);
+
+    const handleUpdateSettings = async (updates: { isEnabled?: boolean, frequency?: string }) => {
         try {
             setLoadingSettings(true);
             const response = await fetch('/api/admin/job-settings', {
@@ -66,14 +112,16 @@ export default function SchedulerTestPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     jobId,
-                    isEnabled: checked
+                    isEnabled: updates.isEnabled !== undefined ? updates.isEnabled : isEnabled,
+                    cronExpression: updates.frequency !== undefined ? updates.frequency : frequency
                 }),
             });
 
             const data = await response.json();
             if (data.isSuccess) {
-                setIsEnabled(checked);
-                toast.success(`Scheduler ${checked ? 'enabled' : 'disabled'} successfully`);
+                if (updates.isEnabled !== undefined) setIsEnabled(updates.isEnabled);
+                if (updates.frequency !== undefined) setFrequency(updates.frequency);
+                toast.success('Scheduler settings updated successfully');
             } else {
                 throw new Error(data.message || 'Failed to update settings');
             }
@@ -94,6 +142,7 @@ export default function SchedulerTestPage() {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET || 'test-secret-key'}`,
+                    'x-manual-run': 'true',
                 },
             });
 
@@ -161,18 +210,54 @@ export default function SchedulerTestPage() {
                                         <Switch
                                             id="scheduler-toggle"
                                             checked={isEnabled}
-                                            onCheckedChange={handleToggleSettings}
+                                            onCheckedChange={(checked) => handleUpdateSettings({ isEnabled: checked })}
                                             disabled={loadingSettings}
                                         />
                                     </div>
                                 </div>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="frequency">Check Frequency</Label>
+                                        <Select
+                                            value={frequency}
+                                            onValueChange={(value) => handleUpdateSettings({ frequency: value })}
+                                            disabled={loadingSettings}
+                                        >
+                                            <SelectTrigger id="frequency">
+                                                <SelectValue placeholder="Select frequency" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="5">Every 5 minutes</SelectItem>
+                                                <SelectItem value="10">Every 10 minutes</SelectItem>
+                                                <SelectItem value="15">Every 15 minutes</SelectItem>
+                                                <SelectItem value="30">Every 30 minutes</SelectItem>
+                                                <SelectItem value="60">Every 1 hour</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <p className="text-xs text-muted-foreground">
+                                            How often the system checks for and sends scheduled posts.
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>Next Automatic Run</Label>
+                                        <div className="h-9 flex items-center px-3 rounded-md bg-muted/50 border border-dashed font-mono text-sm">
+                                            <Timer className="size-4 mr-2 text-primary" />
+                                            {nextRunIn}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            Estimated time until the next automatic check.
+                                        </p>
+                                    </div>
+                                </div>
+
                                 <div className="text-sm text-muted-foreground bg-muted/30 p-3 rounded-lg border border-dashed flex items-start gap-2">
                                     <Clock className="size-4 mt-0.5 text-primary" />
                                     <div>
                                         {isEnabled ? (
-                                            <p>The scheduler is currently <strong>running automatically</strong> every 5 minutes in production.</p>
+                                            <p>The scheduler is currently <strong>running automatically</strong> every {frequency} minutes in production.</p>
                                         ) : (
                                             <p>The scheduler is <strong>stopped</strong>. No scheduled posts will be sent automatically until re-enabled.</p>
                                         )}
