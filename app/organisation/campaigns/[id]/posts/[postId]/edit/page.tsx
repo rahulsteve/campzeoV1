@@ -877,6 +877,7 @@ export default function EditPostPage() {
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="youtubePrivacy">Privacy Status</Label>
+                                            <div className="border rounded-md">
                                             <Select value={youtubePrivacy} onValueChange={setYoutubePrivacy}>
                                                 <SelectTrigger id="youtubePrivacy">
                                                     <SelectValue />
@@ -887,6 +888,7 @@ export default function EditPostPage() {
                                                     <SelectItem value="unlisted">Unlisted</SelectItem>
                                                 </SelectContent>
                                             </Select>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

@@ -59,6 +59,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { constants } from "buffer";
 import { JSX } from "react/jsx-runtime";
 import { AdminBroadcastNotification } from "@/components/admin/admin-broadcast-notification";
+import { AdminSchedulerView } from "@/components/admin/admin-scheduler-view";
+import { Clock } from "lucide-react";
 
 // JSON Viewer Component with Syntax Highlighting
 const JsonViewer = ({ jsonString }: { jsonString: string }) => {
@@ -1127,6 +1129,9 @@ export default function AdminDashboard() {
               <TabsTrigger value="logs" className="justify-start px-4 py-3 data-[state=active]:bg-primary data-[state=active]:text-white hover:bg-red-800 hover:text-slate-200 transition-all rounded-md mx-2">
                 <CheckCircle className="mr-3 size-4" /> Audit Logs
               </TabsTrigger>
+              <TabsTrigger value="scheduler" className="justify-start px-4 py-3 data-[state=active]:bg-primary data-[state=active]:text-white hover:bg-red-800 hover:text-slate-200 transition-all rounded-md mx-2">
+                <Clock className="mr-3 size-4" /> Scheduler
+              </TabsTrigger>
             </TabsList>
           </div>
         </div>
@@ -1934,20 +1939,23 @@ export default function AdminDashboard() {
               <div className="mb-6">
                 <h2 className="text-2xl font-bold tracking-tight text-slate-900">System Settings</h2>
               </div>
-              <div className="grid gap-6 md:grid-cols-2">
-                <Card className="border shadow-sm">
+              <div className="">
+                {/* <Card className="border shadow-sm">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div>
                         <CardTitle>Job Settings</CardTitle>
                         <CardDescription>Configure background jobs.</CardDescription>
                       </div>
-                      <Link href="/admin/scheduler">
-                        <Button variant="outline" size="sm" className="gap-2">
-                          Manage Automation & Scheduler
-                          <ExternalLink className="size-3" />
-                        </Button>
-                      </Link>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2 cursor-pointer"
+                        onClick={() => setActiveTab("scheduler")}
+                      >
+                        Manage Automation & Scheduler
+                        <ExternalLink className="size-3" />
+                      </Button>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -1969,10 +1977,15 @@ export default function AdminDashboard() {
                       );
                     })}
                   </CardContent>
-                </Card>
+                </Card> */}
 
                 <AdminBroadcastNotification />
               </div>
+            </TabsContent>
+
+            {/* Scheduler Management */}
+            <TabsContent value="scheduler" className="m-0 focus-visible:outline-none">
+              <AdminSchedulerView />
             </TabsContent>
 
             {/* 4. Billing Plans */}

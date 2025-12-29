@@ -1266,6 +1266,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                 </div>
                                                 <div className="space-y-2">
                                                     <Label htmlFor="youtubePrivacy">Privacy Status</Label>
+                                                    <div className="border rounded-md">
                                                     <Select value={youtubePrivacy} onValueChange={setYoutubePrivacy}>
                                                         <SelectTrigger id="youtubePrivacy">
                                                             <SelectValue />
@@ -1276,6 +1277,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                             <SelectItem value="unlisted">Unlisted</SelectItem>
                                                         </SelectContent>
                                                     </Select>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div className="space-y-2 pt-2">

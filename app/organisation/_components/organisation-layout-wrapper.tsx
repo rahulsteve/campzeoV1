@@ -20,6 +20,7 @@ import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useState } from "react";
 import { SignedIn, UserButton } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 // Navigation items configuration
 const navItems = [
@@ -74,6 +75,16 @@ export function OrganisationLayoutWrapper({
     document.cookie = "admin_impersonation=; path=/; max-age=0";
     window.location.href = "/admin";
   };
+
+  useEffect(() => {
+    // Prevent the body from scrolling while in the organisation layout
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      // Re-enable scrolling when leaving the organisation layout
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
 
   return (
 
@@ -153,9 +164,9 @@ export function OrganisationLayoutWrapper({
         </main>
 
       </div>
-            <footer className="flex-shrink-0 border-t bg-background p-4 text-center text-sm text-muted-foreground">
-              &copy; {new Date().getFullYear()} CampZeo. All rights reserved.
-            </footer>
+      <footer className="flex-shrink-0 border-t bg-background p-4 text-center text-sm text-muted-foreground">
+        &copy; {new Date().getFullYear()} CampZeo. All rights reserved.
+      </footer>
     </div>
   );
 }

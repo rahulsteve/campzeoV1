@@ -136,6 +136,7 @@ export function AdminBroadcastNotification() {
     );
 
     return (
+        
         <Card>
             <CardHeader>
                 <CardTitle>Broadcast Notifications</CardTitle>
@@ -153,7 +154,7 @@ export function AdminBroadcastNotification() {
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
                         rows={4}
-                        className="resize-none"
+                        className="resize-none border rounded-md border-dark"
                     />
                 </div>
 

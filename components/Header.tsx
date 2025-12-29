@@ -18,10 +18,10 @@ export function Header() {
                 <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
                     <Home className="size-5" />
                 </Button>
+                <SignedIn>
                 <Button variant="ghost" size="icon">
                     <Bell className="size-5" />
                 </Button>
-                <SignedIn>
                     <UserButton />
                 </SignedIn>
             </div>
