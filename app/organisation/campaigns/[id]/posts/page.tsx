@@ -87,8 +87,15 @@ export default function CampaignPostsPage() {
     const [loading, setLoading] = useState(true);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [deletePostId, setDeletePostId] = useState<number | null>(null);
-    const [filterPlatform, setFilterPlatform] = useState<string>('all');
+
+    // Filter State
+    const [activeTab, setActiveTab] = useState('all');
     const [filterStatus, setFilterStatus] = useState<string>('all');
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
+
     const [organisationPlatforms, setOrganisationPlatforms] = useState<string[]>([]);
 
     // Preview & Share State
@@ -142,9 +149,14 @@ export default function CampaignPostsPage() {
         fetchData();
     }, [campaignId, router]);
 
+    // Reset page on filter change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [activeTab, filterStatus]);
+
     // Filter posts
     const filteredPosts = posts.filter((post) => {
-        const platformMatch = filterPlatform === 'all' || post.type === filterPlatform;
+        const platformMatch = activeTab === 'all' || post.type === activeTab;
         const statusMatch = filterStatus === 'all' ||
             (filterStatus === 'sent' && post.isPostSent) ||
             (filterStatus === 'pending' && !post.isPostSent) ||
@@ -152,14 +164,12 @@ export default function CampaignPostsPage() {
         return platformMatch && statusMatch;
     });
 
-    // Group posts by platform
-    const groupedPosts = filteredPosts.reduce((acc, post) => {
-        if (!acc[post.type]) {
-            acc[post.type] = [];
-        }
-        acc[post.type].push(post);
-        return acc;
-    }, {} as Record<string, Post[]>);
+    // Pagination Logic
+    const totalPages = Math.ceil(filteredPosts.length / ITEMS_PER_PAGE);
+    const paginatedPosts = filteredPosts.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    );
 
     // Handle delete post
     const handleDeletePost = async (postId: number) => {
@@ -410,80 +420,61 @@ export default function CampaignPostsPage() {
                             </Button>
                         </div>
 
-                        {/* Filters */}
-                        <Card>
-                            <CardContent className="pt-6">
-                                <div className="flex flex-col md:flex-row gap-4">
-                                    <div className="flex items-center gap-2 flex-1 ">
-                                        <Filter className="size-4 text-muted-foreground" />
-                                        <Select value={filterPlatform} onValueChange={setFilterPlatform}>
-                                            <SelectTrigger className="w-[200px] border border-gray-200">
-                                                <SelectValue placeholder="Filter by platform" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="all">All Platforms</SelectItem>
-                                                <SelectItem value="EMAIL">Email</SelectItem>
-                                                <SelectItem value="SMS">SMS</SelectItem>
-                                                <SelectItem value="WHATSAPP">WhatsApp</SelectItem>
-                                                <SelectItem value="FACEBOOK">Facebook</SelectItem>
-                                                <SelectItem value="INSTAGRAM">Instagram</SelectItem>
-                                                <SelectItem value="LINKEDIN">LinkedIn</SelectItem>
-                                                <SelectItem value="YOUTUBE">YouTube</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+                        {/* Tabs & Filters */}
+                        <div className="space-y-4">
+                            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
+                                    <TabsList>
+                                        <TabsTrigger value="all">All</TabsTrigger>
+                                        {organisationPlatforms.map(platform => (
+                                            <TabsTrigger key={platform} value={platform}>
+                                                {platform}
+                                            </TabsTrigger>
+                                        ))}
+                                    </TabsList>
+                                </Tabs>
 
-                                    <Select value={filterStatus} onValueChange={setFilterStatus}>
-                                        <SelectTrigger className="w-[200px] border border-gray-200">
-                                            <SelectValue placeholder="Filter by status" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">All Status</SelectItem>
-                                            <SelectItem value="scheduled">Scheduled</SelectItem>
-                                            <SelectItem value="sent">Sent</SelectItem>
-                                            <SelectItem value="pending">Pending</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                                    <SelectTrigger className="w-[180px]">
+                                        <SelectValue placeholder="All Status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Status</SelectItem>
+                                        <SelectItem value="scheduled">Scheduled</SelectItem>
+                                        <SelectItem value="sent">Sent</SelectItem>
+                                        <SelectItem value="pending">Pending</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
-                        {/* Posts Grouped by Platform */}
-                        {filteredPosts.length === 0 ? (
+                            {/* Posts List */}
                             <Card>
-                                <CardContent className="text-center py-12">
-                                    <Send className="size-12 mx-auto text-muted-foreground mb-4" />
-                                    <p className="text-muted-foreground mb-4">
-                                        {posts.length === 0 ? 'No posts yet' : 'No posts match your filters'}
-                                    </p>
-                                    <Button className='cursor-pointer' onClick={() => router.push(`/organisation/campaigns/${campaignId}/posts/new`)}>
-                                        <Plus className="size-4 mr-2" />
-                                        Add Your First Post
-                                    </Button>
-                                </CardContent>
-                            </Card>
-                        ) : (
-                            Object.entries(groupedPosts).map(([platform, platformPosts]) => (
-                                <Card key={platform}>
-                                    <CardHeader>
-                                        <div className="flex items-center gap-3">
-                                            {getPlatformIcon(platform)}
-                                            <div>
-                                                <CardTitle>{platform}</CardTitle>
-                                                <CardDescription>
-                                                    {platformPosts.length} {platformPosts.length === 1 ? 'post' : 'posts'}
-                                                </CardDescription>
-                                            </div>
+                                <CardContent className="pt-6">
+                                    {filteredPosts.length === 0 ? (
+                                        <div className="text-center py-12">
+                                            <Send className="size-12 mx-auto text-muted-foreground mb-4" />
+                                            <p className="text-muted-foreground mb-4">
+                                                No posts found.
+                                            </p>
+                                            <Button className='cursor-pointer' onClick={() => router.push(`/organisation/campaigns/${campaignId}/posts/new`)}>
+                                                <Plus className="size-4 mr-2" />
+                                                Create Post
+                                            </Button>
                                         </div>
-                                    </CardHeader>
-                                    <CardContent>
+                                    ) : (
                                         <div className="space-y-4">
-                                            {platformPosts.map((post) => (
+                                            {paginatedPosts.map((post) => (
                                                 <div
                                                     key={post.id}
                                                     className="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                                                 >
                                                     <div className="flex-1 space-y-2">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            {getPlatformIcon(post.type)}
+                                                            <span className="text-xs font-semibold uppercase text-muted-foreground">
+                                                                {post.type}
+                                                            </span>
+                                                        </div>
                                                         {post.subject && (
                                                             <h4 className="font-medium">{post.subject}</h4>
                                                         )}
@@ -563,11 +554,38 @@ export default function CampaignPostsPage() {
                                                     </div>
                                                 </div>
                                             ))}
+
+                                            {/* Pagination */}
+                                            {totalPages > 1 && (
+                                                <div className="flex items-center justify-between pt-4 border-t">
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Page {currentPage} of {totalPages}
+                                                    </p>
+                                                    <div className="flex items-center gap-2">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                                            disabled={currentPage === 1}
+                                                        >
+                                                            Previous
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                                            disabled={currentPage === totalPages}
+                                                        >
+                                                            Next
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
-                                    </CardContent>
-                                </Card>
-                            ))
-                        )}
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
                     </div>
                 </main>
             </div>

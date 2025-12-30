@@ -50,6 +50,7 @@ export async function createClerkUser(params: CreateUserParams) {
             lastName: lastName?.trim() || undefined,
             skipPasswordChecks: true,
             skipPasswordRequirement: false,
+            legalAcceptedAt: new Date(), // Set current date as legal consent acceptance
         });
 
         console.log('User created successfully:', user.id);

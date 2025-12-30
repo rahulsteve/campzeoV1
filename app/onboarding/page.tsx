@@ -32,8 +32,6 @@ export default function OnboardingPage() {
 
   const [loading, setLoading] = useState(false);
   const [accountType, setAccountType] = useState<"business" | "individual">("business");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
@@ -41,8 +39,6 @@ export default function OnboardingPage() {
 
   const [form, setForm] = useState({
     email: "",
-    password: "",
-    confirmPassword: "",
     name: "",
     organisationName: "",
     mobile: "",
@@ -169,8 +165,6 @@ export default function OnboardingPage() {
     // Validation
     const requiredFields: Record<string, string> = {
       email: "Email",
-      password: "Password",
-      confirmPassword: "Confirm Password",
       name: "Owner Name",
       mobile: "Mobile Number",
       address: "Address",
@@ -194,12 +188,7 @@ export default function OnboardingPage() {
       }
     }
 
-    if (form.password !== form.confirmPassword) {
-      toast.error("Password Mismatch", {
-        description: "Passwords do not match.",
-      });
-      return;
-    }
+
 
     const submissionForm = {
       ...form,
@@ -217,14 +206,7 @@ export default function OnboardingPage() {
       return;
     }
 
-    // Password validation
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-    if (!passwordRegex.test(form.password)) {
-      toast.error("Weak Password", {
-        description: "Password must be at least 8 characters with 1 uppercase, 1 lowercase, and 1 number.",
-      });
-      return;
-    }
+
 
     // Mobile validation
     if (form.mobile.length < 10) {
@@ -647,52 +629,7 @@ export default function OnboardingPage() {
                 </div>
               )}
 
-              <div className="col-span-1 md:col-span-2 space-y-2">
-                <Label htmlFor="password">Password <span className="text-destructive">*</span></Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Create a strong password"
-                    value={form.password}
-                    onChange={handleChange}
-                    className="h-10 pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
 
-              <div className="col-span-1 md:col-span-2 space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password <span className="text-destructive">*</span></Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Repeat your password"
-                    value={form.confirmPassword}
-                    onChange={handleChange}
-                    className="h-10 pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Must contain at least 8 characters, 1 uppercase, 1 lowercase, and 1 number.
-                </p>
-              </div>
 
               <div className="col-span-1 md:col-span-2 space-y-2">
                 <Label htmlFor="enquiryText">Why are you interested in Campzeo? <span className="text-destructive">*</span></Label>

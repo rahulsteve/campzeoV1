@@ -79,6 +79,8 @@ You need to configure the following environment variables in Vercel:
 - `NEXT_PUBLIC_RAZORPAY_KEY_ID` - Razorpay public key
 - `RAZORPAY_KEY_SECRET` - Razorpay secret key
 - `BLOB_READ_WRITE_TOKEN` - Vercel Blob storage token
+- `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` - Google reCAPTCHA Site Key (v2 Checkbox)
+- `RECAPTCHA_SECRET_KEY` - Google reCAPTCHA Secret Key
 
 #### Email Service (Choose one):
 **SendGrid:**

@@ -50,9 +50,6 @@ export async function POST(req: Request) {
         if (!data.email || data.email.trim() === '') {
             errors.push("Email is required");
         }
-        if (!data.password || data.password.trim() === '') {
-            errors.push("Password is required");
-        }
         if (!data.organisationName || data.organisationName.trim() === '') {
             errors.push("Organisation name is required");
         }

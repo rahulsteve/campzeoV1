@@ -1,4 +1,4 @@
-import { currentUser } from "@clerk/nextjs/server";
+import { currentUser, clerkClient } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { createClerkUser } from "@/lib/clerk-admin";
@@ -70,68 +70,71 @@ export async function POST(req: Request) {
             );
         }
 
-        // Step 1: Validate password exists in enquiry
-        if (!enquiry.password || enquiry.password.trim() === '') {
-            return NextResponse.json(
-                {
-                    isSuccess: false,
-                    error: "Password not found in enquiry",
-                    details: "The enquiry must have a password before it can be converted to an organization."
-                },
-                { status: 400 }
-            );
-        }
-
-        const password = enquiry.password.trim();
-
-        console.log('=== Converting Enquiry to Organisation ===');
-        console.log('Enquiry ID:', enquiry.id);
-        console.log('Email:', enquiry.email);
-        console.log('Name:', enquiry.name);
-        console.log('Organisation Name:', enquiry.organisationName);
-        console.log('Password exists:', !!enquiry.password);
-        console.log('Password length:', password.length);
-
-        // Step 2: Create Clerk user
+        // Step 2: Create or link Clerk user
         let clerkUser;
         try {
-            // Generate username from name field (remove spaces, lowercase, alphanumeric only)
-            const username = enquiry.name
-                .toLowerCase()
-                .replace(/\s+/g, '') // Remove all spaces
-                .replace(/[^a-z0-9]/g, ''); // Keep only alphanumeric
+            const client = await clerkClient();
 
-            if (!username || username.length === 0) {
-                throw new Error('Invalid name - cannot generate username');
-            }
-
-            // Split name into firstName and lastName
-            const nameParts = enquiry.name.trim().split(/\s+/);
-            const firstName = nameParts[0];
-            const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined;
-
-            console.log('Generated username from name:', username);
-            console.log('Split name - firstName:', firstName, 'lastName:', lastName);
-
-            clerkUser = await createClerkUser({
-                email: enquiry.email.trim(),
-                password: password,
-                firstName: firstName,
-                lastName: lastName,
-                username: username,
+            // Check if user already exists in Clerk
+            const existingClerkUsers = await client.users.getUserList({
+                emailAddress: [enquiry.email.trim()],
             });
-            console.log('Clerk user created successfully:', clerkUser.id);
+
+            if (existingClerkUsers.data && existingClerkUsers.data.length > 0) {
+                clerkUser = existingClerkUsers.data[0];
+                console.log('Using existing Clerk user:', clerkUser.id);
+            } else {
+                // User doesn't exist, need to create one. Verify password exists.
+                if (!enquiry.password || enquiry.password.trim() === '') {
+                    return NextResponse.json(
+                        {
+                            isSuccess: false,
+                            error: "Password not found in enquiry",
+                            details: "A password is required to create a new authentication account for this lead."
+                        },
+                        { status: 400 }
+                    );
+                }
+
+                // Generate username from name field
+                const username = enquiry.name
+                    .toLowerCase()
+                    .replace(/\s+/g, '') // Remove all spaces
+                    .replace(/[^a-z0-9]/g, ''); // Keep only alphanumeric
+
+                if (!username || username.length === 0) {
+                    throw new Error('Invalid name - cannot generate username');
+                }
+
+                // Split name into firstName and lastName
+                const nameParts = enquiry.name.trim().split(/\s+/);
+                const firstName = nameParts[0];
+                const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined;
+
+                console.log('Creating new Clerk user for lead...');
+                clerkUser = await createClerkUser({
+                    email: enquiry.email.trim(),
+                    password: enquiry.password.trim(),
+                    firstName: firstName,
+                    lastName: lastName,
+                    username: username,
+                });
+                console.log('Clerk user created successfully:', clerkUser.id);
+            }
         } catch (clerkError: any) {
             console.error('Detailed Clerk error:', clerkError);
-            await logError("Failed to create Clerk user during conversion", {
+            await logError("Failed to handle Clerk user during conversion", {
                 enquiryId,
                 email: enquiry.email,
                 action: "convert-enquiry"
             }, clerkError);
-            throw clerkError; // Re-throw to be caught by outer try-catch
+            throw clerkError;
         }
 
-        // Step 3: Create organisation
+        // Step 3: Create organisation with 14-day free trial
+        const trialStartDate = new Date();
+        const trialEndDate = new Date(trialStartDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+
         const organisation = await prisma.organisation.create({
             data: {
                 name: enquiry.organisationName || enquiry.name,
@@ -145,11 +148,46 @@ export async function POST(req: Request) {
                 state: enquiry.state || undefined,
                 country: enquiry.country || undefined,
                 isApproved: true,
+                isTrial: true,
+                trialStartDate: trialStartDate,
+                trialEndDate: trialEndDate,
             }
         });
 
-        // Step 4: Link organisation to Clerk user in database
-        // Split name for database user as well
+        // Step 4: Handle Plan and Subscription
+        // Find or create FREE_TRIAL plan
+        let dbPlan = await prisma.plan.findFirst({
+            where: { name: 'FREE_TRIAL' }
+        });
+
+        if (!dbPlan) {
+            dbPlan = await prisma.plan.create({
+                data: {
+                    name: 'FREE_TRIAL',
+                    price: 0,
+                    billingCycle: 'MONTHLY',
+                    features: '14-day free trial features',
+                    isActive: true
+                }
+            });
+        }
+
+        // Create active subscription
+        const subscription = await prisma.subscription.create({
+            data: {
+                organisationId: organisation.id,
+                planId: dbPlan.id,
+                startDate: trialStartDate,
+                endDate: trialEndDate,
+                status: 'ACTIVE',
+                autoRenew: true,
+                isTrial: true,
+                trialStartDate: trialStartDate,
+                trialEndDate: trialEndDate,
+            }
+        });
+
+        // Step 5: Link organisation to Clerk user in database
         const nameParts = enquiry.name.trim().split(/\s+/);
         const dbFirstName = nameParts[0];
         const dbLastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined;
@@ -162,15 +200,16 @@ export async function POST(req: Request) {
                 lastName: dbLastName,
                 mobile: enquiry.mobile || undefined,
                 organisationId: organisation.id,
-                isApproved: false,
+                isApproved: true, // Auto-approve the user as well
                 role: 'ORGANISATION_USER',
             },
         });
 
         // Step 5: Send email to user with login credentials
+        // Note: Password might be null if they were already logged in (onboarding flow)
         await sendOrganisationInvite({
             email: enquiry.email,
-            password: password,
+            password: enquiry.password || "Redirect to login", // Fallback for already registered users
             organisationName: enquiry.organisationName || enquiry.name,
             ownerName: enquiry.name,
         });
