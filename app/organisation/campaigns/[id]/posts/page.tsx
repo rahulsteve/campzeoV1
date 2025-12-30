@@ -31,6 +31,7 @@ import {
     DialogTitle,
     DialogFooter,
 } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     ArrowLeft,
     Loader2,
@@ -51,7 +52,8 @@ import {
     Eye,
     Share2,
     Check,
-    Paperclip
+    Paperclip,
+    Globe
 } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { toast } from 'sonner';
@@ -95,6 +97,26 @@ export default function CampaignPostsPage() {
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
+
+    // Helper function for platform icons in tabs
+    const getTabPlatformIcon = (platform: string) => {
+        switch (platform.toUpperCase()) {
+            case 'FACEBOOK': return <Facebook className="size-4" />;
+            case 'INSTAGRAM': return <Instagram className="size-4" />;
+            case 'LINKEDIN': return <Linkedin className="size-4" />;
+            case 'YOUTUBE': return <Youtube className="size-4" />;
+            case 'SMS': return <MessageSquare className="size-4" />;
+            case 'EMAIL': return <Mail className="size-4" />;
+            case 'WHATSAPP': return <Phone className="size-4" />; // Added for consistency with existing getPlatformIcon
+            case 'PINTEREST': // Added for consistency with existing getPlatformIcon
+                return (
+                    <div className="p-0.5 bg-red-600 rounded-full size-4 flex items-center justify-center">
+                        <span className="text-white text-[10px] font-bold">P</span>
+                    </div>
+                );
+            default: return <Globe className="size-4" />;
+        }
+    };
 
     const [organisationPlatforms, setOrganisationPlatforms] = useState<string[]>([]);
 
@@ -294,7 +316,7 @@ export default function CampaignPostsPage() {
         });
     };
 
-    // Get platform icon
+    // Get platform icon for post items
     const getPlatformIcon = (type: string) => {
         switch (type.toUpperCase()) {
             case 'EMAIL':
@@ -423,17 +445,25 @@ export default function CampaignPostsPage() {
                         {/* Tabs & Filters */}
                         <div className="space-y-4">
                             <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
-                                    <TabsList>
-                                        <TabsTrigger value="all">All</TabsTrigger>
+                                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                                    <TabsList className="w-full justify-start overflow-x-auto h-auto p-1 bg-muted/50">
+                                        <TabsTrigger value="all" className="gap-2 px-4 py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                                            <Globe className="size-4" />
+                                            <span>All</span>
+                                        </TabsTrigger>
                                         {organisationPlatforms.map(platform => (
-                                            <TabsTrigger key={platform} value={platform}>
-                                                {platform}
+                                            <TabsTrigger
+                                                key={platform}
+                                                value={platform}
+                                                className="gap-2 px-4 py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                                            >
+                                                {getTabPlatformIcon(platform)}
+                                                <span className="capitalize">{platform.toLowerCase()}</span>
                                             </TabsTrigger>
                                         ))}
                                     </TabsList>
                                 </Tabs>
-
+<div className="border rounded-md">
                                 <Select value={filterStatus} onValueChange={setFilterStatus}>
                                     <SelectTrigger className="w-[180px]">
                                         <SelectValue placeholder="All Status" />
@@ -445,6 +475,7 @@ export default function CampaignPostsPage() {
                                         <SelectItem value="pending">Pending</SelectItem>
                                     </SelectContent>
                                 </Select>
+                                </div>
                             </div>
 
                             {/* Posts List */}
