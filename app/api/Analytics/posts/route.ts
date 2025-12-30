@@ -325,8 +325,26 @@ export async function GET(request: NextRequest) {
             }
         }
 
+
+        // 3.6 Fetch Subjects for these transactions
+        // We need to fetch subjects from the CampaignPost table for internal posts (refId > 0)
+        const refIds = transactions.map(t => t.refId).filter(id => id > 0);
+        let subjectsMap = new Map<number, string | null>();
+
+        if (refIds.length > 0) {
+            const campaignPosts = await prisma.campaignPost.findMany({
+                where: { id: { in: refIds } },
+                select: { id: true, subject: true }
+            });
+            campaignPosts.forEach(cp => subjectsMap.set(cp.id, cp.subject));
+        }
+
         // 4. Fetch insights for these transactions (and update if stale)
         const postsWithInsights = await Promise.all(transactions.map(async (tx) => {
+            // Attach subject
+            const subject = tx.refId > 0 ? subjectsMap.get(tx.refId) || null : null;
+            const txWithSubject = { ...tx, subject };
+
             // Check if insights exist and are fresh (e.g., < 1 hour old)
             // Or if we should force refresh
             const dbInsight = await prisma.postInsight.findFirst({
@@ -339,7 +357,7 @@ export async function GET(request: NextRequest) {
             // If not stale, return cached data
             if (!isStale && dbInsight && !forceRefresh) {
                 return {
-                    ...tx,
+                    ...txWithSubject,
                     insight: dbInsight
                 };
             }
@@ -493,7 +511,7 @@ export async function GET(request: NextRequest) {
                     // If we have cached data, return it instead of zeroing out
                     if (dbInsight) {
                         return {
-                            ...tx,
+                            ...txWithSubject,
                             insight: {
                                 ...dbInsight,
                                 isDeleted: false, // Don't show it as deleted yet
@@ -631,7 +649,7 @@ export async function GET(request: NextRequest) {
 
                 // Return with fresh insights
                 return {
-                    ...tx,
+                    ...txWithSubject,
                     insight: {
                         ...insights,
                         isDeleted: isDeleted,
@@ -643,7 +661,7 @@ export async function GET(request: NextRequest) {
                 console.error(`[Analytics] Failed to update insights for ${tx.postId}:`, err);
                 // Return cached (stale) or zeros
                 return {
-                    ...tx,
+                    ...txWithSubject,
                     insight: dbInsight || {
                         likes: 0,
                         comments: 0,

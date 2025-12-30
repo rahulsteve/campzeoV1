@@ -45,6 +45,7 @@ import {
     AreaChart,
     Area
 } from 'recharts';
+import * as XLSX from 'xlsx';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface PostInsight {
@@ -64,9 +65,20 @@ interface Post {
     postType: string; // 'VIDEO', 'IMAGE', etc.
     mediaUrls: string | null; // It seems it might be a JSON string or URL
     message: string | null;
+    subject: string | null; // Added subject
     publishedAt: string | Date | null;
     insight: PostInsight;
 }
+
+// Helper to truncate text to specific word count
+const truncateWords = (str: string | null, numWords: number) => {
+    if (!str) return "No content";
+    const words = str.split(" ");
+    if (words.length > numWords) {
+        return words.slice(0, numWords).join(" ") + "...";
+    }
+    return str;
+};
 
 interface ChatMessage {
     role: 'user' | 'assistant';
@@ -251,7 +263,7 @@ export default function AnalyticsPage() {
         // Define headers based on platform type (Email vs Social)
         const isEmailOrSms = ['EMAIL', 'SMS', 'WHATSAPP'].includes(selectedPlatform?.toUpperCase() || '');
 
-        let headers = ['Post/Message', 'Published At', 'Platform', 'Type', 'Status'];
+        let headers = ['Post/Message', 'Subject', 'Image Link', 'Published At', 'Platform', 'Type', 'Status'];
         if (isEmailOrSms) {
             headers.push('Sent (Reach)', 'Delivered', 'Opened (Impressions)', 'Delivery Rate');
         } else {
@@ -266,6 +278,8 @@ export default function AnalyticsPage() {
 
             // CSV safe strings (escape quotes)
             const message = `"${(post.message || '').replace(/"/g, '""')}"`;
+            const subject = `"${(post.subject || '').replace(/"/g, '""')}"`;
+            const imageLink = post.mediaUrls && post.mediaUrls !== '[]' ? post.mediaUrls : '';
 
             let rowByType = [];
             if (isEmailOrSms) {
@@ -287,6 +301,8 @@ export default function AnalyticsPage() {
 
             return [
                 message,
+                subject,
+                imageLink,
                 date,
                 post.platform,
                 post.postType,
@@ -304,6 +320,55 @@ export default function AnalyticsPage() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    };
+
+    // Excel Export
+    const handleExportExcel = () => {
+        if (!posts.length) return;
+
+        // Define headers
+        const isEmailOrSms = ['EMAIL', 'SMS', 'WHATSAPP'].includes(selectedPlatform?.toUpperCase() || '');
+
+        const data = posts.map(post => {
+            const date = post.publishedAt ? new Date(post.publishedAt).toLocaleString() : '';
+            const status = post.insight.isDeleted ? 'Deleted' : 'Live';
+
+            const baseData = {
+                'Post/Message': post.message || '',
+                'Subject': post.subject || '',
+                'Image Link': post.mediaUrls && post.mediaUrls !== '[]' ? post.mediaUrls : '',
+                'Published At': date,
+                'Platform': post.platform,
+                'Type': post.postType,
+                'Status': status
+            };
+
+            if (isEmailOrSms) {
+                return {
+                    ...baseData,
+                    'Sent (Reach)': post.insight.reach,
+                    'Delivered': post.insight.reach,
+                    'Opened (Impressions)': post.insight.impressions,
+                    'Delivery Rate': '100%'
+                };
+            } else {
+                return {
+                    ...baseData,
+                    'Likes': post.insight.likes,
+                    'Comments': post.insight.comments,
+                    'Reach': post.insight.reach,
+                    'Impressions': post.insight.impressions,
+                    'Engagement Rate': `${post.insight.engagementRate.toFixed(2)}%`
+                };
+            }
+        });
+
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Analytics");
+
+        // Generate Excel file
+        XLSX.writeFile(workbook, `${selectedPlatform}_analytics_${format(new Date(), 'yyyyMMdd')}.xlsx`);
     };
 
     // Chart Data Preparation
@@ -489,12 +554,12 @@ export default function AnalyticsPage() {
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            onClick={handleExportCSV}
+                                            onClick={handleExportExcel}
                                             disabled={loadingPosts || posts.length === 0}
                                             className="cursor-pointer"
                                         >
                                             <BarChart2 className="mr-2 size-3" />
-                                            Export CSV
+                                            Export Excel
                                         </Button>
 
                                         <Button
@@ -512,8 +577,9 @@ export default function AnalyticsPage() {
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 {loadingPosts ? (
-                                    <div className="flex justify-center p-8">
-                                        <Loader2 className="size-8 animate-spin text-primary" />
+                                    <div className="flex flex-col items-center justify-center py-20">
+                                        <Loader2 className="size-10 animate-spin text-primary mb-4" />
+                                        <p className="text-muted-foreground animate-pulse">Fetching latest analytics...</p>
                                     </div>
                                 ) : posts.length === 0 ? (
                                     <div className="text-center py-12 text-muted-foreground">
@@ -525,8 +591,8 @@ export default function AnalyticsPage() {
                                             <Table>
                                                 <TableHeader>
                                                     <TableRow>
-                                                        <TableHead className="w-[100px]">Media</TableHead>
-                                                        <TableHead className="min-w-[200px] max-w-[300px]">Content</TableHead>
+                                                        <TableHead className="w-[80px]">Media</TableHead>
+                                                        <TableHead className="min-w-[150px] max-w-[250px]">Subject / Content</TableHead>
                                                         {isEmailPlatform ? (
                                                             <>
                                                                 <TableHead>Sent</TableHead>
@@ -554,10 +620,10 @@ export default function AnalyticsPage() {
                                                             onClick={() => viewDetails(post)}
                                                         >
                                                             <TableCell onClick={(e) => e.stopPropagation()}>
-                                                                <div className="relative size-16 rounded-md overflow-hidden bg-muted border">
+                                                                <div className="relative size-12 rounded-md overflow-hidden bg-muted border">
                                                                     {post.postType === 'VIDEO' || post.mediaUrls?.toLowerCase().endsWith('.mp4') ? (
                                                                         <div className="flex items-center justify-center h-full bg-slate-900">
-                                                                            <Video className="size-6 text-white" />
+                                                                            <Video className="size-5 text-white" />
                                                                         </div>
                                                                     ) : (post.mediaUrls && post.mediaUrls !== '[]' && (post.mediaUrls.startsWith('http') || post.mediaUrls.startsWith('/'))) ? (
                                                                         <Image
@@ -569,19 +635,24 @@ export default function AnalyticsPage() {
                                                                         />
                                                                     ) : (
                                                                         <div className="flex items-center justify-center h-full">
-                                                                            <ImageIcon className="size-6 text-muted-foreground" />
+                                                                            <ImageIcon className="size-5 text-muted-foreground" />
                                                                         </div>
                                                                     )}
                                                                 </div>
                                                             </TableCell>
                                                             <TableCell>
                                                                 <div className="space-y-1">
-                                                                    <p className={`line-clamp-2 text-sm font-medium ${post.insight?.isDeleted ? 'line-through text-red-500' : ''}`}>
-                                                                        {post.message || 'No content'}
+                                                                    {post.subject && (
+                                                                        <p className="text-sm font-semibold text-foreground line-clamp-1" title={post.subject}>
+                                                                            {post.subject}
+                                                                        </p>
+                                                                    )}
+                                                                    <p className={`text-xs text-muted-foreground ${post.insight?.isDeleted ? 'line-through text-red-400' : ''}`} title={post.message || ''}>
+                                                                        {truncateWords(post.message, 15)}
                                                                     </p>
                                                                     {post.insight?.isDeleted && (
-                                                                        <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">
-                                                                            Deleted on Platform
+                                                                        <span className="text-[9px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">
+                                                                            Deleted
                                                                         </span>
                                                                     )}
                                                                 </div>
@@ -602,13 +673,13 @@ export default function AnalyticsPage() {
                                                                     <TableCell>{post.insight?.comments ?? 0}</TableCell>
                                                                     <TableCell>{post.insight?.reach ?? 0}</TableCell>
                                                                     <TableCell>
-                                                                        {post.insight?.engagementRate ? `${post.insight.engagementRate.toFixed(1)}%` : '0.0%'}
+                                                                        {post.insight?.engagementRate ? `${post.insight.engagementRate.toFixed(2)}%` : '0.00%'}
                                                                     </TableCell>
                                                                 </>
                                                             )}
 
-                                                            <TableCell>
-                                                                {post.publishedAt ? format(new Date(post.publishedAt), 'MMM d, yyyy') : '-'}
+                                                            <TableCell className="text-muted-foreground text-sm">
+                                                                {post.publishedAt ? new Date(post.publishedAt).toLocaleString() : 'N/A'}
                                                             </TableCell>
                                                             <TableCell className="text-right">
                                                                 <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
