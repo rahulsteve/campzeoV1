@@ -619,6 +619,61 @@ export function WYSIWYGPreview({
                     </div>
                 );
 
+            case "PINTEREST":
+                return (
+                    <div className="mx-auto max-w-[236px] overflow-hidden rounded-2xl bg-white shadow-md">
+                        {mediaUrls.length > 0 ? (
+                            <div className="relative w-full">
+                                {isVideo(mediaUrls[0]) ? (
+                                    <video
+                                        src={mediaUrls[0]}
+                                        className="w-full object-cover rounded-2xl"
+                                        controls={false}
+                                        autoPlay
+                                        muted
+                                        loop
+                                    />
+                                ) : (
+                                    <Image
+                                        src={mediaUrls[0]}
+                                        alt="Pin"
+                                        width={236}
+                                        height={350} // Aspect ratio approximation
+                                        className="w-full object-cover rounded-2xl"
+                                        unoptimized
+                                    />
+                                )}
+                            </div>
+                        ) : (
+                            <div className="flex h-[300px] w-full items-center justify-center bg-gray-100 rounded-2xl">
+                                <div className="text-center">
+                                    <ImageIcon className="mx-auto size-8 text-gray-400" />
+                                    <p className="mt-2 text-xs text-gray-500">Pin image</p>
+                                </div>
+                            </div>
+                        )}
+                        <div className="p-3">
+                            {subject && (
+                                <h3 className="mb-1 text-sm font-semibold text-gray-900 leading-tight">{subject}</h3>
+                            )}
+                            <p className="text-xs text-gray-700 line-clamp-3 mb-2">{message || "No description"}</p>
+
+                            <div className="flex items-center gap-2 mt-2">
+                                {userImage ? (
+                                    <div className="relative size-6 overflow-hidden rounded-full">
+                                        <Image src={userImage} alt={userName} fill className="object-cover" unoptimized />
+                                    </div>
+                                ) : (
+                                    <div className="flex size-6 items-center justify-center rounded-full bg-red-100">
+                                        <span className="text-[10px] font-bold text-red-600">{userInitials}</span>
+                                    </div>
+                                )}
+                                <span className="text-xs text-gray-600 truncate">{userName}</span>
+                            </div>
+                        </div>
+                    </div>
+                );
+
             default:
                 return null;
         }

@@ -510,7 +510,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                     message: message || null,
                     type: selectedPlatform, // Send single type
                     senderEmail: selectedPlatform === 'EMAIL' ? senderEmail : null,
-                    scheduledPostTime: scheduledPostTime || null,
+                    scheduledPostTime: scheduledPostTime ? new Date(scheduledPostTime).toISOString() : null,
                     mediaUrls: mediaUrls, // Send array
                     youtubeTags: youtubeTags ? youtubeTags.split(',').map(t => t.trim()) : [],
                     youtubePrivacy,

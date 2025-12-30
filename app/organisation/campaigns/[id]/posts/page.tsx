@@ -216,6 +216,7 @@ export default function CampaignPostsPage() {
         }
 
         if (!sharePost) return;
+        if (sendingShare) return; // Prevent duplicate clicks
 
         try {
             setSendingShare(true);
@@ -361,9 +362,9 @@ export default function CampaignPostsPage() {
     if (loading) {
         return (
             <div className="min-h-screen bg-background">
-             
+
                 <div className="flex">
-             
+
                     <main className="flex-1 p-6">
                         <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
                             <Loader2 className="size-8 animate-spin text-muted-foreground" />
@@ -378,15 +379,15 @@ export default function CampaignPostsPage() {
 
     return (
         <div className=" bg-background">
-          
+
             <div className="flex">
-       
+
                 <main className="flex-1 p-6">
                     <div className=" mx-auto space-y-6">
                         {/* Header */}
                         <div className="flex items-center gap-4">
                             <Button
-                            className='cursor-pointer'
+                                className='cursor-pointer'
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => router.push('/organisation/campaigns')}
@@ -514,7 +515,7 @@ export default function CampaignPostsPage() {
                                                     </div>
                                                     <div className="flex items-center gap-2 ml-4">
                                                         <Button
-                                                        className='cursor-pointer'      
+                                                            className='cursor-pointer'
                                                             size="sm"
                                                             variant="ghost"
                                                             onClick={() => setPreviewPost(post)}
@@ -523,7 +524,7 @@ export default function CampaignPostsPage() {
                                                             <Eye className="size-4" />
                                                         </Button>
                                                         <Button
-                                                        className='cursor-pointer'      
+                                                            className='cursor-pointer'
                                                             size="sm"
                                                             variant="ghost"
                                                             onClick={() => {
@@ -531,20 +532,13 @@ export default function CampaignPostsPage() {
                                                                 setSelectedContacts([]);
                                                             }}
                                                             title={isSocialPlatform ? "Publish Now" : "Share to Contacts"}
+                                                            disabled={post.isPostSent}
                                                         >
                                                             {isSocialPlatform ? <Send className="size-4" /> : <Share2 className="size-4" />}
                                                         </Button>
+                                                        {/* Duplicate button removed as per request */}
                                                         <Button
-                                                        className='cursor-pointer'      
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            onClick={() => handleDuplicatePost(post)}
-                                                            title="Duplicate"
-                                                        >
-                                                            <Copy className="size-4" />
-                                                        </Button>
-                                                        <Button
-                                                        className='cursor-pointer'      
+                                                            className='cursor-pointer'
                                                             size="sm"
                                                             variant="ghost"
                                                             onClick={() => router.push(`/organisation/campaigns/${campaignId}/posts/${post.id}/edit`)}
@@ -554,7 +548,7 @@ export default function CampaignPostsPage() {
                                                             <Edit className="size-4" />
                                                         </Button>
                                                         <Button
-                                                        className='cursor-pointer'      
+                                                            className='cursor-pointer'
                                                             size="sm"
                                                             variant="ghost"
                                                             onClick={() => {

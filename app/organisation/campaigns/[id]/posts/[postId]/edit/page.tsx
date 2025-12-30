@@ -517,7 +517,7 @@ export default function EditPostPage() {
                     message: message || null,
                     type,
                     senderEmail: type === 'EMAIL' ? senderEmail : null,
-                    scheduledPostTime: scheduledPostTime || null,
+                    scheduledPostTime: scheduledPostTime ? new Date(scheduledPostTime).toISOString() : null,
                     mediaUrls: mediaUrls,
                     videoUrl: mediaUrls.length > 0 ? mediaUrls[0] : null,
                     metadata
@@ -534,8 +534,7 @@ export default function EditPostPage() {
         } catch (error) {
             console.error('Error updating post:', error);
             toast.error(error instanceof Error ? error.message : 'Failed to update post');
-        } finally {
-            setSaving(false);
+            setSaving(false); // Only reset on error
         }
     };
 
