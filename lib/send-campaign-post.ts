@@ -45,7 +45,7 @@ export async function sendCampaignPost(
             // LinkedIn
             if (post.type === 'LINKEDIN') {
                 if (!dbUser.linkedInAccessToken || !dbUser.linkedInAuthUrn) {
-                    throw new Error('LinkedIn credentials not found');
+                    throw new Error('LinkedIn credentials not found or expired. Please reconnect your account.');
                 }
 
                 const linkedInResponse = await postToLinkedIn(
@@ -92,7 +92,7 @@ export async function sendCampaignPost(
                 const fbPageId = metadata?.facebookPageId || dbUser.facebookPageId;
 
                 if (!fbToken || !fbPageId) {
-                    throw new Error('Facebook credentials not found');
+                    throw new Error('Facebook credentials not found or expired. Please reconnect your account.');
                 }
 
                 const platformResponse = await postToFacebook(
@@ -135,7 +135,7 @@ export async function sendCampaignPost(
                 const igUserId = metadata?.instagramBusinessId || dbUser.instagramUserId;
 
                 if (!igToken || !igUserId) {
-                    throw new Error('Instagram credentials not found');
+                    throw new Error('Instagram credentials not found or expired. Please reconnect your account.');
                 }
 
                 if (igUserId === 'no-business-account') {
@@ -198,7 +198,7 @@ export async function sendCampaignPost(
             // YouTube
             if (post.type === 'YOUTUBE') {
                 if (!dbUser.youtubeAccessToken) {
-                    throw new Error('YouTube credentials not found');
+                    throw new Error('YouTube credentials not found or expired. Please reconnect your account.');
                 }
 
                 const metadata = post.metadata as any;
@@ -290,7 +290,7 @@ export async function sendCampaignPost(
             // Pinterest
             if (post.type === 'PINTEREST') {
                 if (!dbUser.pinterestAccessToken) {
-                    throw new Error('Pinterest credentials not found');
+                    throw new Error('Pinterest credentials not found or expired. Please reconnect your account.');
                 }
 
                 const metadata = post.metadata as any;

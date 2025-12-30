@@ -177,119 +177,119 @@ export default function CampaignsPage() {
     return (
         <div className="p-6">
             <div className=" mx-auto space-y-6">
-                        {/* Header */}
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h1 className="text-3xl font-bold tracking-tight">Campaigns</h1>
-                                <p className="text-muted-foreground mt-1">
-                                    Manage your marketing campaigns and posts
-                                </p>
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">Campaigns</h1>
+                        <p className="text-muted-foreground mt-1">
+                            Manage your marketing campaigns and posts
+                        </p>
+                    </div>
+                    <Button className='cursor-pointer' onClick={handleAddCampaign}>
+                        <Plus className="size-4 mr-2" />
+                        New Campaign
+                    </Button>
+                </div>
+
+                {/* Filters */}
+                <Card>
+                    <CardContent className="pt-6">
+                        <div className="flex flex-col md:flex-row gap-4">
+                            {/* Search */}
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search campaigns..."
+                                    value={searchQuery}
+                                    onChange={(e) => {
+                                        setSearchQuery(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                    className="pl-9"
+                                />
                             </div>
-                            <Button className='cursor-pointer' onClick={handleAddCampaign}>
-                                <Plus className="size-4 mr-2" />
-                                New Campaign
-                            </Button>
                         </div>
+                    </CardContent>
+                </Card>
 
-                        {/* Filters */}
-                        <Card>
-                            <CardContent className="pt-6">
-                                <div className="flex flex-col md:flex-row gap-4">
-                                    {/* Search */}
-                                    <div className="relative flex-1">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                                        <Input
-                                            placeholder="Search campaigns..."
-                                            value={searchQuery}
-                                            onChange={(e) => {
-                                                setSearchQuery(e.target.value);
-                                                setCurrentPage(1);
-                                            }}
-                                            className="pl-9"
-                                        />
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        {/* Table */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Campaign List</CardTitle>
-                                <CardDescription>
-                                    Showing {campaigns.length} of {totalCampaigns} campaigns
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                {loading ? (
-                                    <div className="flex items-center justify-center py-12">
-                                        <Loader2 className="size-8 animate-spin text-muted-foreground" />
-                                    </div>
-                                ) : campaigns.length === 0 ? (
-                                    <div className="text-center py-12">
-                                        <FileText className="size-12 mx-auto text-muted-foreground mb-4" />
-                                        <p className="text-muted-foreground">No campaigns found</p>
-                                        <Button  onClick={handleAddCampaign} className="  cursor-pointer mt-4">
-                                            <Plus className="size-4 mr-2" />
-                                            Create Your First Campaign
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <div className="rounded-md border">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Campaign Name</TableHead>
-                                                        <TableHead>Status</TableHead>
-                                                        <TableHead>Duration</TableHead>
-                                                        <TableHead>Contacts</TableHead>
-                                                        <TableHead>Posts</TableHead>
-                                                        <TableHead className="text-right">Actions</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {campaigns.map((campaign) => {
-                                                        const status = getCampaignStatus(campaign);
-                                                        return (
-                                                            <TableRow key={campaign.id}>
+                {/* Table */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Campaign List</CardTitle>
+                        <CardDescription>
+                            Showing {campaigns.length} of {totalCampaigns} campaigns
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {loading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <Loader2 className="size-8 animate-spin text-muted-foreground" />
+                            </div>
+                        ) : campaigns.length === 0 ? (
+                            <div className="text-center py-12">
+                                <FileText className="size-12 mx-auto text-muted-foreground mb-4" />
+                                <p className="text-muted-foreground">No campaigns found</p>
+                                <Button onClick={handleAddCampaign} className="  cursor-pointer mt-4">
+                                    <Plus className="size-4 mr-2" />
+                                    Create Your First Campaign
+                                </Button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="rounded-md border">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Campaign Name</TableHead>
+                                                <TableHead>Status</TableHead>
+                                                <TableHead>Duration</TableHead>
+                                                <TableHead>Contacts</TableHead>
+                                                <TableHead>Posts</TableHead>
+                                                        <TableHead >Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {campaigns.map((campaign) => {
+                                                const status = getCampaignStatus(campaign);
+                                                return (
+                                                    <TableRow key={campaign.id}>
+                                                        <TableCell>
+                                                            <div>
+                                                                <p className="font-medium">{campaign.name}</p>
+                                                                {campaign.description && (
+                                                                    <p className="text-sm text-muted-foreground line-clamp-1">
+                                                                        {campaign.description}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Badge variant={status.variant}>
+                                                                {status.label}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="flex items-center gap-2 text-sm">
+                                                                <Calendar className="size-4 text-muted-foreground" />
+                                                                <span>
+                                                                    {formatDate(campaign.startDate)} - {formatDate(campaign.endDate)}
+                                                                </span>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="flex items-center gap-2">
+                                                                <Users className="size-4 text-muted-foreground" />
+                                                                <span>{campaign._count.contacts}</span>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="flex items-center gap-2">
+                                                                <FileText className="size-4 text-muted-foreground" />
+                                                                <span>{campaign._count.posts}</span>
+                                                            </div>
+                                                        </TableCell>
                                                                 <TableCell>
-                                                                    <div>
-                                                                        <p className="font-medium">{campaign.name}</p>
-                                                                        {campaign.description && (
-                                                                            <p className="text-sm text-muted-foreground line-clamp-1">
-                                                                                {campaign.description}
-                                                                            </p>
-                                                                        )}
-                                                                    </div>
-                                                                </TableCell>
-                                                                <TableCell>
-                                                                    <Badge variant={status.variant}>
-                                                                        {status.label}
-                                                                    </Badge>
-                                                                </TableCell>
-                                                                <TableCell>
-                                                                    <div className="flex items-center gap-2 text-sm">
-                                                                        <Calendar className="size-4 text-muted-foreground" />
-                                                                        <span>
-                                                                            {formatDate(campaign.startDate)} - {formatDate(campaign.endDate)}
-                                                                        </span>
-                                                                    </div>
-                                                                </TableCell>
-                                                                <TableCell>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Users className="size-4 text-muted-foreground" />
-                                                                        <span>{campaign._count.contacts}</span>
-                                                                    </div>
-                                                                </TableCell>
-                                                                <TableCell>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <FileText className="size-4 text-muted-foreground" />
-                                                                        <span>{campaign._count.posts}</span>
-                                                                    </div>
-                                                                </TableCell>
-                                                                <TableCell className="text-right">
-                                                                    <div className="flex items-center justify-end gap-2">
+                                                                    <div className="flex items-center  gap-2">
                                                                         <Button
                                                                             className='cursor-pointer'
                                                                             size="sm"
@@ -319,67 +319,67 @@ export default function CampaignsPage() {
                                                                         </Button>
                                                                     </div>
                                                                 </TableCell>
-                                                            </TableRow>
-                                                        );
-                                                    })}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </TableBody>
+                                    </Table>
+                                </div>
 
-                                        {/* Pagination */}
-                                        <div className="flex items-center justify-between mt-4">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm text-muted-foreground">Rows per page:</span>
-                                                <Select
-                                                    value={itemsPerPage.toString()}
-                                                    onValueChange={(value) => {
-                                                        setItemsPerPage(parseInt(value));
-                                                        setCurrentPage(1);
-                                                    }}
-                                                >
-                                                    <SelectTrigger className="w-[80px]">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="5">5</SelectItem>
-                                                        <SelectItem value="10">10</SelectItem>
-                                                        <SelectItem value="20">20</SelectItem>
-                                                        <SelectItem value="50">50</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
+                                {/* Pagination */}
+                                <div className="flex items-center justify-between mt-4">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-muted-foreground">Rows per page:</span>
+                                        <Select
+                                            value={itemsPerPage.toString()}
+                                            onValueChange={(value) => {
+                                                setItemsPerPage(parseInt(value));
+                                                setCurrentPage(1);
+                                            }}
+                                        >
+                                            <SelectTrigger className="w-[80px]">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="5">5</SelectItem>
+                                                <SelectItem value="10">10</SelectItem>
+                                                <SelectItem value="20">20</SelectItem>
+                                                <SelectItem value="50">50</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
 
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm text-muted-foreground">
-                                                    Page {currentPage} of {totalPages}
-                                                </span>
-                                                <div className="flex gap-1">
-                                                    <Button
-                                                    className='cursor-pointer'
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                                                        disabled={currentPage === 1}
-                                                    >
-                                                        <ChevronLeft className="size-4" />
-                                                    </Button>
-                                                    <Button
-                                                    className='cursor-pointer'
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                                                        disabled={currentPage === totalPages}
-                                                    >
-                                                        <ChevronRight className="size-4" />
-                                                    </Button>
-                                                </div>
-                                            </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-muted-foreground">
+                                            Page {currentPage} of {totalPages}
+                                        </span>
+                                        <div className="flex gap-1">
+                                            <Button
+                                                className='cursor-pointer'
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                                disabled={currentPage === 1}
+                                            >
+                                                <ChevronLeft className="size-4" />
+                                            </Button>
+                                            <Button
+                                                className='cursor-pointer'
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                                disabled={currentPage === totalPages}
+                                            >
+                                                <ChevronRight className="size-4" />
+                                            </Button>
                                         </div>
-                                    </>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

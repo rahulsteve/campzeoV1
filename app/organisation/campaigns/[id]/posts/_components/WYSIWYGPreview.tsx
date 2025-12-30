@@ -302,6 +302,56 @@ export function WYSIWYGPreview({
                     </div>
                 );
 
+            case "WHATSAPP":
+                return (
+                    <div className="rounded-lg border bg-[#E5DDD5] shadow-sm overflow-hidden">
+                        <div className="bg-[#008069] px-4 py-3 text-white flex items-center gap-3">
+                            <div className="flex size-10 items-center justify-center rounded-full bg-gray-200 overflow-hidden">
+                                {userImage ? (
+                                    <Image src={userImage} alt={userName} width={40} height={40} className="object-cover size-full" unoptimized />
+                                ) : (
+                                    <span className="text-sm font-semibold text-gray-600">{userInitials}</span>
+                                )}
+                            </div>
+                            <div className="flex-1">
+                                <p className="font-medium text-white">{userName}</p>
+                            </div>
+                            <MoreHorizontal className="size-5 text-white" />
+                        </div>
+                        <div className="p-4 min-h-[300px] flex flex-col justify-end bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
+                            <div className="ml-auto w-full max-w-[85%] rounded-lg bg-[#DCF8C6] p-2 shadow-sm relative">
+                                {mediaUrls.length > 0 && (
+                                    <div className="mb-2 overflow-hidden rounded-lg">
+                                        {isVideo(mediaUrls[0]) ? (
+                                            <video src={mediaUrls[0]} className="w-full" controls />
+                                        ) : (
+                                            <Image
+                                                src={mediaUrls[0]}
+                                                alt="Preview"
+                                                width={400}
+                                                height={300}
+                                                className="w-full object-cover"
+                                                unoptimized
+                                            />
+                                        )}
+                                    </div>
+                                )}
+                                <textarea
+                                    value={message}
+                                    onChange={(e) => onMessageChange(e.target.value)}
+                                    placeholder="Type a message"
+                                    className="w-full resize-none border-0 bg-transparent p-0 text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-0"
+                                    style={{ whiteSpace: 'pre-wrap', minHeight: '40px' }}
+                                />
+                                <div className="mt-1 text-right text-[10px] text-gray-500 flex items-center justify-end gap-1">
+                                    <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <span className="text-blue-500">✓✓</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+
             case "YOUTUBE":
                 return (
                     <div className="rounded-lg border bg-white shadow-sm">

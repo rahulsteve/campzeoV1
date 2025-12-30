@@ -162,6 +162,10 @@ export function AIContentAssistant({
             // Wait for both the API call and the minimum delay
             const [response] = await Promise.all([apiCallPromise, delayPromise]);
 
+            if (response.status === 429) {
+                throw new Error('You have reached the image generation limit. Please try again later.');
+            }
+
             const data = await response.json();
 
             if (data.imagePrompt) {
@@ -172,7 +176,11 @@ export function AIContentAssistant({
             }
         } catch (error: any) {
             console.error('Error generating image:', error);
-            toast.error(error.message || 'Failed to generate image');
+            // Show more user-friendly error messages
+            const errorMessage = error.message.includes('504')
+                ? 'Generation timed out. Please try again.'
+                : error.message;
+            toast.error(errorMessage || 'Failed to generate image');
         } finally {
             setImageLoading(false);
         }
@@ -188,6 +196,8 @@ export function AIContentAssistant({
         navigator.clipboard.writeText(content);
         toast.success('Copied to clipboard!');
     };
+
+    const isTextOnly = context?.platform === 'SMS' || context?.platform === 'EMAIL';
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -205,15 +215,17 @@ export function AIContentAssistant({
 
                 <Tabs key={`${open}-${initialTab}`} defaultValue={initialTab} className="flex-1 flex flex-col min-h-0">
                     <div className="px-6 border-b shrink-0 bg-background/95 backdrop-blur z-10">
-                        <TabsList className="grid w-full grid-cols-2 mb-2">
+                        <TabsList className={`grid w-full mb-2 ${isTextOnly ? 'grid-cols-1' : 'grid-cols-2'}`}>
                             <TabsTrigger value="text">
                                 <Wand2 className="size-4 mr-2" />
                                 Generate Text
                             </TabsTrigger>
-                            <TabsTrigger value="image">
-                                <ImageIcon className="size-4 mr-2" />
-                                Generate Image
-                            </TabsTrigger>
+                            {!isTextOnly && (
+                                <TabsTrigger value="image">
+                                    <ImageIcon className="size-4 mr-2" />
+                                    Generate Image
+                                </TabsTrigger>
+                            )}
                         </TabsList>
                     </div>
 
@@ -426,7 +438,7 @@ export function AIContentAssistant({
                                         value={imagePrompt}
                                         onChange={(e) => setImagePrompt(e.target.value)}
                                         rows={3}
-                                         className="border border-primary/20 rounded-md resize-none"
+                                        className="border border-primary/20 rounded-md resize-none"
                                     />
                                 </div>
 

@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
         console.log(`[Scheduler] Running at ${now.toISOString()}`);
 
         // 3. Find all scheduled posts that are due to be sent
+        // Only process posts from active, non-deleted campaigns for approved organisations
         const scheduledPosts = await prisma.campaignPost.findMany({
             where: {
                 isPostSent: false,
@@ -69,6 +70,15 @@ export async function GET(request: NextRequest) {
                 },
                 isAttachedToCampaign: true,
                 isDeleted: false,
+                campaign: {
+                    isDeleted: false,
+                    startDate: { lte: now },
+                    endDate: { gte: now },
+                    organisation: {
+                        isApproved: true,
+                        isDeleted: false,
+                    }
+                }
             },
             include: {
                 campaign: {
@@ -79,7 +89,7 @@ export async function GET(request: NextRequest) {
             },
         });
 
-        console.log(`[Scheduler] Found ${scheduledPosts.length} posts to process`);
+        console.log(`[Scheduler] Found ${scheduledPosts.length} posts from active campaigns to process`);
 
         const results = {
             total: scheduledPosts.length,
@@ -125,7 +135,7 @@ export async function GET(request: NextRequest) {
                         error: result.error || 'Unknown error',
                     });
 
-                    // Create error notification
+                    // Create detailed error notification
                     let errorMessage = result.error || 'Unknown error';
                     if (typeof errorMessage === 'object') {
                         try {
@@ -135,9 +145,23 @@ export async function GET(request: NextRequest) {
                         }
                     }
 
+                    // Refine message for token/credential issues
+                    const isAuthError = errorMessage.toLowerCase().includes('credential') ||
+                        errorMessage.toLowerCase().includes('token') ||
+                        errorMessage.toLowerCase().includes('expired') ||
+                        errorMessage.toLowerCase().includes('unauthorized');
+
+                    let displayMessage = `Failed to send scheduled ${post.type} post: ${errorMessage}`;
+
+                    if (isAuthError) {
+                        displayMessage = `${post.type} access token expired or invalid. Please reconnect your ${post.type} account. You can also manually trigger and share this post from the Campaign Posts List.`;
+                    } else {
+                        displayMessage += " You can manually trigger and share this post from the Campaign Post Lists.";
+                    }
+
                     await prisma.notification.create({
                         data: {
-                            message: `Failed to send scheduled ${post.type} post: ${errorMessage}`,
+                            message: displayMessage,
                             isSuccess: false,
                             type: 'CAMPAIGN_POST',
                             platform: post.type,

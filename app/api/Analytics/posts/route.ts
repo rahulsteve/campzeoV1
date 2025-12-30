@@ -505,6 +505,17 @@ export async function GET(request: NextRequest) {
                     isDeleted = false;
                 }
 
+                // [NEW] Preserve metrics if deleted
+                // If the platform says it's deleted, we still want to keep the historical max values
+                if (isDeleted && dbInsight) {
+                    console.log(`[Analytics] Post ${tx.postId} on ${tx.platform} is DELETED. Preserving last known metrics.`);
+                    insights.likes = dbInsight.likes;
+                    insights.comments = dbInsight.comments;
+                    insights.reach = dbInsight.reach;
+                    insights.impressions = dbInsight.impressions;
+                    insights.engagementRate = dbInsight.engagementRate;
+                }
+
                 if (dbInsight) {
                     const updatePromises: any[] = [
                         prisma.postInsight.update({

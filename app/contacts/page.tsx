@@ -248,297 +248,297 @@ export default function ContactListPage() {
     return (
         <div className="p-6">
             <div className=" mx-auto space-y-6">
-                        {/* Header */}
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
-                                <p className="text-muted-foreground mt-1">
-                                    Manage your contact list and campaign associations
-                                </p>
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
+                        <p className="text-muted-foreground mt-1">
+                            Manage your contact list and campaign associations
+                        </p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button className="cursor-pointer" onClick={() => router.push('/contacts/import')} variant="outline">
+                            <Upload className="size-4 mr-2" />
+                            Import Contacts
+                        </Button>
+                        <Button className="cursor-pointer" onClick={() => router.push('/contacts/new')}>
+                            <Plus className="size-4 mr-2" />
+                            Add Contact
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Filters and Actions */}
+                <Card>
+                    <CardContent className="pt-6">
+                        <div className="flex flex-col md:flex-row gap-4">
+                            {/* Search */}
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search by name, email, or mobile..."
+                                    value={searchQuery}
+                                    onChange={(e) => {
+                                        setSearchQuery(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                    className="pl-9"
+                                />
                             </div>
-                            <div className="flex gap-2">
-                                <Button className="cursor-pointer" onClick={() => router.push('/contacts/import')} variant="outline">
-                                    <Upload className="size-4 mr-2" />
-                                    Import Contacts
-                                </Button>
-                                <Button className="cursor-pointer" onClick={() => router.push('/contacts/new')}>
-                                    <Plus className="size-4 mr-2" />
-                                    Add Contact
-                                </Button>
-                            </div>
+
+                            {/* Campaign Filter */}
+                            <Select
+                                value={selectedCampaign}
+                                onValueChange={(value) => {
+                                    setSelectedCampaign(value);
+                                    setCurrentPage(1);
+                                }}
+                            >
+                                <SelectTrigger className="w-[200px] border  border-gray-200">
+                                    <SelectValue placeholder="Filter by campaign" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Campaigns</SelectItem>
+                                    {campaigns.map((campaign) => (
+                                        <SelectItem key={campaign.id} value={campaign.id.toString()}>
+                                            {campaign.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+
+                            {/* Export */}
+                            <Button
+                                variant="outline"
+                                className="cursor-pointer"
+                                onClick={() => handleExport(false)}
+                                disabled={exporting}
+                            >
+                                {exporting ? (
+                                    <Loader2 className="size-4 mr-2 animate-spin" />
+                                ) : (
+                                    <Download className="size-4 mr-2" />
+                                )}
+                                Export All
+                            </Button>
                         </div>
 
-                        {/* Filters and Actions */}
-                        <Card>
-                            <CardContent className="pt-6">
-                                <div className="flex flex-col md:flex-row gap-4">
-                                    {/* Search */}
-                                    <div className="relative flex-1">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                                        <Input
-                                            placeholder="Search by name, email, or mobile..."
-                                            value={searchQuery}
-                                            onChange={(e) => {
-                                                setSearchQuery(e.target.value);
-                                                setCurrentPage(1);
-                                            }}
-                                            className="pl-9"
-                                        />
-                                    </div>
+                        {/* Bulk Actions */}
+                        {selectedContacts.length > 0 && (
+                            <div className="mt-4 flex items-center gap-3 p-3 bg-muted rounded-lg">
+                                <span className="text-sm font-medium">
+                                    {selectedContacts.length} contact{selectedContacts.length !== 1 ? 's' : ''} selected
+                                </span>
+                                <Button
+                                    size="sm"
+                                    className="cursor-pointer"
+                                    variant="outline"
+                                    onClick={() => handleExport(true)}
+                                    disabled={exporting}
+                                >
+                                    <Download className="size-4 mr-2" />
+                                    Export Selected
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    className="cursor-pointer"
+                                    variant="destructive"
+                                    onClick={() => setShowDeleteDialog(true)}
+                                >
+                                    <Trash2 className="size-4 mr-2" />
+                                    Delete Selected
+                                </Button>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
 
-                                    {/* Campaign Filter */}
-                                    <Select
-                                        value={selectedCampaign}
-                                        onValueChange={(value) => {
-                                            setSelectedCampaign(value);
-                                            setCurrentPage(1);
-                                        }}
-                                    >
-                                        <SelectTrigger className="w-[200px] border  border-gray-200">
-                                            <SelectValue placeholder="Filter by campaign" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">All Campaigns</SelectItem>
-                                            {campaigns.map((campaign) => (
-                                                <SelectItem key={campaign.id} value={campaign.id.toString()}>
-                                                    {campaign.name}
-                                                </SelectItem>
+                {/* Table */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Contact List</CardTitle>
+                        <CardDescription>
+                            Showing {contacts.length} of {totalContacts} contacts
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {loading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <Loader2 className="size-8 animate-spin text-muted-foreground" />
+                            </div>
+                        ) : contacts.length === 0 ? (
+                            <div className="text-center py-12">
+                                <p className="text-muted-foreground">No contacts found</p>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="rounded-md border">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow >
+                                                <TableHead className="w-[50px]">
+                                                    <Checkbox
+                                                        checked={allSelected}
+                                                        onCheckedChange={handleSelectAll}
+                                                        aria-label="Select all"
+                                                        className={someSelected ? 'data-[state=checked]:bg-muted' : ''}
+                                                    />
+                                                </TableHead>
+                                                <TableHead >Name</TableHead>
+                                                <TableHead >Email</TableHead>
+                                                <TableHead >Mobile</TableHead>
+                                                <TableHead >Campaigns</TableHead>
+                                                <TableHead >Created</TableHead>
+                                                <TableHead  >Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {contacts.map((contact) => (
+                                                <TableRow key={contact.id}>
+                                                    <TableCell>
+                                                        <Checkbox
+                                                            checked={selectedContacts.includes(contact.id)}
+                                                            onCheckedChange={(checked) =>
+                                                                handleSelectContact(contact.id, checked as boolean)
+                                                            }
+                                                            aria-label={`Select ${contact.contactName}`}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell className="font-medium">
+                                                        {contact.contactName || '-'}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {contact.contactEmail ? (
+                                                            <div className="flex items-center gap-2">
+                                                                <Mail className="size-4 text-muted-foreground" />
+                                                                <span className="text-sm">{contact.contactEmail}</span>
+                                                            </div>
+                                                        ) : (
+                                                            '-'
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {contact.contactMobile ? (
+                                                            <div className="flex items-center gap-2">
+                                                                <Phone className="size-4 text-muted-foreground" />
+                                                                <span className="text-sm">{contact.contactMobile}</span>
+                                                            </div>
+                                                        ) : (
+                                                            '-'
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {contact.campaigns.length > 0 ? (
+                                                                contact.campaigns.slice(0, 2).map((campaign) => (
+                                                                    <Badge key={campaign.id} variant="secondary" className="text-xs">
+                                                                        {campaign.name}
+                                                                    </Badge>
+                                                                ))
+                                                            ) : (
+                                                                <span className="text-sm text-muted-foreground">No campaigns</span>
+                                                            )}
+                                                            {contact.campaigns.length > 2 && (
+                                                                <Badge variant="outline" className="text-xs">
+                                                                    +{contact.campaigns.length - 2}
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-sm text-muted-foreground">
+                                                        {new Date(contact.createdAt).toLocaleDateString()}
+                                                    </TableCell>
+                                                    <TableCell >
+                                                        <div className="flex items-center  gap-2">
+                                                            <Button
+                                                                size="sm"
+                                                                className="cursor-pointer"
+                                                                variant="ghost"
+                                                                onClick={() => handleQuickView(contact)}
+                                                            >
+                                                                <Eye className="size-4" />
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="cursor-pointer"
+                                                                onClick={() => router.push(`/contacts/${contact.id}/edit`)}
+                                                            >
+                                                                <Edit className="size-4" />
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="cursor-pointer"
+                                                                onClick={() => {
+                                                                    setDeleteContactId(contact.id);
+                                                                    setShowDeleteDialog(true);
+                                                                }}
+                                                            >
+                                                                <Trash2 className="size-4 text-destructive" />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
                                             ))}
-                                        </SelectContent>
-                                    </Select>
-
-                                    {/* Export */}
-                                    <Button
-                                        variant="outline"
-                                        className="cursor-pointer"
-                                        onClick={() => handleExport(false)}
-                                        disabled={exporting}
-                                    >
-                                        {exporting ? (
-                                            <Loader2 className="size-4 mr-2 animate-spin" />
-                                        ) : (
-                                            <Download className="size-4 mr-2" />
-                                        )}
-                                        Export All
-                                    </Button>
+                                        </TableBody>
+                                    </Table>
                                 </div>
 
-                                {/* Bulk Actions */}
-                                {selectedContacts.length > 0 && (
-                                    <div className="mt-4 flex items-center gap-3 p-3 bg-muted rounded-lg">
-                                        <span className="text-sm font-medium">
-                                            {selectedContacts.length} contact{selectedContacts.length !== 1 ? 's' : ''} selected
+                                {/* Pagination */}
+                                <div className="flex items-center justify-between mt-4">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-muted-foreground">Rows per page:</span>
+                                        <Select
+                                            value={itemsPerPage.toString()}
+                                            onValueChange={(value) => {
+                                                setItemsPerPage(parseInt(value));
+                                                setCurrentPage(1);
+                                            }}
+                                        >
+                                            <SelectTrigger className="w-[80px]">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="5">5</SelectItem>
+                                                <SelectItem value="10">10</SelectItem>
+                                                <SelectItem value="20">20</SelectItem>
+                                                <SelectItem value="50">50</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-muted-foreground">
+                                            Page {currentPage} of {totalPages}
                                         </span>
-                                        <Button
-                                            size="sm"
-                                            className="cursor-pointer"
-                                            variant="outline"
-                                            onClick={() => handleExport(true)}
-                                            disabled={exporting}
-                                        >
-                                            <Download className="size-4 mr-2" />
-                                            Export Selected
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            className="cursor-pointer"
-                                            variant="destructive"
-                                            onClick={() => setShowDeleteDialog(true)}
-                                        >
-                                            <Trash2 className="size-4 mr-2" />
-                                            Delete Selected
-                                        </Button>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        {/* Table */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Contact List</CardTitle>
-                                <CardDescription>
-                                    Showing {contacts.length} of {totalContacts} contacts
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                {loading ? (
-                                    <div className="flex items-center justify-center py-12">
-                                        <Loader2 className="size-8 animate-spin text-muted-foreground" />
-                                    </div>
-                                ) : contacts.length === 0 ? (
-                                    <div className="text-center py-12">
-                                        <p className="text-muted-foreground">No contacts found</p>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <div className="rounded-md border">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead className="w-[50px]">
-                                                            <Checkbox
-                                                                checked={allSelected}
-                                                                onCheckedChange={handleSelectAll}
-                                                                aria-label="Select all"
-                                                                className={someSelected ? 'data-[state=checked]:bg-muted' : ''}
-                                                            />
-                                                        </TableHead>
-                                                        <TableHead>Name</TableHead>
-                                                        <TableHead>Email</TableHead>
-                                                        <TableHead>Mobile</TableHead>
-                                                        <TableHead>Campaigns</TableHead>
-                                                        <TableHead>Created</TableHead>
-                                                        <TableHead className="text-right">Actions</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {contacts.map((contact) => (
-                                                        <TableRow key={contact.id}>
-                                                            <TableCell>
-                                                                <Checkbox
-                                                                    checked={selectedContacts.includes(contact.id)}
-                                                                    onCheckedChange={(checked) =>
-                                                                        handleSelectContact(contact.id, checked as boolean)
-                                                                    }
-                                                                    aria-label={`Select ${contact.contactName}`}
-                                                                />
-                                                            </TableCell>
-                                                            <TableCell className="font-medium">
-                                                                {contact.contactName || '-'}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                {contact.contactEmail ? (
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Mail className="size-4 text-muted-foreground" />
-                                                                        <span className="text-sm">{contact.contactEmail}</span>
-                                                                    </div>
-                                                                ) : (
-                                                                    '-'
-                                                                )}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                {contact.contactMobile ? (
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Phone className="size-4 text-muted-foreground" />
-                                                                        <span className="text-sm">{contact.contactMobile}</span>
-                                                                    </div>
-                                                                ) : (
-                                                                    '-'
-                                                                )}
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <div className="flex flex-wrap gap-1">
-                                                                    {contact.campaigns.length > 0 ? (
-                                                                        contact.campaigns.slice(0, 2).map((campaign) => (
-                                                                            <Badge key={campaign.id} variant="secondary" className="text-xs">
-                                                                                {campaign.name}
-                                                                            </Badge>
-                                                                        ))
-                                                                    ) : (
-                                                                        <span className="text-sm text-muted-foreground">No campaigns</span>
-                                                                    )}
-                                                                    {contact.campaigns.length > 2 && (
-                                                                        <Badge variant="outline" className="text-xs">
-                                                                            +{contact.campaigns.length - 2}
-                                                                        </Badge>
-                                                                    )}
-                                                                </div>
-                                                            </TableCell>
-                                                            <TableCell className="text-sm text-muted-foreground">
-                                                                {new Date(contact.createdAt).toLocaleDateString()}
-                                                            </TableCell>
-                                                            <TableCell className="text-right">
-                                                                <div className="flex items-center justify-end gap-2">
-                                                                    <Button
-                                                                        size="sm"
-                                                                        className="cursor-pointer"
-                                                                        variant="ghost"
-                                                                        onClick={() => handleQuickView(contact)}
-                                                                    >
-                                                                        <Eye className="size-4" />
-                                                                    </Button>
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant="ghost"
-                                                                        className="cursor-pointer"
-                                                                        onClick={() => router.push(`/contacts/${contact.id}/edit`)}
-                                                                    >
-                                                                        <Edit className="size-4" />
-                                                                    </Button>
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant="ghost"
-                                                                        className="cursor-pointer"
-                                                                        onClick={() => {
-                                                                            setDeleteContactId(contact.id);
-                                                                            setShowDeleteDialog(true);
-                                                                        }}
-                                                                    >
-                                                                        <Trash2 className="size-4 text-destructive" />
-                                                                    </Button>
-                                                                </div>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
+                                        <div className="flex gap-1">
+                                            <Button
+                                                size="sm"
+                                                className="cursor-pointer"
+                                                variant="outline"
+                                                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                                disabled={currentPage === 1}
+                                            >
+                                                <ChevronLeft className="size-4" />
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                className="cursor-pointer"
+                                                variant="outline"
+                                                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                                disabled={currentPage === totalPages}
+                                            >
+                                                <ChevronRight className="size-4" />
+                                            </Button>
                                         </div>
-
-                                        {/* Pagination */}
-                                        <div className="flex items-center justify-between mt-4">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm text-muted-foreground">Rows per page:</span>
-                                                <Select
-                                                    value={itemsPerPage.toString()}
-                                                    onValueChange={(value) => {
-                                                        setItemsPerPage(parseInt(value));
-                                                        setCurrentPage(1);
-                                                    }}
-                                                >
-                                                    <SelectTrigger className="w-[80px]">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="5">5</SelectItem>
-                                                        <SelectItem value="10">10</SelectItem>
-                                                        <SelectItem value="20">20</SelectItem>
-                                                        <SelectItem value="50">50</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm text-muted-foreground">
-                                                    Page {currentPage} of {totalPages}
-                                                </span>
-                                                <div className="flex gap-1">
-                                                    <Button
-                                                        size="sm"
-                                                        className="cursor-pointer"
-                                                        variant="outline"
-                                                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                                                        disabled={currentPage === 1}
-                                                    >
-                                                        <ChevronLeft className="size-4" />
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        className="cursor-pointer"
-                                                        variant="outline"
-                                                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                                                        disabled={currentPage === totalPages}
-                                                    >
-                                                        <ChevronRight className="size-4" />
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

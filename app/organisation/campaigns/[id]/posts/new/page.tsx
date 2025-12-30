@@ -117,6 +117,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
     const [selectedInstagramBusinessId, setSelectedInstagramBusinessId] = useState<string>('');
 
     const [uploadingMedia, setUploadingMedia] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0); // Add progress state
     const [templates, setTemplates] = useState<any[]>([]);
     const [pinterestBoards, setPinterestBoards] = useState<{ id: string; name: string }[]>([]);
     const [loadingPinterestBoards, setLoadingPinterestBoards] = useState(false);
@@ -292,60 +293,96 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
 
     // Handle file upload
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
+        const fileInput = e.target;
+        const files = Array.from(fileInput.files || []);
+        if (files.length === 0) return;
 
         // Limit to 10 images
         if (mediaUrls.length + files.length > 10) {
-            toast.error('You can upload a maximum of 10 images');
+            toast.error('You can upload a maximum of 10 media files');
             return;
         }
 
         try {
             setUploadingMedia(true);
+            setUploadProgress(0); // Reset progress
+
             const newUrls: string[] = [];
+            let hasVideo = false;
 
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
+            for (const file of files) {
 
+                // Check if video
+                if (file.type.startsWith('video/')) {
+                    hasVideo = true;
+                }
+
+                // Use client-side upload
                 const newBlob = await upload(file.name, file, {
                     access: 'public',
                     handleUploadUrl: '/api/upload',
+                    onUploadProgress: (progress) => {
+                        setUploadProgress(progress.percentage);
+                    }
                 });
 
                 newUrls.push(newBlob.url);
             }
 
             setMediaUrls(prev => [...prev, ...newUrls]);
+
+            // Auto-detect Content Type for Instagram/Facebook
+            if (selectedPlatform === 'INSTAGRAM' || selectedPlatform === 'FACEBOOK') {
+                if (hasVideo) {
+                    setContentType('REEL');
+                    setIsReel(true);
+                    toast.success('Video detected: Switched to Reel/Video mode');
+                } else if (mediaUrls.length === 0 && !hasVideo) {
+                    // Only switch to POST if it's the first upload and it's an image
+                    setContentType('POST');
+                    setIsReel(false);
+                }
+            }
+
             toast.success('Files uploaded successfully');
         } catch (error) {
             console.error('Error uploading file:', error);
-            toast.error('Failed to upload file');
+            toast.error(`Failed to upload file: ${error instanceof Error ? error.message : 'Unknown error'}`);
         } finally {
             setUploadingMedia(false);
+            setUploadProgress(0);
+            if (fileInput) fileInput.value = '';
         }
     };
 
     const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
+        const fileInput = e.target;
+        const files = Array.from(fileInput.files || []);
+        if (files.length === 0) return;
 
         try {
             setUploadingMedia(true);
+            setUploadProgress(0);
+
             const file = files[0];
 
             const newBlob = await upload(file.name, file, {
                 access: 'public',
                 handleUploadUrl: '/api/upload',
+                onUploadProgress: (progress) => {
+                    setUploadProgress(progress.percentage);
+                }
             });
 
             setThumbnailUrl(newBlob.url);
             toast.success('Thumbnail uploaded successfully');
         } catch (error) {
             console.error('Error uploading thumbnail:', error);
-            toast.error('Failed to upload thumbnail');
+            toast.error(`Failed to upload thumbnail: ${error instanceof Error ? error.message : 'Unknown error'}`);
         } finally {
             setUploadingMedia(false);
+            setUploadProgress(0);
+            if (fileInput) fileInput.value = '';
         }
     };
 
@@ -807,45 +844,29 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                     </div>
 
                                     <div className="space-y-2">
-                                        <div className="flex items-center justify-between">
-                                            <Label htmlFor="message">Message Body *</Label>
-                                            <Dialog>
-                                                <DialogTrigger asChild>
-                                                    <Button className='cursor-pointer' type="button" variant="outline" size="sm">
-                                                        <Eye className="size-4 mr-2" />
-                                                        Preview
-                                                    </Button>
-                                                </DialogTrigger>
-                                                <DialogContent className="max-w-2xl">
-                                                    <DialogHeader>
-                                                        <DialogTitle>Email Preview</DialogTitle>
-                                                        <DialogDescription>
-                                                            Preview how your email will look with sample data
-                                                        </DialogDescription>
-                                                    </DialogHeader>
-                                                    <div className="space-y-4">
-                                                        <div>
-                                                            <p className="text-sm font-medium mb-1">Subject:</p>
-                                                            <p className="text-sm text-muted-foreground">{subject || 'No subject'}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-sm font-medium mb-1">Message:</p>
-                                                            <div className="p-4 border rounded-lg bg-muted/50 whitespace-pre-wrap">
-                                                                {getPreviewContent() || 'No message'}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </DialogContent>
-                                            </Dialog>
+                                        <Label htmlFor="message">Message *</Label>
+                                        <div className="relative">
+                                            <Textarea
+                                                id="message"
+                                                placeholder="Enter your email message (HTML supported)"
+                                                value={message}
+                                                onChange={(e) => setMessage(e.target.value)}
+                                                rows={10}
+                                                required={selectedPlatform === 'EMAIL'}
+                                                className="pr-12 border border-2 border-gray-300 rounded-2xl"
+                                            />
+                                            <Button
+                                                type="button"
+                                                size="icon"
+                                                variant="ghost"
+                                                className="absolute bottom-2 right-2 size-8 rounded-full bg-primary text-primary-foreground cursor-pointer hover:bg-primary/90 shadow-lg"
+                                                onClick={() => setShowAIAssistant(true)}
+                                                title="Generate content with AI"
+                                            >
+                                                <Sparkles className="size-4" />
+                                            </Button>
+
                                         </div>
-                                        <Textarea
-                                            id="message"
-                                            placeholder="Enter your email message"
-                                            value={message}
-                                            onChange={(e) => setMessage(e.target.value)}
-                                            rows={8}
-                                            required={selectedPlatform === 'EMAIL'}
-                                        />
                                         <div className="flex flex-wrap gap-2">
                                             <p className="text-xs text-muted-foreground w-full">
                                                 Insert variables:
@@ -891,6 +912,23 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                             Variables will be replaced with actual contact data when sent
                                         </p>
                                     </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="scheduledPostTime">Schedule Email (Optional)</Label>
+                                        <Input
+                                            id="scheduledPostTime"
+                                            type="datetime-local"
+                                            value={scheduledPostTime}
+                                            onChange={(e) => setScheduledPostTime(e.target.value)}
+                                            min={new Date().toISOString().slice(0, 16)}
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            Leave empty to send immediately
+                                        </p>
+                                    </div>
+
+
+
 
                                     {/* Email Attachments */}
                                     <div className="space-y-2 pt-4 border-t">
@@ -1006,10 +1044,17 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                 {mediaUrls.length < 10 && (
                                                     <div className="flex gap-2">
                                                         <label htmlFor="media-upload" className="flex flex-col items-center justify-center size-20 border-2 border-dashed rounded-md cursor-pointer hover:bg-muted/50 transition-colors">
-                                                            <div className="flex flex-col items-center">
-                                                                <Upload className="size-4 text-muted-foreground mb-0.5" />
-                                                                <span className="text-[10px] text-muted-foreground">Add</span>
-                                                            </div>
+                                                            {uploadingMedia ? (
+                                                                <div className="flex flex-col items-center">
+                                                                    <Loader2 className="size-4 text-muted-foreground animate-spin mb-0.5" />
+                                                                    <span className="text-[10px] text-muted-foreground">{uploadProgress}%</span>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex flex-col items-center">
+                                                                    <Upload className="size-4 text-muted-foreground mb-0.5" />
+                                                                    <span className="text-[10px] text-muted-foreground">Add</span>
+                                                                </div>
+                                                            )}
                                                             <input
                                                                 id="media-upload"
                                                                 type="file"
@@ -1027,19 +1072,21 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                         </label>
 
                                                         {/* AI Image Generation Shortcut */}
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setAiAssistantTab('image');
-                                                                setShowAIAssistant(true);
-                                                            }}
-                                                            className="flex flex-col items-center justify-center size-20 border-2 border-dashed border-primary/30 rounded-md cursor-pointer hover:bg-primary/5 hover:border-primary/50 transition-colors group"
-                                                        >
-                                                            <div className="flex flex-col items-center">
-                                                                <Wand2 className="size-4 text-primary mb-0.5 group-hover:scale-110 transition-transform" />
-                                                                <span className="text-[10px] text-primary font-medium">AI Image</span>
-                                                            </div>
-                                                        </button>
+                                                        {selectedPlatform !== 'SMS' && selectedPlatform !== 'EMAIL' && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setAiAssistantTab('image');
+                                                                    setShowAIAssistant(true);
+                                                                }}
+                                                                className="flex flex-col items-center justify-center size-20 border-2 border-dashed border-primary/30 rounded-md cursor-pointer hover:bg-primary/5 hover:border-primary/50 transition-colors group"
+                                                            >
+                                                                <div className="flex flex-col items-center">
+                                                                    <Wand2 className="size-4 text-primary mb-0.5 group-hover:scale-110 transition-transform" />
+                                                                    <span className="text-[10px] text-primary font-medium">AI Image</span>
+                                                                </div>
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>
@@ -1129,7 +1176,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                             className="gap-2 w-full cursor-pointer"
                                                         >
                                                             <ImageIcon className="size-4" />
-                                                            {uploadingMedia ? "Uploading..." : "Upload Cover"}
+                                                            {uploadingMedia ? `Uploading... ${uploadProgress}%` : "Upload Cover"}
                                                         </Button>
                                                         <input
                                                             id="reel-cover-upload"
@@ -1267,16 +1314,16 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                 <div className="space-y-2">
                                                     <Label htmlFor="youtubePrivacy">Privacy Status</Label>
                                                     <div className="border rounded-md">
-                                                    <Select value={youtubePrivacy} onValueChange={setYoutubePrivacy}>
-                                                        <SelectTrigger id="youtubePrivacy">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="public">Public</SelectItem>
-                                                            <SelectItem value="private">Private</SelectItem>
-                                                            <SelectItem value="unlisted">Unlisted</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
+                                                        <Select value={youtubePrivacy} onValueChange={setYoutubePrivacy}>
+                                                            <SelectTrigger id="youtubePrivacy">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="public">Public</SelectItem>
+                                                                <SelectItem value="private">Private</SelectItem>
+                                                                <SelectItem value="unlisted">Unlisted</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1291,7 +1338,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                         className="gap-2 cursor-pointer"
                                                     >
                                                         <ImageIcon className="size-4" />
-                                                        {uploadingMedia ? "Uploading..." : "Upload Thumbnail"}
+                                                        {uploadingMedia ? `Uploading... ${uploadProgress}%` : "Upload Thumbnail"}
                                                     </Button>
                                                     <input
                                                         id="yt-thumbnail-upload"
@@ -1387,7 +1434,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                                         <div className="space-y-2">
                                                                             <Label htmlFor="boardDesc">Description (Optional)</Label>
                                                                             <Textarea
-                                                                            className='border border-primary/20 rounded-md resize-none'
+                                                                                className='border border-primary/20 rounded-md resize-none'
                                                                                 id="boardDesc"
                                                                                 value={newBoardDescription}
                                                                                 onChange={(e) => setNewBoardDescription(e.target.value)}
@@ -1429,6 +1476,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                                                 type="datetime-local"
                                                 value={scheduledPostTime}
                                                 onChange={(e) => setScheduledPostTime(e.target.value)}
+                                                min={new Date().toISOString().slice(0, 16)}
                                             />
                                             <p className="text-xs text-muted-foreground">
                                                 Leave empty to send immediately
@@ -1543,7 +1591,7 @@ export default function NewPostPage({ params }: { params: Promise<{ id: string }
                     }}
                 />
             </div>
-        </div>
+        </div >
     );
 }
 

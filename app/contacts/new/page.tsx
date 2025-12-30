@@ -131,15 +131,15 @@ export default function NewContactPage() {
 
     return (
         <div className="min-h-screen bg-background">
-       
+
             <div className="flex">
-           
+
                 <main className="flex-1 p-6">
                     <div className=" mx-auto space-y-6">
                         {/* Header */}
                         <div className="flex items-center gap-4">
                             <Button
-                            className="cursor-pointer"
+                                className="cursor-pointer"
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => router.push('/contacts')}
@@ -239,6 +239,7 @@ export default function NewContactPage() {
                                                             onCheckedChange={(checked) =>
                                                                 handleCampaignToggle(campaign.id, checked as boolean)
                                                             }
+                                                            className="border-gray-400"
                                                         />
                                                         <label
                                                             htmlFor={`campaign-${campaign.id}`}

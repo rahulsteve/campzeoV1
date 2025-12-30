@@ -28,6 +28,7 @@ import Image from 'next/image';
 import { AIContentAssistant } from '@/components/ai-content-assistant';
 import { WYSIWYGPreview } from '../../_components/WYSIWYGPreview';
 import { useUser } from '@clerk/nextjs';
+import { upload } from '@vercel/blob/client';
 
 
 
@@ -67,6 +68,7 @@ export default function EditPostPage() {
     const [isReel, setIsReel] = useState(false);
     const [contentType, setContentType] = useState('POST'); // For Facebook/Instagram: POST or REEL
     const [uploadingMedia, setUploadingMedia] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
 
     // Pinterest Boards
     const [pinterestBoards, setPinterestBoards] = useState<any[]>([]);
@@ -367,8 +369,9 @@ export default function EditPostPage() {
 
     // Handle file upload
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
+        const fileInput = e.target;
+        const files = Array.from(fileInput.files || []);
+        if (files.length === 0) return;
 
         // Limit to 10 images
         if (mediaUrls.length + files.length > 10) {
@@ -378,31 +381,84 @@ export default function EditPostPage() {
 
         try {
             setUploadingMedia(true);
+            setUploadProgress(0); // Reset progress
+
             const newUrls: string[] = [];
+            let hasVideo = false;
 
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                const formData = new FormData();
-                formData.append('file', file);
+            for (const file of files) {
 
-                const response = await fetch('/api/socialmedia/upload-media-file', {
-                    method: 'POST',
-                    body: formData,
+                // Check if video
+                if (file.type.startsWith('video/')) {
+                    hasVideo = true;
+                }
+
+                // Use client-side upload to avoid Vercel 4.5MB serverless limit
+                const newBlob = await upload(file.name, file, {
+                    access: 'public',
+                    handleUploadUrl: '/api/upload',
+                    onUploadProgress: (progress) => {
+                        setUploadProgress(progress.percentage);
+                    }
                 });
 
-                if (!response.ok) throw new Error('Upload failed');
-
-                const data = await response.json();
-                newUrls.push(data.url);
+                newUrls.push(newBlob.url);
             }
 
             setMediaUrls(prev => [...prev, ...newUrls]);
+
+            // Auto-detect Content Type for Instagram/Facebook
+            if (type === 'INSTAGRAM' || type === 'FACEBOOK') {
+                if (hasVideo) {
+                    setContentType('REEL');
+                    setIsReel(true);
+                    toast.success('Video detected: Switched to Reel/Video mode');
+                } else if (mediaUrls.length === 0 && !hasVideo) {
+                    // Only switch to POST if it's the first upload and it's an image
+                    setContentType('POST');
+                    setIsReel(false);
+                }
+            }
+
             toast.success('Files uploaded successfully');
         } catch (error) {
             console.error('Error uploading file:', error);
-            toast.error('Failed to upload file');
+            toast.error(`Failed to upload file: ${error instanceof Error ? error.message : 'Unknown error'}`);
         } finally {
             setUploadingMedia(false);
+            setUploadProgress(0);
+            if (fileInput) fileInput.value = '';
+        }
+    };
+
+    const handleThumbnailUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const fileInput = e.target;
+        const files = Array.from(fileInput.files || []);
+        if (files.length === 0) return;
+
+        try {
+            setUploadingMedia(true);
+            setUploadProgress(0);
+
+            const file = files[0];
+
+            const newBlob = await upload(file.name, file, {
+                access: 'public',
+                handleUploadUrl: '/api/upload',
+                onUploadProgress: (progress) => {
+                    setUploadProgress(progress.percentage);
+                }
+            });
+
+            setThumbnailUrl(newBlob.url);
+            toast.success('Thumbnail uploaded successfully');
+        } catch (error) {
+            console.error('Error uploading thumbnail:', error);
+            toast.error(`Failed to upload thumbnail: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        } finally {
+            setUploadingMedia(false);
+            setUploadProgress(0);
+            if (fileInput) fileInput.value = '';
         }
     };
 
@@ -715,7 +771,10 @@ export default function EditPostPage() {
                                             <div className="flex gap-2">
                                                 <label htmlFor="media-upload" className="flex flex-col items-center justify-center size-20 border-2 border-dashed rounded-md cursor-pointer hover:bg-muted/50 transition-colors">
                                                     {uploadingMedia ? (
-                                                        <Loader2 className="size-4 text-muted-foreground animate-spin" />
+                                                        <>
+                                                            <Loader2 className="size-4 text-muted-foreground animate-spin mb-0.5" />
+                                                            <span className="text-[10px] text-muted-foreground">{uploadProgress}%</span>
+                                                        </>
                                                     ) : (
                                                         <>
                                                             <Upload className="size-4 text-muted-foreground mb-0.5" />
@@ -734,19 +793,21 @@ export default function EditPostPage() {
                                                 </label>
 
                                                 {/* AI Image Generation Shortcut */}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setAiAssistantTab('image');
-                                                        setShowAIAssistant(true);
-                                                    }}
-                                                    className="flex flex-col items-center justify-center size-20 border-2 border-dashed border-primary/30 rounded-md cursor-pointer hover:bg-primary/5 hover:border-primary/50 transition-colors group"
-                                                >
-                                                    <div className="flex flex-col items-center">
-                                                        <Wand2 className="size-4 text-primary mb-0.5 group-hover:scale-110 transition-transform" />
-                                                        <span className="text-[10px] text-primary font-medium">AI Image</span>
-                                                    </div>
-                                                </button>
+                                                {type !== 'SMS' && type !== 'EMAIL' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setAiAssistantTab('image');
+                                                            setShowAIAssistant(true);
+                                                        }}
+                                                        className="flex flex-col items-center justify-center size-20 border-2 border-dashed border-primary/30 rounded-md cursor-pointer hover:bg-primary/5 hover:border-primary/50 transition-colors group"
+                                                    >
+                                                        <div className="flex flex-col items-center">
+                                                            <Wand2 className="size-4 text-primary mb-0.5 group-hover:scale-110 transition-transform" />
+                                                            <span className="text-[10px] text-primary font-medium">AI Image</span>
+                                                        </div>
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -789,13 +850,13 @@ export default function EditPostPage() {
                                                     className="gap-2 w-full cursor-pointer"
                                                 >
                                                     <Upload className="size-4" />
-                                                    {uploadingMedia ? "Uploading..." : "Upload Cover"}
+                                                    {uploadingMedia ? `Uploading... ${uploadProgress}%` : "Upload Cover"}
                                                 </Button>
                                                 <input
                                                     id="reel-cover-upload"
                                                     type="file"
                                                     accept="image/*"
-                                                    onChange={handleFileUpload}
+                                                    onChange={handleThumbnailUpload}
                                                     className="hidden"
                                                 />
                                             </div>
@@ -878,16 +939,16 @@ export default function EditPostPage() {
                                         <div className="space-y-2">
                                             <Label htmlFor="youtubePrivacy">Privacy Status</Label>
                                             <div className="border rounded-md">
-                                            <Select value={youtubePrivacy} onValueChange={setYoutubePrivacy}>
-                                                <SelectTrigger id="youtubePrivacy">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="public">Public</SelectItem>
-                                                    <SelectItem value="private">Private</SelectItem>
-                                                    <SelectItem value="unlisted">Unlisted</SelectItem>
-                                                </SelectContent>
-                                            </Select>
+                                                <Select value={youtubePrivacy} onValueChange={setYoutubePrivacy}>
+                                                    <SelectTrigger id="youtubePrivacy">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="public">Public</SelectItem>
+                                                        <SelectItem value="private">Private</SelectItem>
+                                                        <SelectItem value="unlisted">Unlisted</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
                                         </div>
                                     </div>
@@ -901,6 +962,7 @@ export default function EditPostPage() {
                                     type="datetime-local"
                                     value={scheduledPostTime}
                                     onChange={(e) => setScheduledPostTime(e.target.value)}
+                                    min={new Date().toISOString().slice(0, 16)}
                                 />
                                 <p className="text-xs text-muted-foreground">
                                     Leave empty to send immediately

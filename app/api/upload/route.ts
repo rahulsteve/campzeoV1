@@ -8,7 +8,12 @@ export async function POST(request: Request): Promise<NextResponse> {
     try {
         const user = await currentUser();
         if (!user) {
-            throw new Error("Unauthorized");
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        if (!process.env.BLOB_READ_WRITE_TOKEN) {
+            console.error('BLOB_READ_WRITE_TOKEN is not set');
+            return NextResponse.json({ error: "Blob storage is not configured" }, { status: 500 });
         }
 
         const jsonResponse = await handleUpload({
@@ -19,9 +24,11 @@ export async function POST(request: Request): Promise<NextResponse> {
                 return {
                     // Allowed content types are commented out to allow ANY file type
                     // allowedContentTypes: [ ... ], 
+                    maximumSizeInBytes: 500 * 1024 * 1024, // 500MB
                     tokenPayload: JSON.stringify({
                         userId: user.id,
                     }),
+                    addRandomSuffix: true,
                 };
             },
             onUploadCompleted: async ({ blob, tokenPayload }) => {
@@ -31,9 +38,10 @@ export async function POST(request: Request): Promise<NextResponse> {
 
         return NextResponse.json(jsonResponse);
     } catch (error) {
+        console.error('Error in /api/upload:', error);
         return NextResponse.json(
             { error: (error as Error).message },
-            { status: 400 },
+            { status: 500 }, // Use 500 for server errors
         );
     }
 }

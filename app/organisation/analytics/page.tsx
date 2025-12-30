@@ -33,6 +33,18 @@ import { toast } from 'sonner';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
+import {
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ResponsiveContainer,
+    AreaChart,
+    Area
+} from 'recharts';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface PostInsight {
@@ -232,6 +244,85 @@ export default function AnalyticsPage() {
         }
     };
 
+    // CSV Export
+    const handleExportCSV = () => {
+        if (!posts.length) return;
+
+        // Define headers based on platform type (Email vs Social)
+        const isEmailOrSms = ['EMAIL', 'SMS', 'WHATSAPP'].includes(selectedPlatform?.toUpperCase() || '');
+
+        let headers = ['Post/Message', 'Published At', 'Platform', 'Type', 'Status'];
+        if (isEmailOrSms) {
+            headers.push('Sent (Reach)', 'Delivered', 'Opened (Impressions)', 'Delivery Rate');
+        } else {
+            headers.push('Likes', 'Comments', 'Reach', 'Impressions', 'Engagement Rate');
+        }
+
+        // Map data to CSV rows
+        const rows = posts.map(post => {
+            const date = post.publishedAt ? format(new Date(post.publishedAt), 'yyyy-MM-dd HH:mm:ss') : '';
+            const status = post.insight.isDeleted ? 'Deleted' : 'Live';
+            let mediaUrl = post.mediaUrls || '';
+
+            // CSV safe strings (escape quotes)
+            const message = `"${(post.message || '').replace(/"/g, '""')}"`;
+
+            let rowByType = [];
+            if (isEmailOrSms) {
+                rowByType = [
+                    post.insight.reach, // Sent
+                    post.insight.reach, // Delivered (simplified assumption for now unless detailed)
+                    post.insight.impressions, // Opened
+                    '100%' // Delivery Rate
+                ];
+            } else {
+                rowByType = [
+                    post.insight.likes,
+                    post.insight.comments,
+                    post.insight.reach,
+                    post.insight.impressions,
+                    `${post.insight.engagementRate.toFixed(2)}%`
+                ];
+            }
+
+            return [
+                message,
+                date,
+                post.platform,
+                post.postType,
+                status,
+                ...rowByType
+            ].join(',');
+        });
+
+        const csvContent = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `${selectedPlatform}_analytics_${format(new Date(), 'yyyyMMdd')}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    // Chart Data Preparation
+    const getChartData = () => {
+        if (!posts.length) return [];
+        // Sort by date ascending for chart
+        const sortedPosts = [...posts].sort((a, b) => new Date(a.publishedAt || 0).getTime() - new Date(b.publishedAt || 0).getTime());
+
+        return sortedPosts.map(post => ({
+            date: post.publishedAt ? format(new Date(post.publishedAt), 'MMM d') : 'N/A',
+            likes: post.insight.likes,
+            comments: post.insight.comments,
+            reach: post.insight.reach,
+            impressions: post.insight.impressions
+        }));
+    };
+
+    const isEmailPlatform = ['EMAIL', 'SMS', 'WHATSAPP'].includes(selectedPlatform?.toUpperCase() || '');
+
     return (
         <div className="p-6 relative min-h-screen">
             <div className="mx-auto space-y-6 pb-24">
@@ -286,191 +377,312 @@ export default function AnalyticsPage() {
 
                 {/* Posts Table */}
                 {selectedPlatform && (
-                    <Card>
-                        <CardHeader>
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <div>
-                                    <CardTitle>{selectedPlatform} Posts</CardTitle>
-                                    <CardDescription>Performance metrics for your recent posts</CardDescription>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-3">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs text-muted-foreground">From:</span>
-                                        <input
-                                            type="date"
-                                            className="bg-background border rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-primary"
-                                            value={startDate}
-                                            onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
-                                        />
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs text-muted-foreground">To:</span>
-                                        <input
-                                            type="date"
-                                            className="bg-background border rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-primary"
-                                            value={endDate}
-                                            onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
-                                        />
-                                    </div>
-                                    <Button
-                                        className='cursor-pointer'
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => fetchPosts(true)}
-                                        disabled={loadingPosts}
-                                    >
-                                        <RefreshCw className={`mr-2 size-3 ${loadingPosts ? 'animate-spin' : ''}`} />
-                                        Refresh Data
-                                    </Button>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {loadingPosts ? (
-                                <div className="flex justify-center p-8">
-                                    <Loader2 className="size-8 animate-spin text-primary" />
-                                </div>
-                            ) : posts.length === 0 ? (
-                                <div className="text-center py-12 text-muted-foreground">
-                                    <p>No posts found for this platform.</p>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="overflow-x-auto border rounded-md">
-                                        <Table>
-                                            <TableHeader>
-                                                <TableRow>
-                                                    <TableHead className="w-[100px]">Media</TableHead>
-                                                    <TableHead className="min-w-[200px] max-w-[300px]">Content</TableHead>
-                                                    <TableHead>Likes</TableHead>
-                                                    <TableHead>Comments</TableHead>
-                                                    <TableHead>Reach/Views</TableHead>
-                                                    <TableHead>Engagement</TableHead>
-                                                    <TableHead>Published</TableHead>
-                                                    <TableHead className="text-right">Actions</TableHead>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody>
-                                                {posts.map((post) => (
-                                                    <TableRow
-                                                        key={post.id}
-                                                        className={`cursor-pointer hover:bg-muted/50 ${post.insight?.isDeleted ? 'opacity-60 bg-red-50 hover:bg-red-50' : ''}`}
-                                                        onClick={() => viewDetails(post)}
-                                                    >
-                                                        <TableCell onClick={(e) => e.stopPropagation()}>
-                                                            <div className="relative size-16 rounded-md overflow-hidden bg-muted border">
-                                                                {post.postType === 'VIDEO' || post.mediaUrls?.toLowerCase().endsWith('.mp4') ? (
-                                                                    <div className="flex items-center justify-center h-full bg-slate-900">
-                                                                        <Video className="size-6 text-white" />
-                                                                    </div>
-                                                                ) : (post.mediaUrls && post.mediaUrls !== '[]' && (post.mediaUrls.startsWith('http') || post.mediaUrls.startsWith('/'))) ? (
-                                                                    <Image
-                                                                        src={post.mediaUrls}
-                                                                        alt="Post media"
-                                                                        fill
-                                                                        className="object-cover"
-                                                                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                                                                    />
-                                                                ) : (
-                                                                    <div className="flex items-center justify-center h-full">
-                                                                        <ImageIcon className="size-6 text-muted-foreground" />
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            <div className="space-y-1">
-                                                                <p className={`line-clamp-2 text-sm font-medium ${post.insight?.isDeleted ? 'line-through text-red-500' : ''}`}>
-                                                                    {post.message || 'No content'}
-                                                                </p>
-                                                                {post.insight?.isDeleted && (
-                                                                    <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">
-                                                                        Deleted on Platform
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell>{post.insight?.isDeleted ? '-' : post.insight?.likes ?? 0}</TableCell>
-                                                        <TableCell>{post.insight?.isDeleted ? '-' : post.insight?.comments ?? 0}</TableCell>
-                                                        <TableCell>{post.insight?.isDeleted ? '-' : post.insight?.reach ?? 0}</TableCell>
-                                                        <TableCell>
-                                                            {post.insight?.isDeleted ? '-' : (post.insight?.engagementRate ? `${post.insight.engagementRate.toFixed(1)}%` : '0.0%')}
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            {post.publishedAt ? format(new Date(post.publishedAt), 'MMM d, yyyy') : '-'}
-                                                        </TableCell>
-                                                        <TableCell className="text-right">
-                                                            <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                                                                <Button
-                                                                    className="cursor-pointer"
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    onClick={() => handleSync(post)}
-                                                                    disabled={syncing === post.id}
-                                                                >
-                                                                    <RefreshCw className={`size-4 ${syncing === post.id ? 'animate-spin' : ''}`} />
-                                                                </Button>
-                                                                <Button
-                                                                    className="cursor-pointer"
-                                                                    variant="ghost"
-                                                                    size="icon"
-                                                                    onClick={() => viewDetails(post)}
-                                                                >
-                                                                    <BarChart2 className="size-4" />
-                                                                </Button>
-                                                            </div>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </div>
-
-                                    {/* Pagination Controls */}
-                                    {totalPages > 1 && (
-                                        <div className="flex items-center justify-between pt-4">
-                                            <p className="text-sm text-muted-foreground">
-                                                Showing <span className="font-medium">{posts.length}</span> of <span className="font-medium">{totalCount}</span> posts
-                                            </p>
-                                            <div className="flex items-center gap-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    disabled={page === 1}
-                                                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                                                >
-                                                    Previous
-                                                </Button>
-                                                <div className="flex items-center gap-1">
-                                                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                                                        .slice(Math.max(0, page - 3), Math.min(totalPages, page + 2))
-                                                        .map((pageNum) => (
-                                                            <Button
-                                                                key={pageNum}
-                                                                variant={page === pageNum ? 'default' : 'ghost'}
-                                                                size="icon"
-                                                                className="h-8 w-8 text-xs"
-                                                                onClick={() => setPage(pageNum)}
-                                                            >
-                                                                {pageNum}
-                                                            </Button>
-                                                        ))}
-                                                </div>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    disabled={page === totalPages}
-                                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                                >
-                                                    Next
-                                                </Button>
+                    <div className="space-y-6">
+                        {/* Visual Graph Section */}
+                        {!loadingPosts && posts.length > 0 && (
+                            <Card className="border shadow-sm">
+                                <CardHeader className="pb-2">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <CardTitle className="text-lg font-semibold">Engagement Trends</CardTitle>
+                                            <CardDescription>Performance over time for loaded posts</CardDescription>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium border border-blue-100">
+                                                <div className="size-2 rounded-full bg-blue-500" />
+                                                {isEmailPlatform ? 'Sent' : 'Likes'}
+                                            </div>
+                                            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-xs font-medium border border-purple-100">
+                                                <div className="size-2 rounded-full bg-purple-500" />
+                                                {isEmailPlatform ? 'Opened' : 'Reach'}
                                             </div>
                                         </div>
-                                    )}
-                                </>
-                            )}
-                        </CardContent>
-                    </Card>
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="h-[250px] w-full mt-2">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={getChartData()}>
+                                                <defs>
+                                                    <linearGradient id="colorLikes" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                                    </linearGradient>
+                                                    <linearGradient id="colorReach" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
+                                                        <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                                                <XAxis
+                                                    dataKey="date"
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                    tick={{ fontSize: 12, fill: '#6b7280' }}
+                                                    dy={10}
+                                                />
+                                                <YAxis
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                    tick={{ fontSize: 12, fill: '#6b7280' }}
+                                                />
+                                                <Tooltip
+                                                    contentStyle={{
+                                                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                                        border: '1px solid #e2e8f0',
+                                                        borderRadius: '8px',
+                                                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                                                    }}
+                                                />
+                                                <Area
+                                                    type="monotone"
+                                                    dataKey={isEmailPlatform ? "reach" : "likes"} // Use "reach" for Sent in email
+                                                    stroke="#3b82f6"
+                                                    strokeWidth={3}
+                                                    fillOpacity={1}
+                                                    fill="url(#colorLikes)"
+                                                    name={isEmailPlatform ? "Sent" : "Likes"}
+                                                />
+                                                <Area
+                                                    type="monotone"
+                                                    dataKey={isEmailPlatform ? "impressions" : "reach"}
+                                                    stroke="#a855f7"
+                                                    strokeWidth={3}
+                                                    fillOpacity={1}
+                                                    fill="url(#colorReach)"
+                                                    name={isEmailPlatform ? "Opened" : "Reach"}
+                                                />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        <Card>
+                            <CardHeader>
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    <div>
+                                        <CardTitle>{selectedPlatform} Posts</CardTitle>
+                                        <CardDescription>Performance metrics for your recent posts</CardDescription>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-muted-foreground">From:</span>
+                                            <input
+                                                type="date"
+                                                className="bg-background border rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-primary"
+                                                value={startDate}
+                                                onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
+                                            />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-muted-foreground">To:</span>
+                                            <input
+                                                type="date"
+                                                className="bg-background border rounded px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-primary"
+                                                value={endDate}
+                                                onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
+                                            />
+                                        </div>
+
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleExportCSV}
+                                            disabled={loadingPosts || posts.length === 0}
+                                            className="cursor-pointer"
+                                        >
+                                            <BarChart2 className="mr-2 size-3" />
+                                            Export CSV
+                                        </Button>
+
+                                        <Button
+                                            className='cursor-pointer'
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => fetchPosts(true)}
+                                            disabled={loadingPosts}
+                                        >
+                                            <RefreshCw className={`mr-2 size-3 ${loadingPosts ? 'animate-spin' : ''}`} />
+                                            Refresh
+                                        </Button>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {loadingPosts ? (
+                                    <div className="flex justify-center p-8">
+                                        <Loader2 className="size-8 animate-spin text-primary" />
+                                    </div>
+                                ) : posts.length === 0 ? (
+                                    <div className="text-center py-12 text-muted-foreground">
+                                        <p>No posts found for this platform.</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="overflow-x-auto border rounded-md">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead className="w-[100px]">Media</TableHead>
+                                                        <TableHead className="min-w-[200px] max-w-[300px]">Content</TableHead>
+                                                        {isEmailPlatform ? (
+                                                            <>
+                                                                <TableHead>Sent</TableHead>
+                                                                <TableHead>Delivered</TableHead>
+                                                                <TableHead>Opened</TableHead>
+                                                                <TableHead>Click Rate</TableHead>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <TableHead>Likes</TableHead>
+                                                                <TableHead>Comments</TableHead>
+                                                                <TableHead>Reach</TableHead>
+                                                                <TableHead>Engagement</TableHead>
+                                                            </>
+                                                        )}
+                                                        <TableHead>Published</TableHead>
+                                                        <TableHead className="text-right">Actions</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {posts.map((post) => (
+                                                        <TableRow
+                                                            key={post.id}
+                                                            className={`cursor-pointer hover:bg-muted/50 ${post.insight?.isDeleted ? 'opacity-60 bg-red-50 hover:bg-red-50' : ''}`}
+                                                            onClick={() => viewDetails(post)}
+                                                        >
+                                                            <TableCell onClick={(e) => e.stopPropagation()}>
+                                                                <div className="relative size-16 rounded-md overflow-hidden bg-muted border">
+                                                                    {post.postType === 'VIDEO' || post.mediaUrls?.toLowerCase().endsWith('.mp4') ? (
+                                                                        <div className="flex items-center justify-center h-full bg-slate-900">
+                                                                            <Video className="size-6 text-white" />
+                                                                        </div>
+                                                                    ) : (post.mediaUrls && post.mediaUrls !== '[]' && (post.mediaUrls.startsWith('http') || post.mediaUrls.startsWith('/'))) ? (
+                                                                        <Image
+                                                                            src={post.mediaUrls}
+                                                                            alt="Post media"
+                                                                            fill
+                                                                            className="object-cover"
+                                                                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="flex items-center justify-center h-full">
+                                                                            <ImageIcon className="size-6 text-muted-foreground" />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <div className="space-y-1">
+                                                                    <p className={`line-clamp-2 text-sm font-medium ${post.insight?.isDeleted ? 'line-through text-red-500' : ''}`}>
+                                                                        {post.message || 'No content'}
+                                                                    </p>
+                                                                    {post.insight?.isDeleted && (
+                                                                        <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold uppercase tracking-wide">
+                                                                            Deleted on Platform
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </TableCell>
+
+                                                            {isEmailPlatform ? (
+                                                                <>
+                                                                    <TableCell>{post.insight?.isDeleted ? '-' : post.insight?.reach ?? 0}</TableCell>
+                                                                    <TableCell>{post.insight?.isDeleted ? '-' : post.insight?.reach ?? 0}</TableCell>
+                                                                    <TableCell>{post.insight?.isDeleted ? '-' : post.insight?.impressions ?? 0}</TableCell>
+                                                                    <TableCell>
+                                                                        {post.insight?.isDeleted ? '-' : '0.0%'}
+                                                                    </TableCell>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <TableCell>{post.insight?.likes ?? 0}</TableCell>
+                                                                    <TableCell>{post.insight?.comments ?? 0}</TableCell>
+                                                                    <TableCell>{post.insight?.reach ?? 0}</TableCell>
+                                                                    <TableCell>
+                                                                        {post.insight?.engagementRate ? `${post.insight.engagementRate.toFixed(1)}%` : '0.0%'}
+                                                                    </TableCell>
+                                                                </>
+                                                            )}
+
+                                                            <TableCell>
+                                                                {post.publishedAt ? format(new Date(post.publishedAt), 'MMM d, yyyy') : '-'}
+                                                            </TableCell>
+                                                            <TableCell className="text-right">
+                                                                <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                                                                    <Button
+                                                                        className="cursor-pointer"
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={() => handleSync(post)}
+                                                                        disabled={syncing === post.id}
+                                                                    >
+                                                                        <RefreshCw className={`size-4 ${syncing === post.id ? 'animate-spin' : ''}`} />
+                                                                    </Button>
+                                                                    <Button
+                                                                        className="cursor-pointer"
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={() => viewDetails(post)}
+                                                                    >
+                                                                        <BarChart2 className="size-4" />
+                                                                    </Button>
+                                                                </div>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+
+                                        {/* Pagination Controls */}
+                                        {totalPages > 1 && (
+                                            <div className="flex items-center justify-between pt-4">
+                                                <p className="text-sm text-muted-foreground">
+                                                    Showing <span className="font-medium">{posts.length}</span> of <span className="font-medium">{totalCount}</span> posts
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        disabled={page === 1}
+                                                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                                                    >
+                                                        Previous
+                                                    </Button>
+                                                    <div className="flex items-center gap-1">
+                                                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                                            .slice(Math.max(0, page - 3), Math.min(totalPages, page + 2))
+                                                            .map((pageNum) => (
+                                                                <Button
+                                                                    key={pageNum}
+                                                                    variant={page === pageNum ? 'default' : 'ghost'}
+                                                                    size="icon"
+                                                                    className="h-8 w-8 text-xs"
+                                                                    onClick={() => setPage(pageNum)}
+                                                                >
+                                                                    {pageNum}
+                                                                </Button>
+                                                            ))}
+                                                    </div>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        disabled={page === totalPages}
+                                                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                                    >
+                                                        Next
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
                 )}
             </div>
 
