@@ -64,6 +64,7 @@ model Organisation {
   chatHistories         ChatHistory[]
   contacts              Contact[]
   messageTemplates      MessageTemplate[]
+  MessageUsage          MessageUsage[]
   notifications         Notification[]
   organisationPlatforms OrganisationPlatform[]
   payments              Payment[]
@@ -140,6 +141,8 @@ model Plan {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   isDeleted     Boolean?       @default(false)
+  smsLimit      Int?           @default(0)
+  whatsappLimit Int?           @default(0)
   subscriptions Subscription[]
 }
 
@@ -285,13 +288,13 @@ model LogEvents {
 }
 
 model JobSetting {
-  id             Int      @id @default(autoincrement())
+  id             Int       @id @default(autoincrement())
   jobId          String?
   cronExpression String?
-  isEnabled      Boolean  @default(false)
-  lastRunAt      DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  isEnabled      Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  lastRunAt      DateTime? @db.Timestamp(6)
 }
 
 model AdminPlatformConfiguration {
@@ -351,6 +354,20 @@ model CommentSentiment {
   createdAt DateTime @default(now())
 }
 
+model MessageUsage {
+  id             String         @id
+  organisationId Int
+  channel        MessageChannel
+  count          Int            @default(0)
+  periodStart    DateTime
+  periodEnd      DateTime
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime
+  Organisation   Organisation   @relation(fields: [organisationId], references: [id])
+
+  @@unique([organisationId, channel, periodStart])
+}
+
 enum UserRole {
   ADMIN_USER
   ORGANISATION_USER
@@ -373,4 +390,9 @@ enum PlatformType {
   LINKEDIN
   YOUTUBE
   PINTEREST
+}
+
+enum MessageChannel {
+  SMS
+  WHATSAPP
 }

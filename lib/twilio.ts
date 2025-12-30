@@ -1,44 +1,105 @@
 import twilio from 'twilio';
+import { prisma } from './prisma';
 
-const accountSid = process.env.TWILIO_ACCOUNT_SID || 'ACe508f85acf71a2242bad0c01b47278c2';
-const authToken = process.env.TWILIO_AUTH_TOKEN || '7f9b45017ac134920d6f6f1dd75d4ed2';
-const twilioNumber = process.env.TWILIO_PHONE_NUMBER || '+13093160811';
-
-const client = twilio(accountSid, authToken);
-
-export async function sendSms(to: string, body: string) {
+async function getTwilioConfig() {
     try {
+        const configs = await prisma.adminPlatformConfiguration.findMany({
+            where: {
+                key: { in: ['WHATSAPP_ACCOUNT_SID', 'WHATSAPP_AUTH_TOKEN', 'WHATSAPP_NUMBER', 'SMS_NUMBER'] }
+            }
+        });
+
+        const accountSid = configs.find(c => c.key === 'WHATSAPP_ACCOUNT_SID')?.value;
+        const authToken = configs.find(c => c.key === 'WHATSAPP_AUTH_TOKEN')?.value;
+        const twilioNumber = configs.find(c => c.key === 'WHATSAPP_NUMBER')?.value;
+        const twilioSMSNumber = configs.find(c => c.key === 'SMS_NUMBER')?.value;
+
+        return { accountSid, authToken, twilioNumber, twilioSMSNumber };
+    } catch (error) {
+        console.error("Failed to fetch Twilio config:", error);
+        return { accountSid: null, authToken: null, twilioNumber: null, twilioSMSNumber: null };
+    }
+}
+
+// import { checkMessageLimit, incrementMessageUsage } from './usage';
+
+export async function sendSms(to: string, body: string, organisationId?: number) {
+    try {
+        // if (organisationId) {
+        //     console.log(`Checking SMS limit for organisation ${organisationId}`);
+        //     const allowed = await checkMessageLimit(organisationId, 'SMS');
+        //     if (!allowed) {
+        //         console.error(`[SMS] Limit exceeded for organisation ${organisationId}`);
+        //         return null;
+        //     }
+        // }
+
+        const { accountSid, authToken, twilioNumber, twilioSMSNumber } = await getTwilioConfig();
+        let formattedNumber = to.trim();
+        if (!formattedNumber.startsWith('+')) {
+            formattedNumber = formattedNumber.replace(/^0+/, '');
+            formattedNumber = `+91${formattedNumber}`;
+        }
+
+        const client = twilio(accountSid ?? undefined, authToken ?? undefined);
         const message = await client.messages.create({
             body: body,
-            from: twilioNumber,
-            to: to,
+            from: twilioSMSNumber ?? undefined,
+            to: formattedNumber,
         });
-        console.log(`SMS sent to ${to}: ${message.sid}`);
+        console.log(`SMS sent to ${formattedNumber}: ${message.sid}`);
+
+        // if (organisationId && message.sid) {
+        //     await incrementMessageUsage(organisationId, 'SMS');
+        // }
+
         return message;
     } catch (error) {
         console.error('Error sending SMS:', error);
-        // Don't throw error to prevent blocking the flow, just log it
         return null;
     }
 }
 
-export async function sendWhatsapp(to: string, body: string, mediaUrls?: string[]) {
+export async function sendWhatsapp(to: string, body: string, mediaUrl?: string | string[], organisationId?: number) {
     try {
-        const messageOptions: any = {
-            body: body,
-            from: `whatsapp:${twilioNumber}`,
-            to: `whatsapp:${to}`,
-        };
+        // if (organisationId) {
+        //     const allowed = await checkMessageLimit(organisationId, 'WHATSAPP');
+        //     if (!allowed) {
+        //         console.error(`[WhatsApp] Limit exceeded for organisation ${organisationId}`);
+        //         return null;
+        //     }
+        // }
 
-        if (mediaUrls && mediaUrls.length > 0) {
-            messageOptions.mediaUrl = mediaUrls;
+        const { accountSid, authToken, twilioNumber, twilioSMSNumber } = await getTwilioConfig();
+        let formattedNumber = to.trim();
+        if (!formattedNumber.startsWith('+')) {
+            formattedNumber = formattedNumber.replace(/^0+/, '');
+            formattedNumber = `+91${formattedNumber}`;
         }
 
-        const message = await client.messages.create(messageOptions);
-        console.log(`WhatsApp sent to ${to}: ${message.sid}`);
+        const client = twilio(accountSid ?? undefined, authToken ?? undefined);
+        const message = await client.messages.create({
+            body: body,
+            from: twilioNumber ? `whatsapp:${twilioNumber}` : undefined,
+            to: `whatsapp:${formattedNumber}`,
+            mediaUrl: mediaUrl ? (Array.isArray(mediaUrl) ? mediaUrl : [mediaUrl]) : undefined,
+        });
+
+        console.log(`✅ WhatsApp sent to ${formattedNumber}`);
+
+        // if (organisationId && message.sid) {
+        //     await incrementMessageUsage(organisationId, 'WHATSAPP');
+        // }
+
         return message;
-    } catch (error) {
-        console.error('Error sending WhatsApp:', error);
+    } catch (error: any) {
+        console.error(`❌ Error sending WhatsApp to ${to}:`);
+        console.error(`[WhatsApp] Error code: ${error.code || 'N/A'}`);
+        console.error(`[WhatsApp] Error message: ${error.message || 'Unknown error'}`);
+        if (error.moreInfo) {
+            console.error(`[WhatsApp] More info: ${error.moreInfo}`);
+        }
+        console.error(`[WhatsApp] Full error:`, error);
         return null;
     }
 }

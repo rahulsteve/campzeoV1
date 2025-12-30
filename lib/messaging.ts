@@ -32,7 +32,5 @@ interface SendWhatsAppParams {
 }
 
 export async function sendWhatsApp(params: SendWhatsAppParams): Promise<void> {
-    // For now, just send the text message
-    // TODO: Add media support when Twilio WhatsApp media is configured
-    await sendWhatsapp(params.to, params.message);
+    await sendWhatsapp(params.to, params.message, params.mediaUrls);
 }

@@ -51,3 +51,5 @@ next-env.d.ts
 /.vscode
 /.vscode
 /docs
+
+/lib/generated/prisma
