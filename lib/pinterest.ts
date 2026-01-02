@@ -42,7 +42,7 @@ export async function postToPinterest(
 
         // Check if multiple images (Carousel)
         if (mediaList.length > 1) {
-            // Validate all are images (Pinterest doesn't support mixed/video carousels easily via this endpoint)
+
             const hasVideo = mediaList.some(url => /\.(mp4|mov|webm|avi|mkv)(\?.*)?$/i.test(url));
             if (hasVideo) {
                 console.warn('[Pinterest] Video detected in multiple items. Pinterest organic carousel mainly supports images. Proceeding with multiple_image_urls check.');
@@ -315,27 +315,34 @@ export async function getPinterestPostInsights(
         const adAccounts = await getPinterestAdAccounts(accessToken);
 
         // 1. Get Pin Details (Organic baseline + Global totals)
-        const detailsResponse = await fetch(`https://api.pinterest.com/v5/pins/${pinId}`, {
+        const detailsResponse = await fetch(`https://api.pinterest.com/v5/pins/${pinId}?pin_metrics=true`, {
             headers: { 'Authorization': `Bearer ${accessToken}` },
         });
 
         if (detailsResponse.ok) {
             pinMetadata = await detailsResponse.json();
-            const lt = pinMetadata.all_pin_metrics?.lifetime || {};
+            console.log(`[Pinterest] Pin Details for ${pinId}:`, JSON.stringify(pinMetadata, null, 2));
+
+            // Try different nested metric objects (Pinterest API v5 variations)
+            const pm = pinMetadata.pin_metrics || pinMetadata.all_pin_metrics || {};
+            const lt = pm.lifetime || pm.all_time || {};
 
             // Pinterest v5 fields for interactions
-            comments = pinMetadata.comment_count || lt.comment || 0;
-            const reactionCount = pinMetadata.reaction_count || lt.reaction || 0;
-            const saveCount = pinMetadata.save_count || lt.save || 0;
+            // Attempt to get from top level (sometimes available for real-time) or from lifetime metrics
+            comments = pinMetadata.comment_count ?? lt.comment ?? lt.comments ?? 0;
+            const reactionCount = pinMetadata.reaction_count ?? lt.reaction ?? lt.reactions ?? 0;
+            const saveCount = pinMetadata.save_count ?? lt.save ?? lt.saves ?? 0;
 
-            // In Pinterest app, "Hearts" are reactions. If found, use them for 'likes'.
-            // Fallback to saves if reactions are 0.
+            console.log(`[Pinterest] Extracted - Comments: ${comments}, Reactions: ${reactionCount}, Saves: ${saveCount}`);
+
+            // In Pinterest app, "Hearts" are reactions. 
+            // We use reactions as 'likes' if available, otherwise fallback to saves.
             likes = reactionCount > 0 ? reactionCount : saveCount;
 
-            impressions = lt.impression || pinMetadata.impressions || 0;
+            impressions = lt.impression ?? lt.impressions ?? pinMetadata.impressions ?? 0;
             saves = saveCount;
-            pinClicks = lt.pin_click || 0;
-            outboundClicks = lt.outbound_click || 0;
+            pinClicks = lt.pin_click ?? lt.pin_clicks ?? 0;
+            outboundClicks = lt.outbound_click ?? lt.outbound_clicks ?? 0;
         } else if (detailsResponse.status === 404) {
             return {
                 likes: 0, comments: 0, impressions: 0, reach: 0, engagementRate: 0,

@@ -175,6 +175,7 @@ export function AdminSchedulerView() {
     };
 
     const handleSeed = async () => {
+
         try {
             setIsSeeding(true);
             const response = await fetch('/api/admin/seed', {
@@ -185,7 +186,6 @@ export function AdminSchedulerView() {
 
             if (response.ok) {
                 toast.success('Database initialized with default scheduler settings');
-                window.location.reload();
             } else {
                 throw new Error(data.error || 'Failed to seed database');
             }
@@ -194,6 +194,7 @@ export function AdminSchedulerView() {
             toast.error(error instanceof Error ? error.message : 'Failed to seed database');
         } finally {
             setIsSeeding(false);
+            window.location.reload();
         }
     };
 
@@ -241,23 +242,23 @@ export function AdminSchedulerView() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="frequency">Check Frequency</Label>
-                           <div className="border rounded-md">
-                            <Select
-                                value={frequency}
-                                onValueChange={(value) => handleUpdateSettings({ frequency: value })}
-                                disabled={loadingSettings}
-                            >
-                                <SelectTrigger id="frequency">
-                                    <SelectValue placeholder="Select frequency" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="5">Every 5 minutes</SelectItem>
-                                    <SelectItem value="10">Every 10 minutes</SelectItem>
-                                    <SelectItem value="15">Every 15 minutes</SelectItem>
-                                    <SelectItem value="30">Every 30 minutes</SelectItem>
-                                    <SelectItem value="60">Every 1 hour</SelectItem>
-                                </SelectContent>
-                            </Select></div>
+                            <div className="border rounded-md">
+                                <Select
+                                    value={frequency}
+                                    onValueChange={(value) => handleUpdateSettings({ frequency: value })}
+                                    disabled={loadingSettings}
+                                >
+                                    <SelectTrigger id="frequency">
+                                        <SelectValue placeholder="Select frequency" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="5">Every 5 minutes</SelectItem>
+                                        <SelectItem value="10">Every 10 minutes</SelectItem>
+                                        <SelectItem value="15">Every 15 minutes</SelectItem>
+                                        <SelectItem value="30">Every 30 minutes</SelectItem>
+                                        <SelectItem value="60">Every 1 hour</SelectItem>
+                                    </SelectContent>
+                                </Select></div>
                             <p className="text-xs text-muted-foreground">
                                 How often the system checks for and sends scheduled posts.
                             </p>
@@ -291,9 +292,9 @@ export function AdminSchedulerView() {
                         <div className="pt-4 border-t border-dashed">
                             <div className="flex items-center justify-between">
                                 <div className="space-y-1">
-                                    <h4 className="text-sm font-medium">Initial Setup Required?</h4>
+                                    <h4 className="text-sm font-medium">Enable Scheduler & Initial Setup</h4>
                                     <p className="text-xs text-muted-foreground">
-                                        If the scheduler settings are missing from the database, click below to initialize them.
+                                        If the scheduler is disabled or settings are missing, click below to enable and initialize them.
                                     </p>
                                 </div>
                                 <Button
@@ -303,7 +304,7 @@ export function AdminSchedulerView() {
                                     disabled={isSeeding}
                                 >
                                     {isSeeding ? <Loader2 className="size-3 mr-2 animate-spin" /> : <RefreshCw className="size-3 mr-2" />}
-                                    Initialize Settings
+                                    Enable & Initialize Settings
                                 </Button>
                             </div>
                         </div>

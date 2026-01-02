@@ -447,70 +447,70 @@ export default function CampaignPostsPage() {
                             <label className="text-sm font-semibold flex items-center gap-1">
                                 Select Platform <span className="text-red-500">*</span>
                             </label>
-                            <div className="flex justify-around">
+                            <div className="grid grid-cols-1 gap-4 ">
 
-                            <div className="flex flex-wrap gap-4">
-                                <button
-                                    onClick={() => setActiveTab('all')}
-                                    className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all min-w-[100px] cursor-pointer ${activeTab === 'all'
-                                        ? 'border-primary bg-primary/10 shadow-sm'
-                                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
-                                        }`}
-                                >
-                                    <Globe className={`size-6 ${activeTab === 'all' ? 'text-primary' : 'text-muted-foreground'}`} />
-                                    <span className={`text-xs font-medium ${activeTab === 'all' ? 'text-primary' : 'text-muted-foreground'}`}>
-                                        ALL
-                                    </span>
-                                </button>
-                                {(() => {
-                                    const PLATFORM_ORDER = ['EMAIL', 'SMS', 'WHATSAPP', 'PINTEREST', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'FACEBOOK'];
-                                    const sortedPlatforms = [...organisationPlatforms].sort((a, b) => {
-                                        const idxA = PLATFORM_ORDER.indexOf(a.toUpperCase());
-                                        const idxB = PLATFORM_ORDER.indexOf(b.toUpperCase());
-                                        if (idxA === -1) return 1;
-                                        if (idxB === -1) return -1;
-                                        return idxA - idxB;
-                                    });
+                                <div className="flex justify-center md:justify-start flex-wrap gap-4">
+                                    <button
+                                        onClick={() => setActiveTab('all')}
+                                        className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all min-w-[100px] cursor-pointer ${activeTab === 'all'
+                                            ? 'border-primary bg-primary/10 shadow-sm'
+                                            : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                                            }`}
+                                    >
+                                        <Globe className={`size-6 ${activeTab === 'all' ? 'text-primary' : 'text-muted-foreground'}`} />
+                                        <span className={`text-xs font-medium ${activeTab === 'all' ? 'text-primary' : 'text-muted-foreground'}`}>
+                                            ALL
+                                        </span>
+                                    </button>
+                                    {(() => {
+                                        const PLATFORM_ORDER = ['EMAIL', 'SMS', 'WHATSAPP', 'PINTEREST', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'FACEBOOK'];
+                                        const sortedPlatforms = [...organisationPlatforms].sort((a, b) => {
+                                            const idxA = PLATFORM_ORDER.indexOf(a.toUpperCase());
+                                            const idxB = PLATFORM_ORDER.indexOf(b.toUpperCase());
+                                            if (idxA === -1) return 1;
+                                            if (idxB === -1) return -1;
+                                            return idxA - idxB;
+                                        });
 
-                                    return sortedPlatforms.map((platform) => {
-                                        const isSelected = activeTab === platform;
-                                        const displayPlatform = platform.toUpperCase();
-                                        
-                                        // Dynamic Icon Selection to match design
-                                        const getDesignIcon = (p: string) => {
-                                            switch (p) {
-                                                case 'EMAIL': return Mail;
-                                                case 'SMS': return MessageSquare;
-                                                case 'WHATSAPP': return Phone;
-                                                case 'PINTEREST': return Send;
-                                                case 'INSTAGRAM': return Instagram;
-                                                case 'LINKEDIN': return Linkedin;
-                                                case 'YOUTUBE': return Youtube;
-                                                case 'FACEBOOK': return Facebook;
-                                                default: return Globe;
-                                            }
-                                        };
-                                        const Icon = getDesignIcon(displayPlatform);
+                                        return sortedPlatforms.map((platform) => {
+                                            const isSelected = activeTab === platform;
+                                            const displayPlatform = platform.toUpperCase();
 
-                                        return (
-                                            <button
-                                                key={platform}
-                                                onClick={() => setActiveTab(platform)}
-                                                className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all min-w-[100px] cursor-pointer ${isSelected
-                                                    ? 'border-primary bg-primary/10 shadow-sm'
-                                                    : 'border-border hover:border-primary/50 hover:bg-muted/50'
-                                                }`}
+                                            // Dynamic Icon Selection to match design
+                                            const getDesignIcon = (p: string) => {
+                                                switch (p) {
+                                                    case 'EMAIL': return Mail;
+                                                    case 'SMS': return MessageSquare;
+                                                    case 'WHATSAPP': return Phone;
+                                                    case 'PINTEREST': return Send;
+                                                    case 'INSTAGRAM': return Instagram;
+                                                    case 'LINKEDIN': return Linkedin;
+                                                    case 'YOUTUBE': return Youtube;
+                                                    case 'FACEBOOK': return Facebook;
+                                                    default: return Globe;
+                                                }
+                                            };
+                                            const Icon = getDesignIcon(displayPlatform);
+
+                                            return (
+                                                <button
+                                                    key={platform}
+                                                    onClick={() => setActiveTab(platform)}
+                                                    className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all min-w-[100px] cursor-pointer ${isSelected
+                                                        ? 'border-primary bg-primary/10 shadow-sm'
+                                                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                                                        }`}
                                                 >
-                                                <Icon className={`size-6 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
-                                                <span className={`text-xs font-medium ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
-                                                    {displayPlatform}
-                                                </span>
-                                            </button>
-                                        );
-                                    });
-                                })()}
-                            </div>
-                                <div className="flex items-center ">
+                                                    <Icon className={`size-6 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                                                    <span className={`text-xs font-medium ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
+                                                        {displayPlatform}
+                                                    </span>
+                                                </button>
+                                            );
+                                        });
+                                    })()}
+                                </div>
+                                <div className="flex items-center justify-end ">
                                     <div className="flex items-center gap-4 border  rounded-md">
                                         <Select value={filterStatus} onValueChange={setFilterStatus}>
                                             <SelectTrigger className="w-[180px]">
@@ -525,7 +525,7 @@ export default function CampaignPostsPage() {
                                         </Select>
                                     </div>
                                 </div>
-                                                </div>
+                            </div>
                         </div>
 
 

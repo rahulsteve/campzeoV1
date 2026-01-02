@@ -4,6 +4,7 @@ import { currentUser } from "@clerk/nextjs/server";
 
 export async function POST() {
     try {
+
         const user = await currentUser();
 
         // Only allow admins to seed
@@ -114,7 +115,11 @@ export async function POST() {
                 });
 
                 if (existing) {
-                    console.log(`⏭️  Job setting already exists: ${setting.jobId}`);
+                    console.log(`⏭️  Job setting already exists: ${setting.jobId}. Updating isEnabled: true`);
+                    await prisma.jobSetting.update({
+                        where: { id: existing.id },
+                        data: { isEnabled: true }
+                    });
                 } else {
                     await prisma.jobSetting.create({
                         data: setting
