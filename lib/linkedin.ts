@@ -282,6 +282,7 @@ export async function getLinkedInPostInsights(
         let reach = 0;
 
         try {
+            const authorUrn = postData?.author || '';
             // Check if author is person or organization
             const isOrg = authorUrn.includes(':organization:');
             let statsUrl = '';
@@ -316,16 +317,23 @@ export async function getLinkedInPostInsights(
         const base = reach > 0 ? reach : impressions;
         const engagementRate = base > 0 ? (totalEngagements / base) * 100 : 0;
 
-        return {
+        const result: LinkedInPostInsights = {
             likes,
             comments,
             impressions,
             reach,
             engagementRate,
-            isDeleted: false,
-            text: postData?.commentary || '',
-            media: postData?.content?.multiImage?.images || []
+            isDeleted: false
         };
+
+        if (postData?.commentary) {
+            result.text = postData.commentary;
+        }
+        if (postData?.content?.multiImage?.images) {
+            result.media = postData.content.multiImage.images;
+        }
+
+        return result;
 
     } catch (error) {
         console.error(`[LinkedIn] Error fetching insights for ${urn}:`, error);

@@ -274,7 +274,7 @@ export async function getPinterestPostInsights(
         const totalEngagements = saves + pinClicks + outboundClicks + comments + (likes > saves ? likes - saves : 0);
         const engagementRate = impressions > 0 ? (totalEngagements / impressions) * 100 : 0;
 
-        return {
+        const result: PinterestPostInsights = {
             likes,
             comments,
             impressions,
@@ -283,13 +283,18 @@ export async function getPinterestPostInsights(
             saves,
             pinClicks,
             outboundClicks,
-            isDeleted: false,
-            title: pinMetadata?.title,
-            description: pinMetadata?.description,
-            message: pinMetadata?.title || pinMetadata?.description || "",
-            caption: pinMetadata?.description || "",
-            media: pinMetadata?.media
+            isDeleted: false
         };
+
+        if (pinMetadata?.title) result.title = pinMetadata.title;
+        if (pinMetadata?.description) result.description = pinMetadata.description;
+        if (pinMetadata?.title || pinMetadata?.description) {
+            result.message = pinMetadata.title || pinMetadata.description;
+            result.caption = pinMetadata.description || "";
+        }
+        if (pinMetadata?.media) result.media = pinMetadata.media;
+
+        return result;
 
     } catch (error) {
         console.error(`[Pinterest] Error fetching insights for ${pinId}:`, error);

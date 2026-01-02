@@ -650,6 +650,8 @@ export async function GET(request: NextRequest) {
                 // Return with fresh insights
                 return {
                     ...txWithSubject,
+                    message: tx.message,
+                    mediaUrls: tx.mediaUrls,
                     insight: {
                         ...insights,
                         isDeleted: isDeleted,

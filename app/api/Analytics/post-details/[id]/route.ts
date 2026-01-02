@@ -60,6 +60,17 @@ export async function GET(
             return NextResponse.json({ error: 'Post not found' }, { status: 404 });
         }
 
+        // Attach subject if it's a real transaction
+        let subject = null;
+        if (transaction.id !== -1 && transaction.refId !== 0) {
+            const cp = await prisma.campaignPost.findUnique({
+                where: { id: transaction.refId },
+                select: { subject: true }
+            });
+            subject = cp?.subject || null;
+        }
+        transaction.subject = subject;
+
         // Verify ownership (only if it's a real transaction)
         if (transaction.id !== -1) {
             const campaignPost = await prisma.campaignPost.findUnique({
@@ -322,6 +333,9 @@ export async function GET(
         return NextResponse.json({
             post: {
                 ...transaction,
+                message: transaction.message, // Ensure updated
+                mediaUrls: transaction.mediaUrls,
+                subject: transaction.subject,
                 insight: finalInsight
             },
             historicalData,
