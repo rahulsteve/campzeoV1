@@ -1,3 +1,5 @@
+import FormData from 'form-data';
+
 interface PinterestCredentials {
     accessToken: string;
 }
@@ -16,6 +18,9 @@ export async function postToPinterest(
     media: string | string[],
     metadata?: {
         boardId?: string;
+        coverImageUrl?: string;
+        coverImageKeyFrameTime?: number;
+        isVideo?: boolean;
     }
 ) {
     const { accessToken } = credentials;
@@ -40,10 +45,6 @@ export async function postToPinterest(
             // Validate all are images (Pinterest doesn't support mixed/video carousels easily via this endpoint)
             const hasVideo = mediaList.some(url => /\.(mp4|mov|webm|avi|mkv)(\?.*)?$/i.test(url));
             if (hasVideo) {
-                // Fallback: If video exists in list, just take the first item (or throw error, but let's prioritize main content)
-                // For now, let's treat it as not supported to mix, so we just take the first one if it's a mix?
-                // Or better, just filter? Let's assume user sends correct data. 
-                // If carousel, we use multiple_image_urls
                 console.warn('[Pinterest] Video detected in multiple items. Pinterest organic carousel mainly supports images. Proceeding with multiple_image_urls check.');
             }
 
@@ -61,19 +62,88 @@ export async function postToPinterest(
         } else {
             // Single Item
             const mediaUrl = mediaList[0];
-            const isVideo = /\.(mp4|mov|webm|avi|mkv)(\?.*)?$/i.test(mediaUrl);
-            const sourceType = isVideo ? 'video_url' : 'image_url';
+            const isVideo = metadata?.isVideo ?? /\.(mp4|mov|webm|avi|mkv)(\?.*)?$/i.test(mediaUrl);
 
-            console.log(`[Pinterest] Creating pin: ${title}, Media Type: ${sourceType}`);
+            if (isVideo) {
+                console.log(`[Pinterest] Video detected. Starting multi-phase upload for: ${mediaUrl}`);
 
-            body.media_source = {
-                source_type: sourceType,
-                url: mediaUrl,
-                cover_image_url: isVideo ? undefined : mediaUrl, // Optional for video
-            };
+                // 1. Register Media
+                const registerRes = await fetch('https://api.pinterest.com/v5/media', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ media_type: 'video' }),
+                });
+
+                if (!registerRes.ok) {
+                    const error = await registerRes.json();
+                    throw new Error(`Pinterest Media Registration error: ${JSON.stringify(error)}`);
+                }
+
+                const registerData = await registerRes.json();
+                const { media_id, upload_url, upload_parameters } = registerData;
+                console.log(`[Pinterest] Media registered, ID: ${media_id}`);
+
+                // 2. Download Video binary
+                console.log(`[Pinterest] Downloading video for binary upload: ${mediaUrl}`);
+                const videoRes = await fetch(mediaUrl);
+                if (!videoRes.ok) throw new Error(`Failed to fetch video from URL: ${mediaUrl}`);
+                const videoBuffer = Buffer.from(await videoRes.arrayBuffer());
+
+                // 3. Upload Binary to Pinterest's Amazon S3 bucket (via their upload_url)
+                const form = new FormData();
+
+                // Fields MUST be added in order
+                Object.entries(upload_parameters).forEach(([key, value]) => {
+                    form.append(key, value as string);
+                });
+
+                // The 'file' field MUST be the last field in the form for S3 POST
+                console.log(`[Pinterest] Uploading video binary to ${upload_url}, length: ${videoBuffer.length} bytes`);
+                form.append('file', videoBuffer, {
+                    filename: 'video.mp4',
+                    contentType: 'video/mp4'
+                });
+
+                const uploadRes = await fetch(upload_url, {
+                    method: 'POST',
+                    body: form.getBuffer() as any,
+                    headers: form.getHeaders()
+                });
+
+                if (!uploadRes.ok) {
+                    const errorText = await uploadRes.text();
+                    console.error('[Pinterest] Video Binary Upload Error:', errorText);
+                    throw new Error(`Pinterest Video Upload error: ${errorText}`);
+                }
+
+                console.log(`[Pinterest] Video uploaded. Waiting for processing...`);
+                // Wait for media to be 'registered'
+                await waitForPinterestMedia(media_id, accessToken);
+
+                // 4. Create Pin using media_id
+                body.media_source = {
+                    source_type: 'video_id',
+                    media_id: media_id,
+                    cover_image_url: metadata?.coverImageUrl || undefined,
+                    cover_image_key_frame_time: metadata?.coverImageUrl ? undefined : (metadata?.coverImageKeyFrameTime ?? 0)
+                };
+
+                // Note: We might need to wait for media to be processed, 
+                // but Pinterest API allows creating Pin immediately; if processing fails, Pin stays 'processing' or fails later.
+            } else {
+                console.log(`[Pinterest] Image detected. Creating standard Pin.`);
+                body.media_source = {
+                    source_type: 'image_url',
+                    url: mediaUrl,
+                };
+            }
         }
 
         // Create a Pin - Production URL
+        console.log(`[Pinterest] Creating Pin with payload:`, JSON.stringify(body, null, 2));
         const response = await fetch('https://api.pinterest.com/v5/pins', {
             method: 'POST',
             headers: {
@@ -97,6 +167,53 @@ export async function postToPinterest(
         console.error('Pinterest posting error:', error);
         throw error;
     }
+}
+
+/**
+ * Wait for Pinterest media processing to complete (reaches 'registered' state)
+ */
+async function waitForPinterestMedia(
+    mediaId: string,
+    accessToken: string,
+    timeout: number = 60000 // 60 second timeout
+): Promise<void> {
+    const startTime = Date.now();
+    const pollInterval = 3000; // Check every 3 seconds
+
+    console.log(`[Pinterest] Waiting for media ${mediaId} to be registered...`);
+
+    while (Date.now() - startTime < timeout) {
+        try {
+            const response = await fetch(`https://api.pinterest.com/v5/media/${mediaId}`, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const status = data.status;
+
+                console.log(`[Pinterest] Media ${mediaId} status: ${status}`);
+
+                if (status === 'registered') {
+                    console.log(`[Pinterest] Media ${mediaId} is registered and ready.`);
+                    return;
+                } else if (status === 'failed') {
+                    throw new Error(`Pinterest media processing failed for ${mediaId}`);
+                }
+                // If status is 'processing', wait and poll again
+            } else {
+                console.warn(`[Pinterest] Media status check failed: ${response.status}`);
+            }
+        } catch (error) {
+            console.error(`[Pinterest] Error polling media status:`, error);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+
+    throw new Error(`Pinterest media processing timed out for ${mediaId}`);
 }
 
 export async function getPinterestBoards(accessToken: string): Promise<PinterestBoard[]> {
