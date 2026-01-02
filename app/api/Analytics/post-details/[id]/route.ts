@@ -6,6 +6,7 @@ import { getInstagramPostInsights } from '@/lib/instagram';
 import { getLinkedInPostInsights } from '@/lib/linkedin';
 import { getYouTubeVideoInsights } from '@/lib/youtube';
 import { getPinterestPostInsights } from '@/lib/pinterest';
+import { getMailgunAnalytics } from '@/lib/email';
 
 export async function GET(
     request: NextRequest,
@@ -167,6 +168,35 @@ export async function GET(
                             }
                         }
                         break;
+                    case 'EMAIL':
+                        if (transaction.postId.startsWith('campaign-')) {
+                            const emailStats = await getMailgunAnalytics(transaction.postId);
+                            insights = {
+                                likes: 0,
+                                comments: 0,
+                                reach: emailStats.delivered,
+                                impressions: emailStats.opened,
+                                engagementRate: 0,
+                                isDeleted: false
+                            };
+                        } else if (dbInsight) {
+                            insights = { ...dbInsight, isDeleted: false };
+                        }
+                        break;
+                    case 'SMS':
+                    case 'WHATSAPP':
+                        // Typically constant data for these as they are one-off sends
+                        if (dbInsight) {
+                            insights = {
+                                likes: dbInsight.likes,
+                                comments: dbInsight.comments,
+                                reach: dbInsight.reach,
+                                impressions: dbInsight.impressions,
+                                engagementRate: dbInsight.engagementRate,
+                                isDeleted: false
+                            };
+                        }
+                        break;
                     case 'PINTEREST':
                         token = dbUser.pinterestAccessToken;
                         if (token) {
@@ -317,6 +347,7 @@ export async function GET(
             const fakeLikes = Math.round(finalInsight.likes * (0.1 + 0.9 * progress));
             const fakeComments = Math.round(finalInsight.comments * (0.1 + 0.9 * progress));
             const fakeReach = Math.round(effectiveReach * (0.1 + 0.9 * progress));
+            const fakeImpressions = Math.round(effectiveImpressions * (0.1 + 0.9 * progress));
             const fakeER = finalInsight.engagementRate > 0
                 ? finalInsight.engagementRate * (0.5 + 0.5 * progress)
                 : (effectiveReach > 0 ? (fakeLikes + fakeComments) / effectiveReach * 100 : 0);
@@ -326,6 +357,7 @@ export async function GET(
                 likes: i === daysDiff - 1 ? finalInsight.likes : fakeLikes,
                 comments: i === daysDiff - 1 ? finalInsight.comments : fakeComments,
                 reach: i === daysDiff - 1 ? effectiveReach : fakeReach,
+                impressions: i === daysDiff - 1 ? effectiveImpressions : fakeImpressions,
                 engagementRate: i === daysDiff - 1 ? (finalInsight.engagementRate || fakeER) : fakeER
             };
         });

@@ -44,6 +44,21 @@ import React from 'react';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
+// Helper to clean media URLs (handle JSON arrays or single strings)
+const getCleanMediaUrl = (url: string | null) => {
+    if (!url) return '';
+    if (url === '[]') return '';
+    try {
+        if (typeof url === 'string' && url.startsWith('[') && url.endsWith(']')) {
+            const arr = JSON.parse(url);
+            return arr[0] || '';
+        }
+        return url;
+    } catch (e) {
+        return url;
+    }
+};
+
 export default function PostDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter();
     const resolvedParams = React.use(params);
@@ -128,9 +143,7 @@ export default function PostDetailsPage({ params }: { params: Promise<{ id: stri
     if (!post) {
         return (
             <div className="min-h-screen bg-background">
-
                 <div className="flex">
-
                     <main className="flex-1 p-6 flex flex-col items-center justify-center">
                         <h2 className="text-2xl font-bold">Post not found</h2>
                         <Button onClick={() => router.back()} className="mt-4 cursor-pointer">
@@ -141,6 +154,8 @@ export default function PostDetailsPage({ params }: { params: Promise<{ id: stri
             </div>
         );
     }
+
+    const isEmailPlatform = ['EMAIL', 'SMS', 'WHATSAPP'].includes(post.platform?.toUpperCase() || '');
 
     return (
         <div className="min-h-screen bg-background">
@@ -301,13 +316,13 @@ export default function PostDetailsPage({ params }: { params: Promise<{ id: stri
                                     </CardHeader>
                                     <CardContent className="space-y-4">
                                         <div className="relative aspect-video bg-muted rounded-lg overflow-hidden border shadow-inner">
-                                            {post.postType === 'VIDEO' || post.mediaUrls?.toLowerCase().endsWith('.mp4') ? (
+                                            {post.postType === 'VIDEO' || getCleanMediaUrl(post.mediaUrls).toLowerCase().endsWith('.mp4') ? (
                                                 <div className="flex items-center justify-center h-full bg-slate-900">
                                                     <Video className="size-12 text-white opacity-80" />
                                                 </div>
-                                            ) : (post.mediaUrls && post.mediaUrls !== '[]' && (post.mediaUrls.startsWith('http') || post.mediaUrls.startsWith('/'))) ? (
+                                            ) : (post.mediaUrls && post.mediaUrls !== '[]') ? (
                                                 <Image
-                                                    src={post.mediaUrls}
+                                                    src={getCleanMediaUrl(post.mediaUrls)}
                                                     alt="Post media"
                                                     fill
                                                     className="object-cover"
@@ -356,13 +371,13 @@ export default function PostDetailsPage({ params }: { params: Promise<{ id: stri
                                                 onClick={() => setChartMetric('engagement')}
                                                 className={`px-3 py-1.5 rounded-sm transition-all ${chartMetric === 'engagement' ? 'bg-background shadow-sm' : 'hover:bg-background/50'}`}
                                             >
-                                                Interactions
+                                                {isEmailPlatform ? 'Sent' : 'Interactions'}
                                             </button>
                                             <button
                                                 onClick={() => setChartMetric('reach')}
                                                 className={`px-3 py-1.5 rounded-sm transition-all ${chartMetric === 'reach' ? 'bg-background shadow-sm' : 'hover:bg-background/50'}`}
                                             >
-                                                Reach/ER
+                                                {isEmailPlatform ? 'Opened' : 'Reach/ER'}
                                             </button>
                                         </div>
                                     </CardHeader>
@@ -416,44 +431,48 @@ export default function PostDetailsPage({ params }: { params: Promise<{ id: stri
                                                         <>
                                                             <Area
                                                                 type="monotone"
-                                                                dataKey="likes"
-                                                                name="Likes"
+                                                                dataKey="reach"
+                                                                name={isEmailPlatform ? "Sent" : "Likes"}
                                                                 stroke="#3b82f6"
                                                                 strokeWidth={3}
                                                                 fillOpacity={1}
                                                                 fill="url(#colorLikesPost)"
                                                             />
-                                                            <Area
-                                                                type="monotone"
-                                                                dataKey="comments"
-                                                                name="Comments"
-                                                                stroke="#10b981"
-                                                                strokeWidth={3}
-                                                                fillOpacity={1}
-                                                                fill="url(#colorCommentsPost)"
-                                                            />
+                                                            {!isEmailPlatform && (
+                                                                <Area
+                                                                    type="monotone"
+                                                                    dataKey="comments"
+                                                                    name="Comments"
+                                                                    stroke="#10b981"
+                                                                    strokeWidth={3}
+                                                                    fillOpacity={1}
+                                                                    fill="url(#colorCommentsPost)"
+                                                                />
+                                                            )}
                                                         </>
                                                     ) : (
                                                         <>
                                                             <Area
                                                                 type="monotone"
-                                                                dataKey="reach"
-                                                                name="Reach"
+                                                                dataKey={isEmailPlatform ? "impressions" : "reach"}
+                                                                name={isEmailPlatform ? "Opened" : "Reach"}
                                                                 stroke="#a855f7"
                                                                 strokeWidth={3}
                                                                 fillOpacity={1}
                                                                 fill="url(#colorReachPost)"
                                                             />
-                                                            <Area
-                                                                type="monotone"
-                                                                dataKey="engagementRate"
-                                                                name="Engagement Rate"
-                                                                stroke="#f97316"
-                                                                strokeWidth={3}
-                                                                fillOpacity={1}
-                                                                fill="url(#colorERPost)"
-                                                                unit="%"
-                                                            />
+                                                            {!isEmailPlatform && (
+                                                                <Area
+                                                                    type="monotone"
+                                                                    dataKey="engagementRate"
+                                                                    name="Engagement Rate"
+                                                                    stroke="#f97316"
+                                                                    strokeWidth={3}
+                                                                    fillOpacity={1}
+                                                                    fill="url(#colorERPost)"
+                                                                    unit="%"
+                                                                />
+                                                            )}
                                                         </>
                                                     )}
                                                 </AreaChart>

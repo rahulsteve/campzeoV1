@@ -80,6 +80,34 @@ const truncateWords = (str: string | null, numWords: number) => {
     return str;
 };
 
+// Helper to clean media URLs (handle JSON arrays or single strings)
+const getCleanMediaUrl = (url: string | null) => {
+    if (!url) return '';
+    if (url === '[]') return '';
+    try {
+        if (url.startsWith('[') && url.endsWith(']')) {
+            const arr = JSON.parse(url);
+            return arr[0] || '';
+        }
+        return url;
+    } catch (e) {
+        return url;
+    }
+};
+
+// Helper to extract filename from URL
+const getMediaFileName = (url: string | null) => {
+    const cleanUrl = getCleanMediaUrl(url);
+    if (!cleanUrl) return 'No media';
+    try {
+        const parts = cleanUrl.split('/');
+        const lastPart = parts[parts.length - 1];
+        return decodeURIComponent(lastPart.split('?')[0]);
+    } catch (e) {
+        return 'Media file';
+    }
+};
+
 interface ChatMessage {
     role: 'user' | 'assistant';
     content: string;
@@ -260,10 +288,9 @@ export default function AnalyticsPage() {
     const handleExportCSV = () => {
         if (!posts.length) return;
 
-        // Define headers based on platform type (Email vs Social)
         const isEmailOrSms = ['EMAIL', 'SMS', 'WHATSAPP'].includes(selectedPlatform?.toUpperCase() || '');
 
-        let headers = ['Post/Message', 'Subject', 'Image Link', 'Published At', 'Platform', 'Type', 'Status'];
+        let headers = ['Post/Message', 'Subject', 'Image Name', 'Image Link', 'Published At', 'Platform', 'Type', 'Status'];
         if (isEmailOrSms) {
             headers.push('Sent (Reach)', 'Delivered', 'Opened (Impressions)', 'Delivery Rate');
         } else {
@@ -274,12 +301,14 @@ export default function AnalyticsPage() {
         const rows = posts.map(post => {
             const date = post.publishedAt ? format(new Date(post.publishedAt), 'yyyy-MM-dd HH:mm:ss') : '';
             const status = post.insight.isDeleted ? 'Deleted' : 'Live';
-            let mediaUrl = post.mediaUrls || '';
+
+            // Clean URL and extract file name
+            const imageLink = getCleanMediaUrl(post.mediaUrls);
+            const imageName = getMediaFileName(post.mediaUrls);
 
             // CSV safe strings (escape quotes)
             const message = `"${(post.message || '').replace(/"/g, '""')}"`;
             const subject = `"${(post.subject || '').replace(/"/g, '""')}"`;
-            const imageLink = post.mediaUrls && post.mediaUrls !== '[]' ? post.mediaUrls : '';
 
             let rowByType = [];
             if (isEmailOrSms) {
@@ -302,7 +331,8 @@ export default function AnalyticsPage() {
             return [
                 message,
                 subject,
-                imageLink,
+                `"${imageName.replace(/"/g, '""')}"`,
+                `"${imageLink.replace(/"/g, '""')}"`,
                 date,
                 post.platform,
                 post.postType,
@@ -336,7 +366,8 @@ export default function AnalyticsPage() {
             const baseData = {
                 'Post/Message': post.message || '',
                 'Subject': post.subject || '',
-                'Image Link': post.mediaUrls && post.mediaUrls !== '[]' ? post.mediaUrls : '',
+                'Image Name': getMediaFileName(post.mediaUrls),
+                'Image Link': getCleanMediaUrl(post.mediaUrls),
                 'Published At': date,
                 'Platform': post.platform,
                 'Type': post.postType,
@@ -624,13 +655,13 @@ export default function AnalyticsPage() {
                                                         >
                                                             <TableCell onClick={(e) => e.stopPropagation()}>
                                                                 <div className="relative size-12 rounded-md overflow-hidden bg-muted border">
-                                                                    {post.postType === 'VIDEO' || post.mediaUrls?.toLowerCase().endsWith('.mp4') ? (
+                                                                    {post.postType === 'VIDEO' || getCleanMediaUrl(post.mediaUrls).toLowerCase().endsWith('.mp4') ? (
                                                                         <div className="flex items-center justify-center h-full bg-slate-900">
                                                                             <Video className="size-5 text-white" />
                                                                         </div>
-                                                                    ) : (post.mediaUrls && post.mediaUrls !== '[]' && (post.mediaUrls.startsWith('http') || post.mediaUrls.startsWith('/'))) ? (
+                                                                    ) : (post.mediaUrls && post.mediaUrls !== '[]') ? (
                                                                         <Image
-                                                                            src={post.mediaUrls}
+                                                                            src={getCleanMediaUrl(post.mediaUrls)}
                                                                             alt="Post media"
                                                                             fill
                                                                             className="object-cover"

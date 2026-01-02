@@ -511,7 +511,7 @@ export async function sendCampaignPost(
                     likes: 0,
                     comments: 0,
                     reach: successCount,
-                    impressions: successCount, // Approximate 'opens' as sent for now
+                    impressions: 0,
                     engagementRate: 0,
                     lastUpdated: new Date()
                 }
