@@ -187,110 +187,91 @@ export async function getPinterestPostInsights(
 ): Promise<PinterestPostInsights> {
     try {
         let comments = 0;
-        let pinMetadata = null;
+        let likes = 0; // Initialize likes
+        let impressions = 0; // Initialize impressions
+        let saves = 0; // Initialize saves
+        let pinClicks = 0; // Initialize pinClicks
+        let outboundClicks = 0; // Initialize outboundClicks
+        let pinMetadata: any = null;
 
-        // 1. Get Pin Details to get metrics and metadata
-        const detailsResponse = await fetch(`https://api.pinterest.com/v5/pins/${pinId}?pin_metrics=true`, {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-            },
+        // 0. Fetch Ad Accounts to get combined organic + paid data
+        const adAccounts = await getPinterestAdAccounts(accessToken);
+
+        // 1. Get Pin Details (Organic baseline + Global totals)
+        const detailsResponse = await fetch(`https://api.pinterest.com/v5/pins/${pinId}`, {
+            headers: { 'Authorization': `Bearer ${accessToken}` },
         });
-
-        if (detailsResponse.status === 401) {
-            throw new Error('401 Unauthorized');
-        }
 
         if (detailsResponse.ok) {
             pinMetadata = await detailsResponse.json();
+            const lt = pinMetadata.all_pin_metrics?.lifetime || {};
 
-            // Extract comments and saves from lifetime metrics if available
-            // Pinterest v5 pin_metrics=true returns all_pin_metrics: { lifetime: { ... }, 90_day: { ... } }
-            const lifetime = pinMetadata.all_pin_metrics?.lifetime;
-            if (lifetime) {
-                comments = lifetime.comment || 0;
-                // If we have lifetime metrics, we can use them as a baseline or fallback
-            } else {
-                // Fallback for some accounts/pins
-                comments = pinMetadata.comment_count || 0;
-            }
-        } else {
-            console.warn(`[Pinterest] Failed to fetch pin details for ${pinId}: ${detailsResponse.status}`);
-            if (detailsResponse.status === 404) {
-                return {
-                    likes: 0,
-                    comments: 0,
-                    impressions: 0,
-                    reach: 0,
-                    engagementRate: 0,
-                    saves: 0,
-                    pinClicks: 0,
-                    outboundClicks: 0,
-                    isDeleted: true
-                };
-            }
+            // Pinterest v5 fields for interactions
+            comments = pinMetadata.comment_count || lt.comment || 0;
+            const reactionCount = pinMetadata.reaction_count || lt.reaction || 0;
+            const saveCount = pinMetadata.save_count || lt.save || 0;
+
+            // In Pinterest app, "Hearts" are reactions. If found, use them for 'likes'.
+            // Fallback to saves if reactions are 0.
+            likes = reactionCount > 0 ? reactionCount : saveCount;
+
+            impressions = lt.impression || pinMetadata.impressions || 0;
+            saves = saveCount;
+            pinClicks = lt.pin_click || 0;
+            outboundClicks = lt.outbound_click || 0;
+        } else if (detailsResponse.status === 404) {
+            return {
+                likes: 0, comments: 0, impressions: 0, reach: 0, engagementRate: 0,
+                saves: 0, pinClicks: 0, outboundClicks: 0, isDeleted: true
+            };
         }
 
-        // 2. Get Analytics
+        // 2. Fetch Analytics across all Ad Accounts to find the true "Combined" total
         const endDate = new Date().toISOString().split('T')[0];
-        const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // Max 90 days
+        const startDate = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const metricsParam = 'IMPRESSION,PIN_CLICK,SAVE,OUTBOUND_CLICK';
 
-        const metrics = 'IMPRESSION,PIN_CLICK,SAVE,OUTBOUND_CLICK';
-
-        const analyticsUrl = `https://api.pinterest.com/v5/pins/${pinId}/analytics?start_date=${startDate}&end_date=${endDate}&metric_types=${metrics}`;
-
-        const response = await fetch(analyticsUrl, {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-            },
-        });
-
-        if (response.status === 401) {
-            throw new Error('401 Unauthorized');
+        // Fetch organic analytics as additional source
+        const orgUrl = `https://api.pinterest.com/v5/pins/${pinId}/analytics?start_date=${startDate}&end_date=${endDate}&metric_types=${metricsParam}`;
+        const orgRes = await fetch(orgUrl, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+        if (orgRes.ok) {
+            const orgData = await orgRes.json();
+            const summary = orgData.all?.summary_metrics || orgData.organic?.summary_metrics || {};
+            impressions = Math.max(impressions, summary.IMPRESSION || 0);
+            saves = Math.max(saves, summary.SAVE || 0);
+            pinClicks = Math.max(pinClicks, summary.PIN_CLICK || 0);
+            outboundClicks = Math.max(outboundClicks, summary.OUTBOUND_CLICK || 0);
+            if (likes === 0 && summary.SAVE > 0) likes = summary.SAVE;
         }
 
-        if (!response.ok) {
-            console.warn(`[Pinterest] Failed to fetch analytics for pin ${pinId}: ${response.status}`);
-            if (response.status === 404) {
-                return {
-                    likes: 0,
-                    comments: 0,
-                    impressions: 0,
-                    reach: 0,
-                    engagementRate: 0,
-                    saves: 0,
-                    pinClicks: 0,
-                    outboundClicks: 0,
-                    isDeleted: true
-                };
+        // Loop through ad accounts to get the highest reported "Combined" totals (or sum if appropriate)
+        for (const account of adAccounts) {
+            try {
+                const adUrl = `https://api.pinterest.com/v5/pins/${pinId}/analytics?start_date=${startDate}&end_date=${endDate}&metric_types=${metricsParam}&ad_account_id=${account.id}`;
+                const adRes = await fetch(adUrl, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+                if (adRes.ok) {
+                    const adData = await adRes.json();
+                    const summary = adData.all?.summary_metrics || {};
+                    // Update if ad-account context shows higher numbers (includes paid data)
+                    impressions = Math.max(impressions, summary.IMPRESSION || 0);
+                    saves = Math.max(saves, summary.SAVE || 0);
+                    pinClicks = Math.max(pinClicks, summary.PIN_CLICK || 0);
+                    outboundClicks = Math.max(outboundClicks, summary.OUTBOUND_CLICK || 0);
+                    if (likes < saves) likes = saves;
+                }
+            } catch (e) {
+                console.warn(`[Pinterest] Ad stats fetch failed for account ${account.id}`);
             }
-            return { likes: 0, comments: 0, impressions: 0, reach: 0, engagementRate: 0, saves: 0, pinClicks: 0, outboundClicks: 0, isDeleted: false };
         }
 
-        const data = await response.json();
-        const summary = data.all?.summary_metrics || {};
-        const lifetime = pinMetadata?.all_pin_metrics?.lifetime || {};
-
-        // Fetch Paid Analytics if possible (using the new ads:read scope)
+        // 3. Final Fallback/Paid check (using the ads/analytics endpoint which is even more specific)
         const paidStats = await getPinterestPinAdAnalytics(pinId, accessToken);
-
-        // Combine Organic (Analytics + PIN_METRICS) with Paid
-        const organicImpressions = Math.max(summary.IMPRESSION || 0, lifetime.impression || 0);
-        const organicSaves = Math.max(summary.SAVE || 0, lifetime.save || 0);
-        const organicPinClicks = Math.max(summary.PIN_CLICK || 0, lifetime.pin_click || 0);
-        const organicOutboundClicks = Math.max(summary.OUTBOUND_CLICK || 0, lifetime.outbound_click || 0);
-
-        const impressions = organicImpressions + (paidStats?.impressions || 0);
-        const saves = organicSaves + (paidStats?.saves || 0);
-        const pinClicks = organicPinClicks + (paidStats?.clicks || 0);
-        const outboundClicks = organicOutboundClicks; // Paid outbound clicks usually separate, but let's stick to these for now
-
-        // Map to standard interface
-        const likes = saves;
-        const reach = impressions; // Proxy
-
-        // Engagement Rate calculation
-        // (Saves + Pin Clicks + Outbound Clicks + Comments) / Impressions
-        const totalEngagements = saves + pinClicks + outboundClicks + comments;
+        impressions += (paidStats?.impressions || 0);
+        saves += (paidStats?.saves || 0);
+        pinClicks += (paidStats?.clicks || 0);
+        // 3. Final Aggregation for reach and ER
+        const reach = impressions;
+        const totalEngagements = saves + pinClicks + outboundClicks + comments + (likes > saves ? likes - saves : 0);
         const engagementRate = impressions > 0 ? (totalEngagements / impressions) * 100 : 0;
 
         return {
@@ -307,8 +288,7 @@ export async function getPinterestPostInsights(
             description: pinMetadata?.description,
             message: pinMetadata?.title || pinMetadata?.description || "",
             caption: pinMetadata?.description || "",
-            media: pinMetadata?.media,
-            paidStats: paidStats // Include for debugging or future breakdown
+            media: pinMetadata?.media
         };
 
     } catch (error) {

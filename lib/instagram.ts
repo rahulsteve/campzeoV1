@@ -412,12 +412,15 @@ export async function getInstagramPostInsights(
             // Metrics depend on media type
             // IMAGE/CAROUSEL_ALBUM: impressions, reach, saved
             // VIDEO: reach, total_interactions (?), saved, video_views. Video posts NO LONGER support impressions in v19.0? 
-            // Using v18.0.
-            // Let's try common metrics.
+            // REELS: plays, reach, total_interactions, saved
+
+            const isReel = mediaData.media_type === 'VIDEO';
             let metrics = 'impressions,reach';
 
-            // Note: For Reels, metrics might correspond to 'plays' etc.
-            // But we will try fetching standard ones.
+            if (isReel) {
+                // For reels/videos, we try to get plays and reach
+                metrics = 'plays,reach,total_interactions';
+            }
 
             const insightsResponse = await fetch(
                 `https://graph.facebook.com/v18.0/${mediaId}/insights?metric=${metrics}&access_token=${accessToken}`
@@ -427,7 +430,7 @@ export async function getInstagramPostInsights(
                 const insightsData = await insightsResponse.json();
                 const data = insightsData.data || [];
 
-                const impressionsMetric = data.find((m: any) => m.name === 'impressions');
+                const impressionsMetric = data.find((m: any) => m.name === 'impressions' || m.name === 'plays');
                 const reachMetric = data.find((m: any) => m.name === 'reach');
 
                 if (impressionsMetric) {
@@ -437,9 +440,18 @@ export async function getInstagramPostInsights(
                     reach = reachMetric.values[0]?.value || 0;
                 }
             } else {
-                // Maybe it's a Reel or Video where 'impressions' is not supported?
-                // Try 'plays' or 'views' if needed, but for now we fallback gracefully.
-                console.warn(`[Instagram] Insights fetch returned status ${insightsResponse.status}`);
+                // If standard fails, try a broader set or fallback (e.g. video_views for older posts or specific types)
+                if (isReel) {
+                    const fallbackResponse = await fetch(
+                        `https://graph.facebook.com/v18.0/${mediaId}/insights?metric=video_views&access_token=${accessToken}`
+                    );
+                    if (fallbackResponse.ok) {
+                        const fallbackData = await fallbackResponse.json();
+                        const vv = fallbackData.data?.find((m: any) => m.name === 'video_views');
+                        if (vv) impressions = vv.values[0]?.value || 0;
+                    }
+                }
+                console.warn(`[Instagram] Insights fetch returned status ${insightsResponse.status} for type ${mediaData.media_type}`);
             }
         } catch (insightError) {
             console.warn(`[Instagram] Could not fetch insights for media ${mediaId}`, insightError);

@@ -277,17 +277,44 @@ export async function getLinkedInPostInsights(
         const likes = data.likesSummary?.totalLikes || 0;
         const comments = data.commentsSummary?.totalComments || 0;
 
-        // Impressions are not available via simple API for all post types without specific partner programs or organization stats API which is complex.
-        // We will default to 0 for impressions/reach unless we implement the specialized Analytics API.
-        const impressions = 0;
-        const reach = 0;
+        // Fetch reach/impressions (statistics)
+        let impressions = 0;
+        let reach = 0;
+
+        try {
+            // Check if author is person or organization
+            const isOrg = authorUrn.includes(':organization:');
+            let statsUrl = '';
+
+            if (isOrg) {
+                statsUrl = `https://api.linkedin.com/v2/organizationalEntityShareStatistics?shares=List(${encodedUrn})`;
+            } else {
+                statsUrl = `https://api.linkedin.com/v2/memberShareStatistics?shares=List(${encodedUrn})`;
+            }
+
+            const statsResponse = await fetch(statsUrl, {
+                headers: {
+                    "Authorization": `Bearer ${accessToken}`,
+                    "X-Restli-Protocol-Version": "2.0.0",
+                }
+            });
+
+            if (statsResponse.ok) {
+                const statsData = await statsResponse.json();
+                const element = statsData.elements?.[0];
+                if (element) {
+                    impressions = element.totalShareStatistics?.impressionCount || 0;
+                    reach = element.totalShareStatistics?.uniqueImpressionsCount || impressions; // Fallback to impressions if unique is 0
+                }
+            }
+        } catch (e) {
+            console.warn(`[LinkedIn] Could not fetch statistics for ${urn}`, e);
+        }
 
         // Engagement rate
-        // Without reach/impressions, we cannot calculate a true rate.
-        const engagementRate = 0;
-
-        // Log raw response for debugging
-        // console.log(`[LinkedIn] Raw insights for ${urn}:`, JSON.stringify(data, null, 2));
+        const totalEngagements = likes + comments;
+        const base = reach > 0 ? reach : impressions;
+        const engagementRate = base > 0 ? (totalEngagements / base) * 100 : 0;
 
         return {
             likes,

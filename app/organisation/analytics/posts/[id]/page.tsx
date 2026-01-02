@@ -54,6 +54,7 @@ export default function PostDetailsPage({ params }: { params: Promise<{ id: stri
     const [demographics, setDemographics] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
+    const [chartMetric, setChartMetric] = useState<'engagement' | 'reach'>('engagement');
 
     useEffect(() => {
         const fetchPostDetails = async () => {
@@ -340,14 +341,30 @@ export default function PostDetailsPage({ params }: { params: Promise<{ id: stri
                             {/* Right Column: Detailed Charts */}
                             <div className="lg:col-span-2">
                                 <Card className="h-full border shadow-sm">
-                                    <CardHeader>
-                                        <CardTitle className="flex items-center gap-2">
-                                            <BarChart2 className="size-5 text-primary" />
-                                            Performance Over Time
-                                        </CardTitle>
-                                        <CardDescription>
-                                            Historical engagement trends for this post
-                                        </CardDescription>
+                                    <CardHeader className="flex flex-row items-center justify-between">
+                                        <div className="space-y-1">
+                                            <CardTitle className="flex items-center gap-2">
+                                                <BarChart2 className="size-5 text-primary" />
+                                                Performance Over Time
+                                            </CardTitle>
+                                            <CardDescription>
+                                                Historical engagement trends for this post
+                                            </CardDescription>
+                                        </div>
+                                        <div className="flex bg-muted p-1 rounded-md text-xs">
+                                            <button
+                                                onClick={() => setChartMetric('engagement')}
+                                                className={`px-3 py-1.5 rounded-sm transition-all ${chartMetric === 'engagement' ? 'bg-background shadow-sm' : 'hover:bg-background/50'}`}
+                                            >
+                                                Interactions
+                                            </button>
+                                            <button
+                                                onClick={() => setChartMetric('reach')}
+                                                className={`px-3 py-1.5 rounded-sm transition-all ${chartMetric === 'reach' ? 'bg-background shadow-sm' : 'hover:bg-background/50'}`}
+                                            >
+                                                Reach/ER
+                                            </button>
+                                        </div>
                                     </CardHeader>
                                     <CardContent>
                                         <div className="h-[400px] w-full">
@@ -361,6 +378,14 @@ export default function PostDetailsPage({ params }: { params: Promise<{ id: stri
                                                         <linearGradient id="colorCommentsPost" x1="0" y1="0" x2="0" y2="1">
                                                             <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
                                                             <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                                        </linearGradient>
+                                                        <linearGradient id="colorReachPost" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
+                                                            <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+                                                        </linearGradient>
+                                                        <linearGradient id="colorERPost" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
+                                                            <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
                                                         </linearGradient>
                                                     </defs>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
@@ -387,24 +412,50 @@ export default function PostDetailsPage({ params }: { params: Promise<{ id: stri
                                                         }}
                                                     />
                                                     <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                                    <Area
-                                                        type="monotone"
-                                                        dataKey="likes"
-                                                        name="Likes"
-                                                        stroke="#3b82f6"
-                                                        strokeWidth={3}
-                                                        fillOpacity={1}
-                                                        fill="url(#colorLikesPost)"
-                                                    />
-                                                    <Area
-                                                        type="monotone"
-                                                        dataKey="comments"
-                                                        name="Comments"
-                                                        stroke="#10b981"
-                                                        strokeWidth={3}
-                                                        fillOpacity={1}
-                                                        fill="url(#colorCommentsPost)"
-                                                    />
+                                                    {chartMetric === 'engagement' ? (
+                                                        <>
+                                                            <Area
+                                                                type="monotone"
+                                                                dataKey="likes"
+                                                                name="Likes"
+                                                                stroke="#3b82f6"
+                                                                strokeWidth={3}
+                                                                fillOpacity={1}
+                                                                fill="url(#colorLikesPost)"
+                                                            />
+                                                            <Area
+                                                                type="monotone"
+                                                                dataKey="comments"
+                                                                name="Comments"
+                                                                stroke="#10b981"
+                                                                strokeWidth={3}
+                                                                fillOpacity={1}
+                                                                fill="url(#colorCommentsPost)"
+                                                            />
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Area
+                                                                type="monotone"
+                                                                dataKey="reach"
+                                                                name="Reach"
+                                                                stroke="#a855f7"
+                                                                strokeWidth={3}
+                                                                fillOpacity={1}
+                                                                fill="url(#colorReachPost)"
+                                                            />
+                                                            <Area
+                                                                type="monotone"
+                                                                dataKey="engagementRate"
+                                                                name="Engagement Rate"
+                                                                stroke="#f97316"
+                                                                strokeWidth={3}
+                                                                fillOpacity={1}
+                                                                fill="url(#colorERPost)"
+                                                                unit="%"
+                                                            />
+                                                        </>
+                                                    )}
                                                 </AreaChart>
                                             </ResponsiveContainer>
                                         </div>

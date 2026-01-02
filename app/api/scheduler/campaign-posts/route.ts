@@ -84,6 +84,7 @@ export async function GET(request: NextRequest) {
                 campaign: {
                     include: {
                         organisation: true,
+                        contacts: true,
                     },
                 },
             },

@@ -422,8 +422,11 @@ export default function AnalyticsPage() {
                                             onClick={() => {
                                                 setSelectedPlatform(platform);
                                                 setPage(1); // Reset page on platform change
+                                                setLoadingPosts(true);
+                                                setPosts([]);
                                             }}
-                                            className={`flex cursor-pointer flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all min-w-[100px] ${isSelected
+                                            disabled={loadingPosts}
+                                            className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all min-w-[100px] ${loadingPosts ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${isSelected
                                                 ? 'border-primary bg-primary/10 shadow-sm'
                                                 : 'border-border hover:border-primary/50 hover:bg-muted/50'
                                                 }`}
