@@ -51,14 +51,23 @@ export async function POST(request: NextRequest) {
             </div>
         `;
 
-        const success = await sendEmail({
+        // Send to office email
+        const successOffice = await sendEmail({
             to: "office@campzeo.com",
             subject: `Contact Form: ${subject}`,
             html: html,
             replyTo: email
         });
 
-        if (success) {
+        // Send to Twilio test email
+        const successTest = await sendEmail({
+            to: "sp284303@gmail.com",
+            subject: `Contact Form: ${subject}`,
+            html: html,
+            replyTo: email
+        });
+
+        if (successOffice || successTest) {
             return NextResponse.json({ success: true, message: "Message sent successfully" });
         } else {
             return NextResponse.json(
