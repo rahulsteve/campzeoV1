@@ -3,23 +3,35 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, Printer, Download, ArrowLeft, Share2 } from "lucide-react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { formatPrice } from "@/lib/plans";
 import { toast } from "sonner";
 
 export default function InvoicePage() {
     const router = useRouter();
     const params = useParams();
+    const searchParams = useSearchParams();
     const [invoice, setInvoice] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
     const [isPrinting, setIsPrinting] = useState(false);
     const contentRef = useRef<HTMLDivElement>(null);
+    const printTriggeredRef = useRef(false);
 
     useEffect(() => {
         if (params.id) {
             fetchInvoice(params.id as string);
         }
     }, [params.id]);
+
+    useEffect(() => {
+        if (!loading && invoice && searchParams.get("download") === "true" && !printTriggeredRef.current) {
+            printTriggeredRef.current = true;
+            // Short delay to ensure DOM is fully rendered
+            setTimeout(() => {
+                handlePrint();
+            }, 1000);
+        }
+    }, [loading, invoice, searchParams]);
 
     const fetchInvoice = async (id: string) => {
         try {
@@ -129,7 +141,7 @@ export default function InvoicePage() {
                         <h1 className="text-xl font-semibold">Invoice Details</h1>
                     </div>
                     <div className="flex items-center gap-2  sm:w-auto">
-                      
+
                         <Button onClick={handlePrint} disabled={isPrinting} className="flex-1 sm:flex-none">
                             <Download className="size-4 mr-2" />
                             Download PDF

@@ -283,6 +283,7 @@ export default function EditCampaignPage() {
                                     <div className="space-y-2">
                                         <Label htmlFor="description">Description</Label>
                                         <Textarea
+                                        className='border rounded-md border-gray-300'
                                             id="description"
                                             placeholder="Enter campaign description (optional)"
                                             value={description}

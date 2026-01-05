@@ -190,6 +190,7 @@ export default function NewCampaignPage() {
                                     <div className="space-y-2">
                                         <Label htmlFor="description">Description</Label>
                                         <Textarea
+                                        className='border border-gray-300 rounded-md'
                                             id="description"
                                             placeholder="Enter campaign description (optional)"
                                             value={description}
