@@ -10,6 +10,7 @@ import { usePlans, Plan } from "@/hooks/use-plans";
 import { formatPrice } from "@/lib/plans";
 import { useRouter } from "next/navigation";
 import { SignUpButton, useUser } from "@clerk/nextjs";
+import { LandingGlowEffects } from "@/components/ui/landing glow effects";
 
 export default function PricingPage() {
     const { plans, isLoading: plansLoading } = usePlans();
@@ -22,6 +23,7 @@ export default function PricingPage() {
             <Header />
 
             <main className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
+                 <LandingGlowEffects />
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-16">
                         <h1 className="text-4xl font-bold mb-4">Simple, Transparent Pricing</h1>
