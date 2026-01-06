@@ -14,7 +14,8 @@ async function getEmailConfig() {
     try {
         const configs = await prisma.adminPlatformConfiguration.findMany({
             where: {
-                key: { in: ['MAILGUN_API_KEY', 'MAILGUN_DOMAIN', 'MAILGUN_FROM_EMAIL'] }
+                key: { in: ['MAILGUN_API_KEY', 'MAILGUN_DOMAIN', 'MAILGUN_FROM_EMAIL'] },
+                platform: 'EMAIL'
             }
         });
 
