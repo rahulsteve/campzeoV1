@@ -104,7 +104,7 @@ export async function PUT(
         }
 
         const body = await request.json();
-        const { name, description, price, billingCycle, features, usageLimits, isActive, autoRenew } = body;
+        const { name, description, price, billingCycle, features, usageLimits, smsLimit, whatsappLimit, isActive, autoRenew } = body;
 
         // Check if plan exists
         const existingPlan = await prisma.plan.findUnique({
@@ -163,6 +163,8 @@ export async function PUT(
         if (billingCycle !== undefined && !hasActiveSubscriptions) updateData.billingCycle = billingCycle;
         if (features !== undefined) updateData.features = JSON.stringify(features);
         if (usageLimits !== undefined) updateData.usageLimits = JSON.stringify(usageLimits);
+        if (smsLimit !== undefined) updateData.smsLimit = parseInt(smsLimit);
+        if (whatsappLimit !== undefined) updateData.whatsappLimit = parseInt(whatsappLimit);
         if (isActive !== undefined) updateData.isActive = isActive;
         if (autoRenew !== undefined) updateData.autoRenew = autoRenew;
 

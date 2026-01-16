@@ -9,6 +9,8 @@ export interface Plan {
     currency: string;
     interval: string;
     features: string[];
+    smsLimit: number;
+    whatsappLimit: number;
     popular?: boolean;
 }
 
@@ -26,6 +28,8 @@ export const PLANS: Record<PlanType, Plan> = {
             "Email support",
             "14-day trial period",
         ],
+        smsLimit: 50,
+        whatsappLimit: 20,
     },
     PROFESSIONAL: {
         id: "PROFESSIONAL",
@@ -41,6 +45,8 @@ export const PLANS: Record<PlanType, Plan> = {
             "API access",
             "Custom integrations",
         ],
+        smsLimit: 1000,
+        whatsappLimit: 500,
         popular: true,
     },
     ENTERPRISE: {
@@ -59,6 +65,8 @@ export const PLANS: Record<PlanType, Plan> = {
             "SLA guarantee",
             "Advanced security features",
         ],
+        smsLimit: 0, // Unlimited
+        whatsappLimit: 0, // Unlimited
     },
 };
 

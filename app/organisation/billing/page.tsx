@@ -82,6 +82,8 @@ interface UsageData {
     users: UsageMetric;
     platforms: UsageMetric;
     postsThisMonth: UsageMetric;
+    sms: UsageMetric;
+    whatsapp: UsageMetric;
   };
 }
 

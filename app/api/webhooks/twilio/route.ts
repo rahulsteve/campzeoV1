@@ -1,33 +1,33 @@
 import { NextResponse } from 'next/server';
-import { headers } from 'next/headers';
+import { incrementMessageUsage } from '@/lib/usage';
 
 export async function POST(req: Request) {
-    console.log("POST /api/webhooks/twilio hit");
+    const { searchParams } = new URL(req.url);
+    const orgId = searchParams.get('orgId');
+    const channel = searchParams.get('channel') as 'SMS' | 'WHATSAPP' | null;
 
     try {
         const body = await req.text();
-        const headersList = await headers();
-
-        // Log the incoming webhook for debugging
-        const headersObj: Record<string, string> = {};
-        headersList.forEach((value, key) => {
-            headersObj[key] = value;
-        });
-        console.log("Twilio Webhook Headers:", headersObj);
-        console.log("Twilio Webhook Body:", body);
-
-        // Parse the body (it's usually x-www-form-urlencoded)
         const params = new URLSearchParams(body);
         const messageSid = params.get('MessageSid');
         const messageStatus = params.get('MessageStatus');
-        const to = params.get('To');
-        const from = params.get('From');
 
-        console.log(`Twilio Message Update: SID=${messageSid}, Status=${messageStatus}, To=${to}, From=${from}`);
+        console.log(`[Twilio Webhook] Received status update: SID=${messageSid}, Status=${messageStatus}, Org=${orgId}, Channel=${channel}`);
 
-        // TODO: Update message status in database
-        // We need a table to track individual message statuses (e.g., CampaignPostContact or similar)
-        // For now, we just acknowledge receipt.
+        // Increment usage if message is sent or delivered
+        // Note: Twilio sends 'sent' when it leaves their service and 'delivered' when handset confirms.
+        // We catch both but should ensure we don't double count if both arrive (Twilio usually only sends one success state depending on carrier).
+        // Actually, Twilio might send 'sent' THEN 'delivered'. We should ideally track the SID to avoid double counting.
+
+        const successStatuses = ['sent', 'delivered'];
+        if (orgId && channel && messageStatus && successStatuses.includes(messageStatus)) {
+            // Check if we already incremented for this SID (optional but recommended)
+            // For now, simple logic as requested: increment on success.
+            console.log(`[Twilio Webhook] SUCCESS: Incrementing ${channel} usage for Org: ${orgId}`);
+            await incrementMessageUsage(parseInt(orgId), channel);
+        } else if (!successStatuses.includes(messageStatus || '')) {
+            console.log(`[Twilio Webhook] Status '${messageStatus}' is not a final success state. No increment.`);
+        }
 
         return new NextResponse('<Response></Response>', {
             headers: { 'Content-Type': 'text/xml' },

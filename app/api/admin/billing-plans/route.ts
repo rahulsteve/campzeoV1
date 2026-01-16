@@ -64,6 +64,8 @@ export async function GET(request: NextRequest) {
             billingCycle: plan.billingCycle,
             features: plan.features,
             usageLimits: plan.usageLimits,
+            smsLimit: plan.smsLimit,
+            whatsappLimit: plan.whatsappLimit,
             isActive: plan.isActive,
             autoRenew: plan.autoRenew,
             createdAt: plan.createdAt,
@@ -108,7 +110,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { name, description, price, billingCycle, features, usageLimits, isActive, autoRenew } = body;
+        const { name, description, price, billingCycle, features, usageLimits, smsLimit, whatsappLimit, isActive, autoRenew } = body;
 
         // Validation
         if (!name || !name.trim()) {
@@ -142,6 +144,8 @@ export async function POST(request: NextRequest) {
                 billingCycle,
                 features: JSON.stringify(features),
                 usageLimits: usageLimits ? JSON.stringify(usageLimits) : null,
+                smsLimit: smsLimit !== undefined ? parseInt(smsLimit) : 0,
+                whatsappLimit: whatsappLimit !== undefined ? parseInt(whatsappLimit) : 0,
                 isActive: isActive !== undefined ? isActive : true,
                 autoRenew: autoRenew !== undefined ? autoRenew : true
             }

@@ -90,6 +90,7 @@ export default function PostDetailsPage({ params }: { params: Promise<{ id: stri
 
     const handleSync = async () => {
         try {
+            debugger;
             setSyncing(true);
             const searchParams = new URLSearchParams(window.location.search);
             const platform = searchParams.get('platform');

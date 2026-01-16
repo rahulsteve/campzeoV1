@@ -36,7 +36,9 @@ export async function POST() {
                     '14-day trial period'
                 ]),
                 isActive: true,
-                autoRenew: false
+                autoRenew: false,
+                smsLimit: 50,
+                whatsappLimit: 20
             },
             {
                 name: 'PROFESSIONAL',
@@ -52,7 +54,9 @@ export async function POST() {
                     'Custom integrations'
                 ]),
                 isActive: true,
-                autoRenew: true
+                autoRenew: true,
+                smsLimit: 1000,
+                whatsappLimit: 500
             },
             {
                 name: 'ENTERPRISE',
@@ -70,7 +74,9 @@ export async function POST() {
                     'Advanced security features'
                 ]),
                 isActive: true,
-                autoRenew: true
+                autoRenew: true,
+                smsLimit: 0,
+                whatsappLimit: 0
             }
         ];
 

@@ -445,7 +445,7 @@ export async function sendCampaignPost(
                     message = message.replace(new RegExp(key, 'g'), value);
                 });
 
-                const sent = await sendSms(contact.contactMobile, message);
+                const sent = await sendSms(contact.contactMobile, message, post.campaign?.organisationId);
                 if (sent) successCount++;
                 else failCount++;
             }
@@ -472,7 +472,7 @@ export async function sendCampaignPost(
                     message = message.replace(new RegExp(key, 'g'), value);
                 });
 
-                const sent = await sendWhatsapp(number, message, post.mediaUrls);
+                const sent = await sendWhatsapp(number, message, post.mediaUrls, post.campaign?.organisationId);
                 if (sent) successCount++;
                 else failCount++;
             }

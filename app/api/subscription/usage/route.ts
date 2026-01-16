@@ -25,8 +25,9 @@ export async function GET() {
         }
 
         const organisationId = dbUser.organisationId;
+        const periodStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
-        // Get active subscription to fetch plan limits
+        console.log(`[Usage API] Fetching usage for Org: ${organisationId}, Period: ${periodStart.toISOString()}`);
         const subscription = await prisma.subscription.findFirst({
             where: {
                 organisationId,
@@ -65,7 +66,7 @@ export async function GET() {
         }
 
         // Count current usage
-        const [campaignsCount, contactsCount, usersCount, platformsCount, postsThisMonthCount] =
+        const [campaignsCount, contactsCount, usersCount, platformsCount, postsThisMonthCount, smsUsage, whatsappUsage] =
             await Promise.all([
                 // Count active campaigns (not deleted)
                 prisma.campaign.count({
@@ -103,16 +104,37 @@ export async function GET() {
                         },
                     },
                 }),
+                // Count SMS usage for current period
+                prisma.messageUsage.findUnique({
+                    where: {
+                        organisationId_channel_periodStart: {
+                            organisationId,
+                            channel: 'SMS',
+                            periodStart,
+                        },
+                    },
+                }),
+                // Count WhatsApp usage for current period
+                prisma.messageUsage.findUnique({
+                    where: {
+                        organisationId_channel_periodStart: {
+                            organisationId,
+                            channel: 'WHATSAPP',
+                            periodStart,
+                        },
+                    },
+                }),
             ]);
 
         // Calculate usage metrics
-        const calculateMetric = (current: number, limit: number) => {
-            const percentage = limit > 0 ? (current / limit) * 100 : 0;
+        const calculateMetric = (current: number, limit: number | null | undefined) => {
+            const actualLimit = limit || 0;
+            const percentage = actualLimit > 0 ? (current / actualLimit) * 100 : 0;
             return {
                 current,
-                limit,
+                limit: actualLimit,
                 percentage: Math.round(percentage * 10) / 10, // Round to 1 decimal
-                isNearLimit: percentage >= 80,
+                isNearLimit: actualLimit > 0 && percentage >= 80,
             };
         };
 
@@ -122,6 +144,8 @@ export async function GET() {
             users: calculateMetric(usersCount, usageLimits.users),
             platforms: calculateMetric(platformsCount, usageLimits.platforms),
             postsThisMonth: calculateMetric(postsThisMonthCount, usageLimits.postsPerMonth),
+            sms: calculateMetric(smsUsage?.count || 0, subscription?.plan?.smsLimit),
+            whatsapp: calculateMetric(whatsappUsage?.count || 0, subscription?.plan?.whatsappLimit),
         };
 
         return NextResponse.json({ usage });
