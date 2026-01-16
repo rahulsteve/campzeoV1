@@ -52,8 +52,8 @@ export async function POST(req: Request) {
             },
         });
 
-        let organisation;
-        let subscription;
+        let organisation: any;
+        let subscription: any;
         let isUpdating = false;
 
         // If user already has an organisation (e.g., created by admin), update it
@@ -97,6 +97,22 @@ export async function POST(req: Request) {
                     isApproved: true,
                 }
             });
+
+            // Auto-assign all platforms for paid plans
+            if (plan !== 'FREE_TRIAL') {
+                const allPlatforms = ['EMAIL', 'SMS', 'WHATSAPP', 'FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'PINTEREST'];
+
+                await prisma.organisationPlatform.createMany({
+                    data: allPlatforms.map((platform) => ({
+                        organisationId: organisation.id,
+                        platform: platform as any
+                    }))
+                });
+
+                console.log(`✅ Auto-assigned all platforms to paid organisation: ${organisation.name}`);
+            } else {
+                console.log(`⏳ Free trial organisation created. Platforms will be assigned by admin: ${organisation.name}`);
+            }
         }
 
         // Fetch Plan from DB

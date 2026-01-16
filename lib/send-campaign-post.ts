@@ -95,14 +95,19 @@ export async function sendCampaignPost(
                     throw new Error('Facebook credentials not found or expired. Please reconnect your account.');
                 }
 
+                // Auto-detect if it's a Reel (single video only)
+                const mediaToUse = post.mediaUrls.length > 0 ? post.mediaUrls : post.videoUrl;
+                const hasOnlyVideo = (Array.isArray(mediaToUse) && mediaToUse.length === 1 && mediaToUse[0].toLowerCase().endsWith('.mp4')) ||
+                    (typeof mediaToUse === 'string' && mediaToUse.toLowerCase().endsWith('.mp4'));
+
                 const platformResponse = await postToFacebook(
                     {
                         accessToken: fbToken,
                         pageId: fbPageId,
                     },
                     post.message || post.subject || "",
-                    post.mediaUrls.length > 0 ? post.mediaUrls : post.videoUrl,
-                    { isReel: metadata?.isReel }
+                    mediaToUse,
+                    { isReel: metadata?.isReel || hasOnlyVideo }
                 );
 
                 await prisma.campaignPost.update({
@@ -117,8 +122,8 @@ export async function sendCampaignPost(
                         postId: platformResponse.id,
                         accountId: fbPageId,
                         message: post.message || post.subject || "",
-                        mediaUrls: post.mediaUrls.length > 0 ? post.mediaUrls[0] : post.videoUrl,
-                        postType: metadata?.isReel ? 'REEL' : ((post.mediaUrls.length > 0 || post.videoUrl) ? 'IMAGE' : 'TEXT'),
+                        mediaUrls: Array.isArray(mediaToUse) ? mediaToUse[0] : (mediaToUse || ""),
+                        postType: (metadata?.isReel || hasOnlyVideo) ? 'REEL' : ((post.mediaUrls.length > 0 || post.videoUrl) ? 'IMAGE' : 'TEXT'),
                         accessToken: fbToken,
                         published: true,
                         publishedAt: new Date(),
@@ -334,6 +339,8 @@ export async function sendCampaignPost(
                     media,
                     {
                         boardId: targetBoardId,
+                        coverImageUrl: metadata?.thumbnailUrl || undefined,
+                        isVideo: isVideoPin,
                     }
                 );
 
@@ -511,7 +518,7 @@ export async function sendCampaignPost(
                     likes: 0,
                     comments: 0,
                     reach: successCount,
-                    impressions: successCount, // Approximate 'opens' as sent for now
+                    impressions: 0,
                     engagementRate: 0,
                     lastUpdated: new Date()
                 }

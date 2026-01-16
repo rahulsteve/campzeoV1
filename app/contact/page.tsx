@@ -10,6 +10,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import ReCAPTCHA from "react-google-recaptcha";
+import { LandingGlowEffects } from "@/components/ui/landing glow effects";
 
 export default function ContactPage() {
     const [loading, setLoading] = useState(false);
@@ -98,7 +99,8 @@ export default function ContactPage() {
             </header>
 
             <main className="pt-32 pb-24 px-4 sm:px-6 lg:px-8 relative">
-                <div className="max-w-7xl mx-auto">
+                <LandingGlowEffects />
+                <div className="max-w-7xl mx-auto relative z-10">
                     {/* Hero Section */}
                     <div className="text-center mb-16 space-y-4">
                         <motion.div
@@ -182,7 +184,7 @@ export default function ContactPage() {
                             transition={{ duration: 0.7, delay: 0.4 }}
                             className="lg:col-span-3"
                         >
-                            <Card className="border border-gray-100 dark:border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-none bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl overflow-hidden rounded-3xl">
+                            <Card className="border relative z-10 border-gray-100 dark:border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-none bg-white/50 dark:bg-zinc-900/50 backdrop-blur-xl overflow-hidden rounded-3xl">
                                 <CardContent className="p-8 md:p-10">
                                     <div className="mb-10">
                                         <h3 className="text-2xl font-bold flex items-center gap-3">

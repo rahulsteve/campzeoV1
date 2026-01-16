@@ -7,31 +7,34 @@ import { Check, BarChart3, Shield, Users, ArrowRight, Globe, Layers, Zap } from 
 import { SignInButton, SignedOut, SignedIn, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { TestimonialCarousel } from "@/components/testimonial-carousel";
+import { AnimatedTestimonials } from "@/components/ui/animated-testimonials";
 import { motion } from "framer-motion";
+import { LandingGlowEffects } from "@/components/ui/landing glow effects";
+import { useState } from "react";
 
 export default function LandingPage() {
   const router = useRouter();
+  const [activeStep, setActiveStep] = useState(1);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full bg-background/80 backdrop-blur-md border-b z-50">
+      <nav className="fixed top-0 w-full bg-background/80 backdrop-blur-md border-b " style={{zIndex:"9999"}}>
         <div className=" mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-2"> 
+            <div className="flex items-center gap-2">
               <motion.div
-                                        initial={{ opacity: 0, x: -20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ duration: 0.5 }}
-                                    >
-                                        <Link href="/" className="flex items-center gap-2 group">
-                                            <div className="relative">
-                                                <img src="/logo-1.png" alt="Campzeo" className="h-9 transition-transform duration-300 group-hover:scale-110" />
-                                                <div className="absolute -inset-1 bg-primary/20 rounded-full blur opacity-0 group-hover:opacity-100 transition-opacity" />
-                                            </div>
-                                        </Link>
-                                    </motion.div>
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                <Link href="/" className="flex items-center gap-2 group">
+                  <div className="relative">
+                    <img src="/logo-1.png" alt="Campzeo" className="h-9 transition-transform duration-300 group-hover:scale-110" />
+                    <div className="absolute -inset-1 bg-primary/20 rounded-full blur opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </Link>
+              </motion.div>
             </div>
             <div className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
@@ -71,11 +74,13 @@ export default function LandingPage() {
           </div>
         </div>
       </nav>
-
+      <LandingGlowEffects />
       {/* Hero Section */}
+
       <section className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
         {/* Background Gradient */}
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-background to-background"></div>
+
 
         <div className="max-w-7xl mx-auto text-center relative z-10">
           <Badge variant="secondary" className="mb-6 px-4 py-1.5 text-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -89,11 +94,12 @@ export default function LandingPage() {
             Start your free 14-day trial today.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" onClick={() => router.push("/sign-up")}>
+            <Button className="cursor-pointer" size="lg" onClick={() => router.push("/sign-up")}>
               Start Free Trial
               <ArrowRight className="ml-2 size-4" />
             </Button>
             <Button
+              className="cursor-pointer"
               size="lg"
               variant="outline"
               onClick={() => router.push("/pricing")}
@@ -120,7 +126,8 @@ export default function LandingPage() {
 
 
       {/* Features Section */}
-      <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 bg-muted/30">
+      <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 ">
+
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4">Powerful Features for Every Team</h2>
@@ -129,7 +136,7 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-8">
-            <Card className="bg-background/60 backdrop-blur-sm border-muted/20 shadow-sm hover:shadow-md transition-all duration-300">
+            <Card className="bg-background/60 relative z-10 backdrop-blur-sm border-muted/20 shadow-sm hover:shadow-md transition-all duration-300">
               <CardHeader>
                 <div className="size-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <BarChart3 className="size-6 text-primary" />
@@ -140,7 +147,7 @@ export default function LandingPage() {
                 </CardDescription>
               </CardHeader>
             </Card>
-            <Card className="bg-background/60 backdrop-blur-sm border-muted/20 shadow-sm hover:shadow-md transition-all duration-300">
+            <Card className="bg-background/60 relative z-10 backdrop-blur-sm border-muted/20 shadow-sm hover:shadow-md transition-all duration-300">
               <CardHeader>
                 <div className="size-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <Shield className="size-6 text-primary" />
@@ -151,7 +158,7 @@ export default function LandingPage() {
                 </CardDescription>
               </CardHeader>
             </Card>
-            <Card className="bg-background/60 backdrop-blur-sm border-muted/20 shadow-sm hover:shadow-md transition-all duration-300">
+            <Card className="bg-background/60  relative z-10 backdrop-blur-sm border-muted/20 shadow-sm hover:shadow-md transition-all duration-300">
               <CardHeader>
                 <div className="size-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                   <Users className="size-6 text-primary" />
@@ -178,55 +185,130 @@ export default function LandingPage() {
 
           <div className="grid md:grid-cols-3 gap-12 relative">
             {/* Step 1 */}
-            <div className="relative flex flex-col items-center text-center group">
-              <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
-                <Globe className="size-8 text-primary" />
+            <motion.div
+              onClick={() => setActiveStep(1)}
+              className="relative flex flex-col items-center text-center group cursor-pointer"
+              whileHover={{ scale: 1.02 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <div className={`size-16 rounded-2xl flex items-center justify-center mb-6 transition-colors relative z-10 ${activeStep === 1 ? "bg-primary/20" : "bg-primary/10 group-hover:bg-primary/20"}`}>
+                <Globe className={`size-8 ${activeStep === 1 ? "text-primary" : "text-primary/70"} transition-colors`} />
               </div>
               <h3 className="text-xl font-bold mb-3">1. Connect Your Accounts</h3>
               <p className="text-muted-foreground">
                 Seamlessly link all your social media profiles and ad accounts in one secure dashboard.
               </p>
               {/* Connector Line (Desktop) */}
-              <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-[2px] bg-gradient-to-r from-transparent via-border to-transparent" />
-            </div>
+              <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-[2px] bg-border/30 overflow-hidden rounded-full">
+                <motion.div
+                  variants={{
+                    rightToLeft: { x: ["100%", "-100%"] },
+                    leftToRight: { x: ["-100%", "100%"] }
+                  }}
+                  animate={
+                    activeStep === 1 ? "leftToRight" :
+                      activeStep === 2 ? "rightToLeft" : // Center outwards: Line 1 goes Left
+                        "rightToLeft" // Step 3: R->L
+                  }
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    ease: "linear"
+                  }}
+                  className="w-full h-full bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-80"
+                />
+              </div>
+            </motion.div>
 
             {/* Step 2 */}
-            <div className="relative flex flex-col items-center text-center group">
-              <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
-                <Layers className="size-8 text-primary" />
+            <motion.div
+              onClick={() => setActiveStep(2)}
+              className="relative flex flex-col items-center text-center group cursor-pointer"
+              whileHover={{ scale: 1.02 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <div className={`size-16 rounded-2xl flex items-center justify-center mb-6 transition-colors relative z-10 ${activeStep === 2 ? "bg-primary/20" : "bg-primary/10 group-hover:bg-primary/20"}`}>
+                <Layers className={`size-8 ${activeStep === 2 ? "text-primary" : "text-primary/70"} transition-colors`} />
               </div>
               <h3 className="text-xl font-bold mb-3">2. Create & Schedule</h3>
               <p className="text-muted-foreground">
                 Use our AI-powered tools to create engaging content and schedule it for optimal times.
               </p>
               {/* Connector Line (Desktop) */}
-              <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-[2px] bg-gradient-to-r from-transparent via-border to-transparent" />
-            </div>
+              <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-[2px] bg-border/30 overflow-hidden rounded-full">
+                <motion.div
+                  variants={{
+                    rightToLeft: { x: ["100%", "-100%"] },
+                    leftToRight: { x: ["-100%", "100%"] }
+                  }}
+                  animate={
+                    activeStep === 1 ? "leftToRight" :
+                      activeStep === 2 ? "leftToRight" : // Center outwards: Line 2 goes Right
+                        "rightToLeft" // Step 3: R->L
+                  }
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    ease: "linear"
+                  }}
+                  className="w-full h-full bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-80"
+                />
+              </div>
+            </motion.div>
 
             {/* Step 3 */}
-            <div className="relative flex flex-col items-center text-center group">
-              <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
-                <Zap className="size-8 text-primary" />
+            <motion.div
+              onClick={() => setActiveStep(3)}
+              className="relative flex flex-col items-center text-center group cursor-pointer"
+              whileHover={{ scale: 1.02 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <div className={`size-16 rounded-2xl flex items-center justify-center mb-6 transition-colors relative z-10 ${activeStep === 3 ? "bg-primary/20" : "bg-primary/10 group-hover:bg-primary/20"}`}>
+                <Zap className={`size-8 ${activeStep === 3 ? "text-primary" : "text-primary/70"} transition-colors`} />
               </div>
               <h3 className="text-xl font-bold mb-3">3. Analyze & Grow</h3>
               <p className="text-muted-foreground">
                 Track performance with real-time analytics and optimize your strategy for growth.
               </p>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Testimonials Section */}
-      <section id="testimonials" className="py-24 px-4 sm:px-6 lg:px-8">
+      <section id="testimonials" className="py-24 px-4 sm:px-6 lg:px-8 bg-background">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-4">Trusted by Industry Leaders</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
               See what our customers have to say about their experience
             </p>
           </div>
-          <TestimonialCarousel />
+          <AnimatedTestimonials testimonials={[
+            {
+              quote: "This platform has revolutionized how we manage our social media. The analytics are incredible and have helped us grow our reach by 300% in just two months.",
+              name: "Sarah Johnson",
+              designation: "Marketing Director at TechFlow",
+              src: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=3540&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+            },
+            {
+              quote: "A must-have for anyone serious about quality. One of the best investments we've made this year. The support team is also quick to respond.",
+              name: "Matthew Smith",
+              designation: "CEO & Founder at StartUp Inc",
+              src: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=3560&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+            },
+            {
+              quote: "Simple, intuitive, and powerful. Exactly what we needed to scale our operations without hiring more staff.",
+              name: "Emily Davis",
+              designation: "Social Media Manager at Creative Agency",
+              src: "https://images.unsplash.com/photo-1623582854588-d60de57fa33f?q=80&w=3540&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+            },
+            {
+              quote: "The AI features help me come up with content ideas instantly. It's like having a dedicated creative team available 24/7.",
+              name: "Michael Brown",
+              designation: "Influencer at Social Buzz",
+              src: "https://images.unsplash.com/photo-1636041293178-808a6762ab39?q=80&w=3464&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
+            }
+          ]} autoplay={true} />
         </div>
       </section>
       {/* Red CTA Section (Replaces Pricing Grid on Landing Page) */}

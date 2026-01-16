@@ -87,62 +87,63 @@ export async function postToFacebook(
 
                 // Check if it's a Reel (short video)
                 if (options?.isReel && isVideo) {
-                    console.log(`[Facebook] Posting as Reel with URL: ${publicUrl}`);
-
-                    // Post as Facebook Reel
-                    const response = await fetch(`https://graph.facebook.com/v18.0/${pageId}/video_reels`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            description: message,
-                            video_url: publicUrl,
-                            access_token: accessToken,
-                            privacy: { value: 'EVERYONE' },
-                            published: true
-                        }),
-
-                    });
-
-                    if (!response.ok) {
-                        const error = await response.json();
-                        console.error('[Facebook] Reel API Error:', error);
-                        throw new Error(`Facebook Reel API error: ${JSON.stringify(error)}`);
-                    }
-
-                    const data = await response.json();
-                    postId = data.id;
-
+                    return await postFacebookReel(credentials, message, publicUrl);
                 } else {
                     // Regular photo or video post
                     const endpoint = isVideo ? 'videos' : 'photos';
                     console.log(`[Facebook] Posting ${endpoint} with URL: ${publicUrl}`);
 
-                    const response = await fetch(`https://graph.facebook.com/v18.0/${pageId}/${endpoint}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            message,
-                            [isVideo ? 'file_url' : 'url']: publicUrl,
-                            access_token: accessToken,
-                            privacy: { value: 'EVERYONE' },
-                            published: true
-                        }),
-                    });
+                    if (isVideo) {
+                        // Regular video post - Single shot is more reliable for simple URL-based uploads
+                        const response = await fetch(`https://graph.facebook.com/v18.0/${pageId}/videos`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                message,
+                                file_url: publicUrl,
+                                access_token: accessToken,
+                                privacy: { value: 'EVERYONE' },
+                                published: true
+                            }),
+                        });
 
-                    if (!response.ok) {
-                        const error = await response.json();
-                        console.error('[Facebook] API Error:', error);
-                        throw new Error(`Facebook API error: ${JSON.stringify(error)}`);
+                        if (!response.ok) {
+                            const error = await response.json();
+                            console.error('[Facebook] API Error:', error);
+                            throw new Error(`Facebook API error: ${JSON.stringify(error)}`);
+                        }
+
+                        const data = await response.json();
+                        postId = data.post_id || data.id;
+
+                        // Wait for processing
+                        await waitForFacebookVideoProcessing(data.id, accessToken);
+                    } else {
+                        // Standard photo post
+                        const response = await fetch(`https://graph.facebook.com/v18.0/${pageId}/photos`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                message,
+                                url: publicUrl,
+                                access_token: accessToken,
+                                privacy: { value: 'EVERYONE' },
+                                published: true
+                            }),
+                        });
+
+                        if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(`Facebook API error: ${JSON.stringify(error)}`);
+                        }
+
+                        const data = await response.json();
+                        postId = data.post_id || data.id;
                     }
-
-                    const data = await response.json();
-                    // For photos/videos, Facebook often returns 'id' (media id) and 'post_id' (actual feed post id).
-                    // We need 'post_id' for likes/comments/insights.
-                    postId = data.post_id || data.id;
                 }
             }
 
@@ -221,6 +222,126 @@ export async function postToFacebook(
         console.error('Facebook posting error:', error);
         throw error;
     }
+}
+
+/**
+ * Post a Facebook Reel
+ */
+async function postFacebookReel(
+    credentials: FacebookCredentials,
+    message: string,
+    videoUrl: string
+) {
+    const { accessToken, pageId } = credentials;
+
+    console.log(`[Facebook] Creating Reel (Binary Upload) for video: ${videoUrl}`);
+
+    // 1. Initialize Reel Upload
+    const startResponse = await fetch(`https://graph.facebook.com/v18.0/${pageId}/video_reels?upload_phase=start&access_token=${accessToken}`, {
+        method: 'POST'
+    });
+
+    if (!startResponse.ok) {
+        const error = await startResponse.json();
+        throw new Error(`Facebook Reel initialization error: ${JSON.stringify(error)}`);
+    }
+
+    const startData = await startResponse.json();
+    const videoId = startData.video_id;
+    const uploadUrl = startData.upload_url;
+
+    // 2. Download video binary
+    console.log(`[Facebook] Downloading video for binary upload...`);
+    const videoResponse = await fetch(videoUrl);
+    if (!videoResponse.ok) {
+        throw new Error(`Failed to download video from ${videoUrl}: ${videoResponse.statusText}`);
+    }
+    const videoBuffer = Buffer.from(await videoResponse.arrayBuffer());
+
+    // 3. Upload video binary
+    console.log(`[Facebook] Uploading binary to Meta: ${videoBuffer.length} bytes`);
+    const uploadRes = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+            'Authorization': `OAuth ${accessToken}`,
+            'offset': '0',
+            'file_size': videoBuffer.length.toString(),
+            'Content-Type': 'application/octet-stream'
+        },
+        body: videoBuffer
+    });
+
+    if (!uploadRes.ok) {
+        const errorText = await uploadRes.text();
+        throw new Error(`Facebook Reel binary upload error: ${errorText}`);
+    }
+
+    // 4. Publish/Finish Reel Upload
+    const finishResponse = await fetch(`https://graph.facebook.com/v18.0/${pageId}/video_reels`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            upload_phase: 'finish',
+            video_id: videoId,
+            video_state: 'PUBLISHED',
+            description: message,
+            access_token: accessToken,
+        }),
+    });
+
+    if (!finishResponse.ok) {
+        const error = await finishResponse.json();
+        throw new Error(`Facebook Reel publishing error: ${JSON.stringify(error)}`);
+    }
+
+    // 5. Wait for processing
+    await waitForFacebookVideoProcessing(videoId, accessToken);
+
+    return { id: videoId };
+}
+
+/**
+ * Wait for Facebook video processing to complete
+ */
+async function waitForFacebookVideoProcessing(
+    videoId: string,
+    accessToken: string,
+    timeout: number = 60000 // 60 second timeout
+): Promise<void> {
+    const startTime = Date.now();
+    const pollInterval = 3000; // Check every 3 seconds
+
+    console.log(`[Facebook] Waiting for video processing: ${videoId}`);
+
+    while (Date.now() - startTime < timeout) {
+        try {
+            const statusResponse = await fetch(
+                `https://graph.facebook.com/v18.0/${videoId}?fields=status&access_token=${accessToken}`
+            );
+
+            if (statusResponse.ok) {
+                const statusData = await statusResponse.json();
+                const videoStatus = statusData.status?.video_status;
+
+                console.log(`[Facebook] Video ${videoId} status: ${videoStatus}`);
+
+                if (videoStatus === 'ready') {
+                    console.log(`[Facebook] Video processing complete: ${videoId}`);
+                    return;
+                } else if (videoStatus === 'error') {
+                    throw new Error(`Video processing failed for ${videoId}`);
+                }
+            } else {
+                console.warn(`[Facebook] Status check failed for ${videoId}: ${statusResponse.status}`);
+            }
+        } catch (e) {
+            console.error(`[Facebook] Error checking status for ${videoId}`, e);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+
+    throw new Error(`Video processing timeout for ${videoId}`);
 }
 
 // Create a Facebook Video Collection/Playlist

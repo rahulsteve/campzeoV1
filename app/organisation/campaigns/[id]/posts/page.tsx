@@ -442,181 +442,231 @@ export default function CampaignPostsPage() {
                             </Button>
                         </div>
 
-                        {/* Tabs & Filters */}
-                        <div className="space-y-4">
-                            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                                    <TabsList className="w-full justify-start overflow-x-auto h-auto p-1 bg-muted/50">
-                                        <TabsTrigger value="all" className="gap-2 px-4 py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                                            <Globe className="size-4" />
-                                            <span>All</span>
-                                        </TabsTrigger>
-                                        {organisationPlatforms.map(platform => (
-                                            <TabsTrigger
-                                                key={platform}
-                                                value={platform}
-                                                className="gap-2 px-4 py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm"
-                                            >
-                                                {getTabPlatformIcon(platform)}
-                                                <span className="capitalize">{platform.toLowerCase()}</span>
-                                            </TabsTrigger>
-                                        ))}
-                                    </TabsList>
-                                </Tabs>
-<div className="border rounded-md">
-                                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                                    <SelectTrigger className="w-[180px]">
-                                        <SelectValue placeholder="All Status" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Status</SelectItem>
-                                        <SelectItem value="scheduled">Scheduled</SelectItem>
-                                        <SelectItem value="sent">Sent</SelectItem>
-                                        <SelectItem value="pending">Pending</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                        {/* Platform Selection */}
+                        <div className="space-y-3">
+                            <label className="text-sm font-semibold flex items-center gap-1">
+                                Select Platform <span className="text-red-500">*</span>
+                            </label>
+                            <div className="grid grid-cols-1 gap-4 ">
+
+                                <div className="flex justify-center md:justify-start flex-wrap gap-4">
+                                    <button
+                                        onClick={() => setActiveTab('all')}
+                                        className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all min-w-[100px] cursor-pointer ${activeTab === 'all'
+                                            ? 'border-primary bg-primary/10 shadow-sm'
+                                            : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                                            }`}
+                                    >
+                                        <Globe className={`size-6 ${activeTab === 'all' ? 'text-primary' : 'text-muted-foreground'}`} />
+                                        <span className={`text-xs font-medium ${activeTab === 'all' ? 'text-primary' : 'text-muted-foreground'}`}>
+                                            ALL
+                                        </span>
+                                    </button>
+                                    {(() => {
+                                        const PLATFORM_ORDER = ['EMAIL', 'SMS', 'WHATSAPP', 'PINTEREST', 'INSTAGRAM', 'LINKEDIN', 'YOUTUBE', 'FACEBOOK'];
+                                        const sortedPlatforms = [...organisationPlatforms].sort((a, b) => {
+                                            const idxA = PLATFORM_ORDER.indexOf(a.toUpperCase());
+                                            const idxB = PLATFORM_ORDER.indexOf(b.toUpperCase());
+                                            if (idxA === -1) return 1;
+                                            if (idxB === -1) return -1;
+                                            return idxA - idxB;
+                                        });
+
+                                        return sortedPlatforms.map((platform) => {
+                                            const isSelected = activeTab === platform;
+                                            const displayPlatform = platform.toUpperCase();
+
+                                            // Dynamic Icon Selection to match design
+                                            const getDesignIcon = (p: string) => {
+                                                switch (p) {
+                                                    case 'EMAIL': return Mail;
+                                                    case 'SMS': return MessageSquare;
+                                                    case 'WHATSAPP': return Phone;
+                                                    case 'PINTEREST': return Send;
+                                                    case 'INSTAGRAM': return Instagram;
+                                                    case 'LINKEDIN': return Linkedin;
+                                                    case 'YOUTUBE': return Youtube;
+                                                    case 'FACEBOOK': return Facebook;
+                                                    default: return Globe;
+                                                }
+                                            };
+                                            const Icon = getDesignIcon(displayPlatform);
+
+                                            return (
+                                                <button
+                                                    key={platform}
+                                                    onClick={() => setActiveTab(platform)}
+                                                    className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all min-w-[100px] cursor-pointer ${isSelected
+                                                        ? 'border-primary bg-primary/10 shadow-sm'
+                                                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                                                        }`}
+                                                >
+                                                    <Icon className={`size-6 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                                                    <span className={`text-xs font-medium ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
+                                                        {displayPlatform}
+                                                    </span>
+                                                </button>
+                                            );
+                                        });
+                                    })()}
+                                </div>
+                                <div className="flex items-center justify-end ">
+                                    <div className="flex items-center gap-4 border  rounded-md">
+                                        <Select value={filterStatus} onValueChange={setFilterStatus}>
+                                            <SelectTrigger className="w-[180px]">
+                                                <SelectValue placeholder="All Status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">All Status</SelectItem>
+                                                <SelectItem value="scheduled">Scheduled</SelectItem>
+                                                <SelectItem value="sent">Sent</SelectItem>
+                                                <SelectItem value="pending">Pending</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
                             </div>
+                        </div>
 
-                            {/* Posts List */}
-                            <Card>
-                                <CardContent className="pt-6">
-                                    {filteredPosts.length === 0 ? (
-                                        <div className="text-center py-12">
-                                            <Send className="size-12 mx-auto text-muted-foreground mb-4" />
-                                            <p className="text-muted-foreground mb-4">
-                                                No posts found.
-                                            </p>
-                                            <Button className='cursor-pointer' onClick={() => router.push(`/organisation/campaigns/${campaignId}/posts/new`)}>
-                                                <Plus className="size-4 mr-2" />
-                                                Create Post
-                                            </Button>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            {paginatedPosts.map((post) => (
-                                                <div
-                                                    key={post.id}
-                                                    className="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                                                >
-                                                    <div className="flex-1 space-y-2">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            {getPlatformIcon(post.type)}
-                                                            <span className="text-xs font-semibold uppercase text-muted-foreground">
-                                                                {post.type}
-                                                            </span>
+
+                        {/* Posts List */}
+                        <Card>
+                            <CardContent className="pt-6">
+                                {filteredPosts.length === 0 ? (
+                                    <div className="text-center py-12">
+                                        <Send className="size-12 mx-auto text-muted-foreground mb-4" />
+                                        <p className="text-muted-foreground mb-4">
+                                            No posts found.
+                                        </p>
+                                        <Button className='cursor-pointer' onClick={() => router.push(`/organisation/campaigns/${campaignId}/posts/new`)}>
+                                            <Plus className="size-4 mr-2" />
+                                            Create Post
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {paginatedPosts.map((post) => (
+                                            <div
+                                                key={post.id}
+                                                className="flex items-start justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                                            >
+                                                <div className="flex-1 space-y-2">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        {getPlatformIcon(post.type)}
+                                                        <span className="text-xs font-semibold uppercase text-muted-foreground">
+                                                            {post.type}
+                                                        </span>
+                                                    </div>
+                                                    {post.subject && (
+                                                        <h4 className="font-medium">{post.subject}</h4>
+                                                    )}
+                                                    {post.message && (
+                                                        <p className="text-sm text-muted-foreground line-clamp-2">
+                                                            {post.message}
+                                                        </p>
+                                                    )}
+                                                    {post.type === 'EMAIL' && post.senderEmail && (
+                                                        <p className="text-xs text-muted-foreground">
+                                                            From: {post.senderEmail}
+                                                        </p>
+                                                    )}
+                                                    {post.videoUrl && (
+                                                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                                            <Paperclip className="size-3" />
+                                                            <span>Media attached</span>
                                                         </div>
-                                                        {post.subject && (
-                                                            <h4 className="font-medium">{post.subject}</h4>
-                                                        )}
-                                                        {post.message && (
-                                                            <p className="text-sm text-muted-foreground line-clamp-2">
-                                                                {post.message}
-                                                            </p>
-                                                        )}
-                                                        {post.type === 'EMAIL' && post.senderEmail && (
-                                                            <p className="text-xs text-muted-foreground">
-                                                                From: {post.senderEmail}
-                                                            </p>
-                                                        )}
-                                                        {post.videoUrl && (
-                                                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                                                <Paperclip className="size-3" />
-                                                                <span>Media attached</span>
+                                                    )}
+                                                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                                        {post.scheduledPostTime && (
+                                                            <div className="flex items-center gap-1">
+                                                                <Calendar className="size-3" />
+                                                                <span>{formatDate(post.scheduledPostTime)}</span>
                                                             </div>
                                                         )}
-                                                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                                            {post.scheduledPostTime && (
-                                                                <div className="flex items-center gap-1">
-                                                                    <Calendar className="size-3" />
-                                                                    <span>{formatDate(post.scheduledPostTime)}</span>
-                                                                </div>
-                                                            )}
-                                                            <div>{getStatusBadge(post)}</div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-2 ml-4">
-                                                        <Button
-                                                            className='cursor-pointer'
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            onClick={() => setPreviewPost(post)}
-                                                            title="Preview"
-                                                        >
-                                                            <Eye className="size-4" />
-                                                        </Button>
-                                                        <Button
-                                                            className='cursor-pointer'
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            onClick={() => {
-                                                                setSharePost(post);
-                                                                setSelectedContacts([]);
-                                                            }}
-                                                            title={isSocialPlatform ? "Publish Now" : "Share to Contacts"}
-                                                            disabled={post.isPostSent}
-                                                        >
-                                                            {isSocialPlatform ? <Send className="size-4" /> : <Share2 className="size-4" />}
-                                                        </Button>
-                                                        {/* Duplicate button removed as per request */}
-                                                        <Button
-                                                            className='cursor-pointer'
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            onClick={() => router.push(`/organisation/campaigns/${campaignId}/posts/${post.id}/edit`)}
-                                                            disabled={post.isPostSent}
-                                                            title="Edit"
-                                                        >
-                                                            <Edit className="size-4" />
-                                                        </Button>
-                                                        <Button
-                                                            className='cursor-pointer'
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            onClick={() => {
-                                                                setDeletePostId(post.id);
-                                                                setShowDeleteDialog(true);
-                                                            }}
-                                                            disabled={post.isPostSent}
-                                                            title="Delete"
-                                                        >
-                                                            <Trash2 className="size-4 text-destructive" />
-                                                        </Button>
+                                                        <div>{getStatusBadge(post)}</div>
                                                     </div>
                                                 </div>
-                                            ))}
+                                                <div className="flex items-center gap-2 ml-4">
+                                                    <Button
+                                                        className='cursor-pointer'
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => setPreviewPost(post)}
+                                                        title="Preview"
+                                                    >
+                                                        <Eye className="size-4" />
+                                                    </Button>
+                                                    <Button
+                                                        className='cursor-pointer'
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => {
+                                                            setSharePost(post);
+                                                            setSelectedContacts([]);
+                                                        }}
+                                                        title={isSocialPlatform ? "Publish Now" : "Share to Contacts"}
+                                                        disabled={post.isPostSent}
+                                                    >
+                                                        {isSocialPlatform ? <Send className="size-4" /> : <Share2 className="size-4" />}
+                                                    </Button>
+                                                    {/* Duplicate button removed as per request */}
+                                                    <Button
+                                                        className='cursor-pointer'
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => router.push(`/organisation/campaigns/${campaignId}/posts/${post.id}/edit`)}
+                                                        disabled={post.isPostSent}
+                                                        title="Edit"
+                                                    >
+                                                        <Edit className="size-4" />
+                                                    </Button>
+                                                    <Button
+                                                        className='cursor-pointer'
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => {
+                                                            setDeletePostId(post.id);
+                                                            setShowDeleteDialog(true);
+                                                        }}
+                                                        disabled={post.isPostSent}
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 className="size-4 text-destructive" />
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
 
-                                            {/* Pagination */}
-                                            {totalPages > 1 && (
-                                                <div className="flex items-center justify-between pt-4 border-t">
-                                                    <p className="text-sm text-muted-foreground">
-                                                        Page {currentPage} of {totalPages}
-                                                    </p>
-                                                    <div className="flex items-center gap-2">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                                            disabled={currentPage === 1}
-                                                        >
-                                                            Previous
-                                                        </Button>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                                            disabled={currentPage === totalPages}
-                                                        >
-                                                            Next
-                                                        </Button>
-                                                    </div>
+                                        {/* Pagination */}
+                                        {totalPages > 1 && (
+                                            <div className="flex items-center justify-between pt-4 border-t">
+                                                <p className="text-sm text-muted-foreground">
+                                                    Page {currentPage} of {totalPages}
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                                        disabled={currentPage === 1}
+                                                    >
+                                                        Previous
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                                        disabled={currentPage === totalPages}
+                                                    >
+                                                        Next
+                                                    </Button>
                                                 </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
                 </main>
             </div>

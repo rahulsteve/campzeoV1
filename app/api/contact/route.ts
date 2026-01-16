@@ -51,14 +51,17 @@ export async function POST(request: NextRequest) {
             </div>
         `;
 
-        const success = await sendEmail({
-            to: "office@campzeo.com",
+        // Send to office email
+        const successOffice = await sendEmail({
+            to: "surya@mandavconsultancy.com",
             subject: `Contact Form: ${subject}`,
             html: html,
             replyTo: email
         });
 
-        if (success) {
+
+
+        if (successOffice) {
             return NextResponse.json({ success: true, message: "Message sent successfully" });
         } else {
             return NextResponse.json(

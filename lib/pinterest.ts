@@ -1,3 +1,5 @@
+import FormData from 'form-data';
+
 interface PinterestCredentials {
     accessToken: string;
 }
@@ -16,6 +18,9 @@ export async function postToPinterest(
     media: string | string[],
     metadata?: {
         boardId?: string;
+        coverImageUrl?: string;
+        coverImageKeyFrameTime?: number;
+        isVideo?: boolean;
     }
 ) {
     const { accessToken } = credentials;
@@ -37,13 +42,9 @@ export async function postToPinterest(
 
         // Check if multiple images (Carousel)
         if (mediaList.length > 1) {
-            // Validate all are images (Pinterest doesn't support mixed/video carousels easily via this endpoint)
+
             const hasVideo = mediaList.some(url => /\.(mp4|mov|webm|avi|mkv)(\?.*)?$/i.test(url));
             if (hasVideo) {
-                // Fallback: If video exists in list, just take the first item (or throw error, but let's prioritize main content)
-                // For now, let's treat it as not supported to mix, so we just take the first one if it's a mix?
-                // Or better, just filter? Let's assume user sends correct data. 
-                // If carousel, we use multiple_image_urls
                 console.warn('[Pinterest] Video detected in multiple items. Pinterest organic carousel mainly supports images. Proceeding with multiple_image_urls check.');
             }
 
@@ -61,19 +62,88 @@ export async function postToPinterest(
         } else {
             // Single Item
             const mediaUrl = mediaList[0];
-            const isVideo = /\.(mp4|mov|webm|avi|mkv)(\?.*)?$/i.test(mediaUrl);
-            const sourceType = isVideo ? 'video_url' : 'image_url';
+            const isVideo = metadata?.isVideo ?? /\.(mp4|mov|webm|avi|mkv)(\?.*)?$/i.test(mediaUrl);
 
-            console.log(`[Pinterest] Creating pin: ${title}, Media Type: ${sourceType}`);
+            if (isVideo) {
+                console.log(`[Pinterest] Video detected. Starting multi-phase upload for: ${mediaUrl}`);
 
-            body.media_source = {
-                source_type: sourceType,
-                url: mediaUrl,
-                cover_image_url: isVideo ? undefined : mediaUrl, // Optional for video
-            };
+                // 1. Register Media
+                const registerRes = await fetch('https://api.pinterest.com/v5/media', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ media_type: 'video' }),
+                });
+
+                if (!registerRes.ok) {
+                    const error = await registerRes.json();
+                    throw new Error(`Pinterest Media Registration error: ${JSON.stringify(error)}`);
+                }
+
+                const registerData = await registerRes.json();
+                const { media_id, upload_url, upload_parameters } = registerData;
+                console.log(`[Pinterest] Media registered, ID: ${media_id}`);
+
+                // 2. Download Video binary
+                console.log(`[Pinterest] Downloading video for binary upload: ${mediaUrl}`);
+                const videoRes = await fetch(mediaUrl);
+                if (!videoRes.ok) throw new Error(`Failed to fetch video from URL: ${mediaUrl}`);
+                const videoBuffer = Buffer.from(await videoRes.arrayBuffer());
+
+                // 3. Upload Binary to Pinterest's Amazon S3 bucket (via their upload_url)
+                const form = new FormData();
+
+                // Fields MUST be added in order
+                Object.entries(upload_parameters).forEach(([key, value]) => {
+                    form.append(key, value as string);
+                });
+
+                // The 'file' field MUST be the last field in the form for S3 POST
+                console.log(`[Pinterest] Uploading video binary to ${upload_url}, length: ${videoBuffer.length} bytes`);
+                form.append('file', videoBuffer, {
+                    filename: 'video.mp4',
+                    contentType: 'video/mp4'
+                });
+
+                const uploadRes = await fetch(upload_url, {
+                    method: 'POST',
+                    body: form.getBuffer() as any,
+                    headers: form.getHeaders()
+                });
+
+                if (!uploadRes.ok) {
+                    const errorText = await uploadRes.text();
+                    console.error('[Pinterest] Video Binary Upload Error:', errorText);
+                    throw new Error(`Pinterest Video Upload error: ${errorText}`);
+                }
+
+                console.log(`[Pinterest] Video uploaded. Waiting for processing...`);
+                // Wait for media to be 'registered'
+                await waitForPinterestMedia(media_id, accessToken);
+
+                // 4. Create Pin using media_id
+                body.media_source = {
+                    source_type: 'video_id',
+                    media_id: media_id,
+                    cover_image_url: metadata?.coverImageUrl || undefined,
+                    cover_image_key_frame_time: metadata?.coverImageUrl ? undefined : (metadata?.coverImageKeyFrameTime ?? 0)
+                };
+
+                // Note: We might need to wait for media to be processed, 
+                // but Pinterest API allows creating Pin immediately; if processing fails, Pin stays 'processing' or fails later.
+            } else {
+                console.log(`[Pinterest] Image detected. Creating standard Pin.`);
+                body.media_source = {
+                    source_type: 'image_url',
+                    url: mediaUrl,
+                };
+            }
         }
 
         // Create a Pin - Production URL
+        console.log(`[Pinterest] Creating Pin with payload:`, JSON.stringify(body, null, 2));
         const response = await fetch('https://api.pinterest.com/v5/pins', {
             method: 'POST',
             headers: {
@@ -97,6 +167,53 @@ export async function postToPinterest(
         console.error('Pinterest posting error:', error);
         throw error;
     }
+}
+
+/**
+ * Wait for Pinterest media processing to complete (reaches 'registered' state)
+ */
+async function waitForPinterestMedia(
+    mediaId: string,
+    accessToken: string,
+    timeout: number = 60000 // 60 second timeout
+): Promise<void> {
+    const startTime = Date.now();
+    const pollInterval = 3000; // Check every 3 seconds
+
+    console.log(`[Pinterest] Waiting for media ${mediaId} to be registered...`);
+
+    while (Date.now() - startTime < timeout) {
+        try {
+            const response = await fetch(`https://api.pinterest.com/v5/media/${mediaId}`, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const status = data.status;
+
+                console.log(`[Pinterest] Media ${mediaId} status: ${status}`);
+
+                if (status === 'registered') {
+                    console.log(`[Pinterest] Media ${mediaId} is registered and ready.`);
+                    return;
+                } else if (status === 'failed') {
+                    throw new Error(`Pinterest media processing failed for ${mediaId}`);
+                }
+                // If status is 'processing', wait and poll again
+            } else {
+                console.warn(`[Pinterest] Media status check failed: ${response.status}`);
+            }
+        } catch (error) {
+            console.error(`[Pinterest] Error polling media status:`, error);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
+
+    throw new Error(`Pinterest media processing timed out for ${mediaId}`);
 }
 
 export async function getPinterestBoards(accessToken: string): Promise<PinterestBoard[]> {
@@ -198,27 +315,34 @@ export async function getPinterestPostInsights(
         const adAccounts = await getPinterestAdAccounts(accessToken);
 
         // 1. Get Pin Details (Organic baseline + Global totals)
-        const detailsResponse = await fetch(`https://api.pinterest.com/v5/pins/${pinId}`, {
+        const detailsResponse = await fetch(`https://api.pinterest.com/v5/pins/${pinId}?pin_metrics=true`, {
             headers: { 'Authorization': `Bearer ${accessToken}` },
         });
 
         if (detailsResponse.ok) {
             pinMetadata = await detailsResponse.json();
-            const lt = pinMetadata.all_pin_metrics?.lifetime || {};
+            console.log(`[Pinterest] Pin Details for ${pinId}:`, JSON.stringify(pinMetadata, null, 2));
+
+            // Try different nested metric objects (Pinterest API v5 variations)
+            const pm = pinMetadata.pin_metrics || pinMetadata.all_pin_metrics || {};
+            const lt = pm.lifetime || pm.all_time || {};
 
             // Pinterest v5 fields for interactions
-            comments = pinMetadata.comment_count || lt.comment || 0;
-            const reactionCount = pinMetadata.reaction_count || lt.reaction || 0;
-            const saveCount = pinMetadata.save_count || lt.save || 0;
+            // Attempt to get from top level (sometimes available for real-time) or from lifetime metrics
+            comments = pinMetadata.comment_count ?? lt.comment ?? lt.comments ?? 0;
+            const reactionCount = pinMetadata.reaction_count ?? lt.reaction ?? lt.reactions ?? 0;
+            const saveCount = pinMetadata.save_count ?? lt.save ?? lt.saves ?? 0;
 
-            // In Pinterest app, "Hearts" are reactions. If found, use them for 'likes'.
-            // Fallback to saves if reactions are 0.
+            console.log(`[Pinterest] Extracted - Comments: ${comments}, Reactions: ${reactionCount}, Saves: ${saveCount}`);
+
+            // In Pinterest app, "Hearts" are reactions. 
+            // We use reactions as 'likes' if available, otherwise fallback to saves.
             likes = reactionCount > 0 ? reactionCount : saveCount;
 
-            impressions = lt.impression || pinMetadata.impressions || 0;
+            impressions = lt.impression ?? lt.impressions ?? pinMetadata.impressions ?? 0;
             saves = saveCount;
-            pinClicks = lt.pin_click || 0;
-            outboundClicks = lt.outbound_click || 0;
+            pinClicks = lt.pin_click ?? lt.pin_clicks ?? 0;
+            outboundClicks = lt.outbound_click ?? lt.outbound_clicks ?? 0;
         } else if (detailsResponse.status === 404) {
             return {
                 likes: 0, comments: 0, impressions: 0, reach: 0, engagementRate: 0,

@@ -37,18 +37,22 @@ const buttonVariants = cva(
 const Button = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button"> &
-    VariantProps<typeof buttonVariants> & {
-      asChild?: boolean;
-    }
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean;
+  }
 >(({ className, variant, size, asChild = false, ...props }, ref) => {
   const Comp = asChild ? Slot : "button";
+
+  // Strip unsafeMetadata to prevent it from reaching the DOM
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { "unsafeMetadata": _, ...validProps } = props as any;
 
   return (
     <Comp
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
       ref={ref}
-      {...props}
+      {...validProps}
     />
   );
 });

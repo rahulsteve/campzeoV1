@@ -19,6 +19,28 @@ function PaymentSuccessContent() {
     }
   }, [searchParams]);
 
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownloadInvoice = async () => {
+    try {
+      setIsDownloading(true);
+      const response = await fetch("/api/invoices/latest");
+      if (!response.ok) throw new Error("Failed to fetch latest invoice");
+
+      const data = await response.json();
+      if (data.invoice && data.invoice.id) {
+        router.push(`/organisation/billing/invoices/${data.invoice.id}?download=true`);
+      } else {
+        throw new Error("Invoice not found");
+      }
+    } catch (error) {
+      console.error("Error downloading invoice:", error);
+      alert("Could not find your invoice. Please check your billing history later.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-md text-center">
@@ -50,15 +72,21 @@ function PaymentSuccessContent() {
               <span className="font-medium">Sent to email</span>
             </div>
           </div>
-                                                                 
+
           <div className="flex flex-col gap-3">
             <Button className="w-full" asChild>
               <Link href="/organisation">
                 Go to Dashboard <ArrowRight className="ml-2 size-4" />
               </Link>
-            </Button>`` 
-            <Button variant="outline" className="w-full">
-              <Download className="mr-2 size-4" /> Download Invoice
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleDownloadInvoice}
+              disabled={isDownloading}
+            >
+              <Download className="mr-2 size-4" />
+              {isDownloading ? "Searching..." : "Download Invoice"}
             </Button>
           </div>
         </CardContent>
